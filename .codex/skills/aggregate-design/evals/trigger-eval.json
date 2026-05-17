@@ -1,0 +1,38 @@
+[
+  {
+    "query": "Note/Section/Block の集約境界を見直したい。H1/H2/H3 heading と user-authored block の SoT を守りながら TypeScript でどう設計すべき？",
+    "should_trigger": true
+  },
+  {
+    "query": "StructureJob が BlockChanged で直接 LLM を呼んでいる設計を DDD aggregate 観点でレビューしてほしい。",
+    "should_trigger": true
+  },
+  {
+    "query": "ContextEnvelope は MemoryItem を丸ごと持っていい？K limit と source span と trust boundary を含めた集約境界を判断して。",
+    "should_trigger": true
+  },
+  {
+    "query": "Operation Router の AuditRecord と ApplyDecision の不変条件を設計したい。missing source span と low confidence の扱いも含めたい。",
+    "should_trigger": true
+  },
+  {
+    "query": "MemoryItem を active にする条件を確認したい。source provenance と rejected memory の扱いを aggregate boundary としてレビューして。",
+    "should_trigger": true
+  },
+  {
+    "query": "Next.js の page component で CSS Grid を使ってノート一覧をきれいに並べたい。",
+    "should_trigger": false
+  },
+  {
+    "query": "Cloudflare Workers の環境変数設定方法を教えて。wrangler.toml の書き方が知りたい。",
+    "should_trigger": false
+  },
+  {
+    "query": "package.json の test script を npm-run-all に変えるべきか相談したい。",
+    "should_trigger": false
+  },
+  {
+    "query": "README の見出しレベルを整理したい。アプリ内の section boundary の話ではなく普通のドキュメント編集です。",
+    "should_trigger": false
+  }
+]

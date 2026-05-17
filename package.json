@@ -1,0 +1,22 @@
+{
+  "name": "ai-native-note-codex-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "contexts/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node scripts/verify-contracts.mjs --lint",
+    "test": "node --test tests/**/*.test.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "docs:register": "node scripts/generate-doc-register.mjs",
+    "docs:register:check": "node scripts/generate-doc-register.mjs --check",
+    "contracts:verify": "node scripts/verify-contracts.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "generated": "2026-05-17",
+  "tasks": [
+    {
+      "title": "repo scaffold と検証レーン具体化",
+      "task_file": "superset/tasks/00-5-repo-scaffold-verification.md",
+      "owner_contract": "docs/contracts/repository-topology.md",
+      "verification_lanes": [
+        "contract",
+        "note_model"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    },
+    {
+      "title": "live TypeScript ドメイン契約を実装する",
+      "task_file": "superset/tasks/01-domain-contracts.md",
+      "owner_contract": "docs/contracts/app-note-model.md",
+      "verification_lanes": [
+        "note_model"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    },
+    {
+      "title": "AI 操作スキーマを実装する",
+      "task_file": "superset/tasks/02-operation-schema.md",
+      "owner_contract": "docs/contracts/operation-return-contract.md",
+      "verification_lanes": [
+        "operation"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    },
+    {
+      "title": "操作ルーターを実装する",
+      "task_file": "superset/tasks/03-operation-router.md",
+      "owner_contract": "docs/contracts/operation-return-contract.md",
+      "verification_lanes": [
+        "operation"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    },
+    {
+      "title": "ノート離脱時の構造化スケジューリングを実装する",
+      "task_file": "superset/tasks/05-note-leave-scheduler.md",
+      "owner_contract": "docs/contracts/ai-structuring-lifecycle.md",
+      "verification_lanes": [
+        "scheduler"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    },
+    {
+      "title": "コンテキスト組み立てエンベロープを実装する",
+      "task_file": "superset/tasks/06-context-assembly.md",
+      "owner_contract": "docs/contracts/context-assembly.md",
+      "verification_lanes": [
+        "context"
+      ],
+      "workspace": "superset isolated git worktree",
+      "agent": "codex",
+      "status": "implemented"
+    }
+  ]
+}

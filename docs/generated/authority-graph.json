@@ -1,0 +1,27 @@
+{
+  "generated": "2026-05-17",
+  "authority": {
+    "policy_architecture_decision": "docs/contracts/**",
+    "live_product_semantics": "contexts/*/src/contract/*",
+    "owner_local_ui_policy": "apps/*/docs/*contract.md",
+    "generated_evidence_register": "docs/generated/**",
+    "task_traceability": "GitHub issue / PR / Superset workspace",
+    "api_generated_contract": "apps/workspace-api/generated/openapi.json"
+  },
+  "topology": [
+    "docs/contracts -> contexts/*/src/contract",
+    "docs/contracts/repository-topology.md -> docs/generated/authority-graph.json",
+    "docs/contracts/api-events.md -> apps/workspace-api/generated/openapi.json",
+    "apps/* -> contexts/*/src/contract",
+    "apps/web -> apps/worker API",
+    "apps/worker -> contexts/*/src/contract",
+    "contexts/scheduler -> contexts/note-model",
+    "contexts/context-assembly -> contexts/note-model",
+    "contexts/context-assembly -> contexts/memory",
+    "contexts/ai-operations -> contexts/note-model",
+    "contexts/ai-operations -> contexts/memory",
+    "apps/worker -> Cloudflare Agents",
+    "Cloudflare Agents -> Turso canonical DB",
+    "AI Engine -> Operation Router -> projections"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "generated": "2026-05-17",
+  "lanes": {
+    "contract": [
+      "register current",
+      "authority graph valid",
+      "no guide policy drift"
+    ],
+    "note_model": [
+      "schema tests",
+      "section boundary tests"
+    ],
+    "operation": [
+      "schema validation",
+      "operation router accept/reject/revert"
+    ],
+    "scheduler": [
+      "BlockChanged does not call AI",
+      "note leave creates job"
+    ],
+    "context": [
+      "K limits",
+      "budget limits",
+      "title/description included"
+    ],
+    "frontend": [
+      "unified surface",
+      "AI blocks inline",
+      "no persistent chat panel"
+    ],
+    "runtime": [
+      "provider abstraction",
+      "Turso canonical boundary"
+    ],
+    "security": [
+      "source spans",
+      "context minimization",
+      "untrusted content handling"
+    ],
+    "api_event": [
+      "UI events",
+      "backend events",
+      "route handlers follow api-events.md"
+    ],
+    "nfr": [
+      "writing flow",
+      "layout stability",
+      "AI failure tolerance",
+      "observability events"
+    ],
+    "acceptance": [
+      "mvp-acceptance 15 item checklist"
+    ]
+  },
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "test": "npm run test",
+    "verify": "npm run verify",
+    "docs_register_check": "npm run docs:register:check",
+    "contracts_verify": "npm run contracts:verify"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Workspace API",
+    "version": "0.0.0"
+  },
+  "paths": {},
+  "x-generated": true,
+  "x-authority-contract": "docs/contracts/api-events.md",
+  "x-projection-only": true
+}

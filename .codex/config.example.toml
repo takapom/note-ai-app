@@ -1,0 +1,11 @@
+# Example Codex configuration for this repository.
+# Copy relevant parts into ~/.codex/config.toml or your repo-specific Codex config.
+# Do not commit secrets.
+
+[mcp_servers.superset]
+url = "https://api.superset.sh/api/v2/agent/mcp"
+
+# Suggested defaults. Adjust to your environment.
+# approval_policy = "on-request"
+# sandbox_mode = "workspace-write"
+# project_doc_max_bytes = 65536
