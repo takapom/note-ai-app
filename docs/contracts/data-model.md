@@ -42,6 +42,8 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - `ai_operations` は generated operation の audit record であり、Operation Router を経由せずに適用してはならない。
 - `ai_operations.id` は runtime/application boundary が routing 前に供給した stable operation audit ID であり、Operation Router が生成した placeholder、sentinel、または blank ID であってはならない。
 - `source_spans` は `target_type`, `target_id`, `source_block_id`, `start_offset`, `end_offset`, `reason` を持つ。
+- AI operation audit record の `source_spans.target_id` は、同じ routing 結果の `ai_operations.id` を参照する。
+- Runtime persistence は duplicate `ai_operations.id` を上書きせず拒否する。
 
 ## 許可されるトポロジー
 
@@ -60,3 +62,4 @@ Markdown string、AI free-form text、または Agent-local SQL を canonical no
 ## ガード / 検証
 
 schema tests は block origin、block type、trigger_reason、source_spans、memory status、operation audit record の不変条件を検証しなければならない。
+runtime persistence tests は Operation Router 由来の audit record が `ai_operations` と `source_spans` に mapping され、policy/status が persistence layer で再分類されないことを検証しなければならない。

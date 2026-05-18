@@ -170,8 +170,10 @@ Note close / tab switch / app leave / manual organize
   -> Scheduler plans StructureJob
   -> Context Assembly builds bounded ContextEnvelope
   -> AI returns operation list
+  -> Runtime adds stable operation audit IDs
   -> Operation Router validates and classifies operations
-  -> runtime boundary applies/proposes/rejects projections and audit records
+  -> runtime boundary persists audit records through an audit persistence port
+  -> runtime applies/proposes/rejects projections only through approved boundaries
 ```
 
 ## Dependency Shape
@@ -184,6 +186,9 @@ apps/web
   -> contexts/*/src/contract/*
   -> apps/worker API
   -> Cloudflare Agents
+  -> runtime operation routing adapter
+  -> Operation Router
+  -> audit persistence port
   -> Turso
 
 contexts/scheduler
@@ -200,11 +205,17 @@ contexts/ai-operations
 AI Engine
   -> Operation Router
   -> semantic unit / memory candidate / assist block projections
+
+apps/worker
+  -> contexts/ai-operations Operation Router contract
+  -> operation audit persistence port
+  -> SQL/Turso adapter
 ```
 
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime/UI/DB 実装はまだ scaffold 段階です。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter は `apps/worker/src/*` にあります。
+- UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。
