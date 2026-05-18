@@ -168,6 +168,30 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Turso Context Assembly Target Snapshot Adapter]
+  owns:
+    - read-only SQL mapping from canonical notes / sections / blocks
+    - workspace and note scoping for target snapshots
+    - note-card input mapping without trusting description_effective
+    - outline row mapping for Context Assembly input
+    - user-authored target block text and sourceBlockIds
+
+  depends on:
+    - ContextAssemblyTargetSnapshotPort
+    - Note Model block type / origin vocabulary
+    - Turso canonical notes / sections / blocks
+
+  must not own:
+    - description_effective priority
+    - retrieval order, K limits, budget, trust boundary
+    - semantic unit or memory retrieval
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+    - canonical Note / Section / Block writes
+```
+
+```text
 [Memory]
   owns:
     - MemoryItem type and status lifecycle
@@ -365,6 +389,10 @@ apps/worker context assembly runtime flow
   -> ContextAssemblyRelatedContextRetrievalPort
   -> ContextAssemblyMemoryRetrievalPort
 
+apps/worker context assembly target snapshot SQL adapter
+  -> ContextAssemblyTargetSnapshotPort
+  -> Turso canonical notes / sections / blocks
+
 contexts/ai-operations
   -> contexts/note-model
   -> contexts/memory
@@ -384,7 +412,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

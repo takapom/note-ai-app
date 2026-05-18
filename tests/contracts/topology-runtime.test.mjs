@@ -133,6 +133,22 @@ test('scheduler note snapshot SQL adapter only reads sections and dirty marks', 
   assert.match(source, /dirtyMarkExecutor === undefined/);
 });
 
+test('context assembly target snapshot SQL adapter only reads canonical note target data', async () => {
+  const source = await readFile(new URL('apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts', root), 'utf8');
+
+  assert.match(source, /ContextAssemblyTargetSnapshotPort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /operationRouter|operation router|operation audit|OperationAudit|auditPersistence|provider|ai-sdk/i);
+  assert.doesNotMatch(source, /semantic_units|memory_items|agent_local|dirty_scope|source_spans/i);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+  assert.match(source, /from notes/);
+  assert.match(source, /from sections/);
+  assert.match(source, /from blocks/);
+  assert.match(source, /notes\.workspace_id = \?/);
+  assert.match(source, /blocks\.origin = \?/);
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);
