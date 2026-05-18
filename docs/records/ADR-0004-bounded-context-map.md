@@ -192,6 +192,31 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Turso Context Assembly Local Structure Adapter]
+  owns:
+    - read-only SQL mapping from semantic unit projections
+    - same-note / same-section scoping for local structure input
+    - existing semantic unit row mapping
+    - section summary projection row mapping
+    - optional previous structure snapshot projection row mapping
+
+  depends on:
+    - ContextAssemblyLocalStructurePort
+    - semantic_units projections
+    - semantic_unit_section_summaries projections
+    - semantic_unit_structure_snapshots projections
+
+  must not own:
+    - canonical Note / Section / Block persistence
+    - target text retrieval
+    - retrieval order, K limits, budget, trust boundary
+    - related context or memory retrieval
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+```
+
+```text
 [Memory]
   owns:
     - MemoryItem type and status lifecycle
@@ -393,6 +418,10 @@ apps/worker context assembly target snapshot SQL adapter
   -> ContextAssemblyTargetSnapshotPort
   -> Turso canonical notes / sections / blocks
 
+apps/worker context assembly local structure SQL adapter
+  -> ContextAssemblyLocalStructurePort
+  -> semantic_units / section summary / structure snapshot projections
+
 contexts/ai-operations
   -> contexts/note-model
   -> contexts/memory
@@ -412,7 +441,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

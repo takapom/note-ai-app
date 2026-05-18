@@ -17,6 +17,7 @@
 - Turso canonical sections を `SchedulerNoteSnapshotPort` として読む scheduler note snapshot adapter。
 - StructureJob target と retrieval port output を Context Assembly contract へ渡す context assembly runtime flow。
 - Turso canonical notes / sections / blocks を `ContextAssemblyTargetSnapshotPort` として読む context assembly target snapshot adapter。
+- semantic unit projections を `ContextAssemblyLocalStructurePort` として読む context assembly local structure adapter。
 
 ## 所有してはいけないもの
 
@@ -37,6 +38,7 @@
 - context assembly runtime flow は `ContextEnvelopeBuilt` を valid ContextEnvelope からだけ返してください。invalid runtime input、retrieval failure、invalid envelope、budget violation では provider、Operation Router、audit persistence を呼び出さないでください。
 - Context Assembly retrieval ports は target snapshot、local structure、related context、memory candidates の read-only input だけを返してください。retrieval order、K limits、context budget、trust boundary は Context Assembly contract の責務です。
 - context assembly target snapshot adapter は canonical notes / sections / blocks を read-only で読むだけにしてください。`description_effective` priority、K limits、context budget、provider、Operation Router、audit persistence を実装しないでください。
+- context assembly local structure adapter は semantic unit projections だけを read-only で読み、canonical blocks、memory、operation audit、provider、Operation Router を参照しないでください。
 - Operation Router を経由しない AI operation 適用を行わないでください。
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。

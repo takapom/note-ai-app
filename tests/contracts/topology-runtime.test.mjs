@@ -149,6 +149,21 @@ test('context assembly target snapshot SQL adapter only reads canonical note tar
   assert.match(source, /blocks\.origin = \?/);
 });
 
+test('context assembly local structure SQL adapter only reads semantic unit projections', async () => {
+  const source = await readFile(new URL('apps/worker/src/contextAssemblyLocalStructureSqlAdapter.ts', root), 'utf8');
+
+  assert.match(source, /ContextAssemblyLocalStructurePort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /operationRouter|operation router|operation audit|OperationAudit|auditPersistence|provider|ai-sdk/i);
+  assert.doesNotMatch(source, /from blocks|join blocks|from sections|join sections|memory_items|source_spans|agent_local/i);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+  assert.match(source, /from semantic_units/);
+  assert.match(source, /from semantic_unit_section_summaries/);
+  assert.match(source, /from semantic_unit_structure_snapshots/);
+  assert.match(source, /inner join notes/);
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);
