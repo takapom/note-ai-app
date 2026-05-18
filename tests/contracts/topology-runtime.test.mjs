@@ -59,7 +59,10 @@ test('topology contract separates authority edges from import edges', () => {
     from === 'SchedulerNoteSnapshotPort' && to === 'Agent-local dirty section marks',
   ));
   for (const edge of [
-    ['StructureJob queue', 'apps/worker context assembly runtime flow'],
+    ['StructureJob queue', 'apps/worker structure job processor flow'],
+    ['apps/worker structure job processor flow', 'StructureJobWorkQueuePort'],
+    ['apps/worker structure job processor flow', 'apps/worker structure job Agent handler'],
+    ['StructureJobWorkQueuePort', 'Agent-local StructureJob queue'],
     ['apps/worker structure job Agent handler', 'apps/worker context assembly runtime flow'],
     ['apps/worker structure job Agent handler', 'apps/worker structure job operation orchestration flow'],
     ['apps/worker context assembly runtime flow', 'contexts/context-assembly contract'],
@@ -288,7 +291,10 @@ test('generated authority graph cites its owner contract', async () => {
   assert.ok(graph.topology.includes('docs/contracts/** -> contexts/*/src/contract/*'));
   for (const edge of [
     'apps/worker note structure route handler -> apps/worker scheduler runtime flow',
-    'StructureJob queue -> apps/worker context assembly runtime flow',
+    'StructureJob queue -> apps/worker structure job processor flow',
+    'apps/worker structure job processor flow -> StructureJobWorkQueuePort',
+    'apps/worker structure job processor flow -> apps/worker structure job Agent handler',
+    'StructureJobWorkQueuePort -> Agent-local StructureJob queue',
     'apps/worker structure job Agent handler -> apps/worker context assembly runtime flow',
     'apps/worker structure job Agent handler -> apps/worker structure job operation orchestration flow',
     'apps/worker context assembly runtime flow -> contexts/context-assembly contract',

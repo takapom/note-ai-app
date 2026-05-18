@@ -61,7 +61,9 @@ Import / runtime dependency edges:
 - `contexts/scheduler` -> `contexts/note-model` for section snapshots only。
 - `contexts/context-assembly` -> `contexts/note-model` for note-card semantics。
 - `contexts/context-assembly` -> `contexts/memory` for context-eligible memory semantics。
-- StructureJob queue -> `apps/worker` context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI Engine / provider registry -> operation generation provider -> `apps/worker` structure job operation orchestration flow -> completed StructureJob response。
+- StructureJob queue -> `apps/worker` structure job processor flow -> `StructureJobWorkQueuePort` -> Agent-local StructureJob queue。
+- `apps/worker` structure job processor flow -> `apps/worker` StructureJob Agent handler。
+- `apps/worker` StructureJob Agent handler -> `apps/worker` context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI Engine / provider registry -> operation generation provider -> `apps/worker` structure job operation orchestration flow -> completed StructureJob response。
 - `apps/worker` StructureJob Agent handler -> `apps/worker` context assembly runtime flow / `apps/worker` structure job operation orchestration flow。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyTargetSnapshotPort` -> Turso canonical notes / sections / blocks。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyLocalStructurePort` -> semantic unit projections。

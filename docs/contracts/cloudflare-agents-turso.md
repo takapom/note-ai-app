@@ -37,7 +37,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - Cloudflare Agent-local SQL は edit buffers、current session、dirty section tracking、pending jobs、retry queues、local transient logs のみを保存する。
 - Cloudflare runtime では Turso Sync ではなく Turso serverless access を使用する。
 - NoteAgent は edit event buffer、dirty section tracking、note leave handling、structure job scheduling、context_hash dedupe を扱う。
-- NoteAgent / WorkspaceBrainAgent handler は runtime flow の接続境界であり、scheduler trigger policy、context assembly policy、provider generation policy、Operation Router policy、audit persistence policy を再実装しない。
+- NoteAgent / WorkspaceBrainAgent handler は runtime flow の接続境界であり、scheduler trigger policy、work queue lifecycle policy、context assembly policy、provider generation policy、Operation Router policy、audit persistence policy を再実装しない。
 - Worker scheduler runtime flow は NoteAgent / runtime ports を通じて BlockChanged persistence、dirty tracking、StructureJob queue、next_open digest preparation を調整するが、AI provider、Operation Router、audit persistence を呼び出さない。
 - Scheduler Agent-local SQL adapter は BlockChanged save intent / edit event / dirty mark / lightweight index update、StructureJob queue、next_open digest intent を temporary state として保存する。canonical notes / sections / blocks を更新する Turso adapter ではない。
 - Turso Scheduler Note Snapshot adapter は Worker scheduler runtime flow から `SchedulerNoteSnapshotPort` として呼ばれ、Turso canonical sections を read-only で取得する。Agent-local dirty_scope_marks は scheduler planning のための一時 overlay であり、canonical section data でも Turso Sync でもない。
@@ -56,7 +56,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 
 ## 許可されるトポロジー
 
-Worker -> NoteAgent/WorkspaceBrainAgent route handler -> scheduler runtime flow -> SchedulerNoteSnapshotPort -> Turso canonical sections + optional Agent-local dirty_scope_marks overlay -> StructureJob queue -> StructureJob Agent handler -> context assembly runtime flow -> ContextEnvelopeBuilt -> provider registry -> operation generation provider -> structure job operation orchestration flow -> completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. AI SDK は provider adapter boundary の背後に置く。Agent-local SQL は canonical ではない。
+Worker -> NoteAgent/WorkspaceBrainAgent route handler -> scheduler runtime flow -> SchedulerNoteSnapshotPort -> Turso canonical sections + optional Agent-local dirty_scope_marks overlay -> StructureJob queue -> structure job processor flow -> StructureJob work queue port -> StructureJob Agent handler -> context assembly runtime flow -> ContextEnvelopeBuilt -> provider registry -> operation generation provider -> structure job operation orchestration flow -> completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. AI SDK は provider adapter boundary の背後に置く。Agent-local SQL は canonical ではない。
 
 ## 移行用の seam
 
