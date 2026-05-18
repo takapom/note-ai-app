@@ -67,6 +67,11 @@ Issue #6 no direct SoT mutation guard の重点コマンド:
 - e2e runtime guard: `node --test tests/contracts/worker-no-direct-sot-mutation-guard.test.mjs`
 - topology runtime guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
+Note Model canonical persistence の重点コマンド:
+
+- port/adapter guard: `node --test tests/contracts/worker-note-document-persistence-port.test.mjs tests/contracts/worker-note-document-sql-adapter.test.mjs`
+- AI runtime separation guard: `node --test tests/contracts/worker-no-direct-sot-mutation-guard.test.mjs tests/contracts/topology-runtime.test.mjs`
+
 
 ## 許可されるトポロジー
 

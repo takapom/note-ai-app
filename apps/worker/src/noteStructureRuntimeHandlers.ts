@@ -29,11 +29,19 @@ import {
 } from './structureSchedulerRuntimeFlow.ts';
 
 export type NoteStructureRouteKind = 'note_leave' | 'manual_organize' | 'next_open';
+export type NoteLeaveCause =
+  | 'note_close'
+  | 'tab_switch'
+  | 'app_leave'
+  | 'note_closed'
+  | 'tab_switched'
+  | 'app_left';
 
 export interface NoteStructureRouteHandlerInput {
   workspaceId: string;
   noteId: string;
   route: NoteStructureRouteKind;
+  cause?: NoteLeaveCause;
   now: number;
   ports: StructureTriggerSchedulerFlowInput['ports'];
 }
@@ -171,9 +179,12 @@ export async function runStructureJobAgentHandler(
 function mapRouteToSchedulerInput(
   input: NoteStructureRouteHandlerInput,
 ): { ok: true; input: StructureTriggerSchedulerFlowInput } | { ok: false; errors: string[] } {
-  const mapped = routeToTrigger(input.route);
+  const mapped = routeToTrigger(input.route, input.cause);
   if (mapped === undefined) {
     return { ok: false, errors: [`route ${input.route} is not a structure route`] };
+  }
+  if ('errors' in mapped) {
+    return { ok: false, errors: mapped.errors };
   }
 
   return {
@@ -190,14 +201,14 @@ function mapRouteToSchedulerInput(
   };
 }
 
-function routeToTrigger(route: NoteStructureRouteKind): {
+function routeToTrigger(route: NoteStructureRouteKind, cause: NoteLeaveCause | undefined): {
   triggerReason: StructureTriggerReason;
   targetScope?: StructureTargetScope;
   wholeNoteReason?: WholeNoteStructureReason;
-} | undefined {
+} | { errors: string[] } | undefined {
   switch (route) {
     case 'note_leave':
-      return { triggerReason: 'note_closed' };
+      return noteLeaveCauseToTrigger(cause);
     case 'manual_organize':
       return {
         triggerReason: 'manual_organize',
@@ -208,6 +219,32 @@ function routeToTrigger(route: NoteStructureRouteKind): {
       return { triggerReason: 'next_open' };
     default:
       return undefined;
+  }
+}
+
+function noteLeaveCauseToTrigger(cause: NoteLeaveCause | undefined): {
+  triggerReason: StructureTriggerReason;
+} | { errors: string[] } {
+  if (cause === undefined) {
+    return { triggerReason: 'note_closed' };
+  }
+
+  switch (cause) {
+    case 'note_close':
+    case 'note_closed':
+      return { triggerReason: 'note_closed' };
+    case 'tab_switch':
+    case 'tab_switched':
+      return { triggerReason: 'tab_switched' };
+    case 'app_leave':
+    case 'app_left':
+      return { triggerReason: 'app_left' };
+    default:
+      return {
+        errors: [
+          'note_leave cause must be one of note_close, tab_switch, app_leave, note_closed, tab_switched, app_left',
+        ],
+      };
   }
 }
 

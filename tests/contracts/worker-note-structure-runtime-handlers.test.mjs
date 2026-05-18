@@ -38,14 +38,51 @@ test('note leave route handler schedules jobs and does not call provider, routin
   assert.equal(result.ok, true);
   assert.equal(result.triggerReason, 'note_closed');
   assert.deepEqual(
-    result.scheduledJobs.map((job) => [job.targetScope, job.sectionId, job.status]),
-    [['section', dirtyFlagSectionFixture.id, 'queued']],
+    result.scheduledJobs.map((job) => [job.triggerReason, job.targetScope, job.sectionId, job.status]),
+    [['note_closed', 'section', dirtyFlagSectionFixture.id, 'queued']],
   );
   assert.equal(queue.enqueuedJobs.length, 1);
   assert.deepEqual(result.agentDispatches, []);
   assert.deepEqual(result.providerCalls, []);
   assert.deepEqual(result.operationRoutingCalls, []);
   assert.deepEqual(result.auditWrites, []);
+});
+
+test('note leave route handler preserves explicit close, tab switch, and app leave causes', async () => {
+  for (const [cause, triggerReason] of [
+    ['note_close', 'note_closed'],
+    ['tab_switch', 'tab_switched'],
+    ['app_leave', 'app_left'],
+  ]) {
+    const queue = createQueuePort();
+
+    const result = await runNoteStructureRouteHandler({
+      workspaceId: noteFixture.workspaceId,
+      noteId: noteFixture.id,
+      route: 'note_leave',
+      cause,
+      now,
+      ports: createSchedulerPorts({ queue }),
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.triggerReason, triggerReason);
+    assert.equal(queue.enqueuedJobs.length, 2);
+    assert.deepEqual(
+      queue.enqueuedJobs.map((job) => [job.triggerReason, job.sectionId, job.status]),
+      [
+        [triggerReason, dirtySectionFixture.id, 'queued'],
+        [triggerReason, dirtyFlagSectionFixture.id, 'queued'],
+      ],
+    );
+    assert.deepEqual(
+      result.scheduledJobs.map((job) => job.triggerReason),
+      [triggerReason, triggerReason],
+    );
+    assert.deepEqual(result.providerCalls, []);
+    assert.deepEqual(result.operationRoutingCalls, []);
+    assert.deepEqual(result.auditWrites, []);
+  }
 });
 
 test('manual organize route handler maps to whole-note scheduler intent', async () => {
@@ -103,6 +140,48 @@ test('next open route handler schedules recovery jobs and digest preparation onl
     recoveredJobCount: 2,
     prepared: true,
   }]);
+  assert.deepEqual(result.providerCalls, []);
+  assert.deepEqual(result.operationRoutingCalls, []);
+  assert.deepEqual(result.auditWrites, []);
+});
+
+test('invalid note leave cause stops before scheduler ports and downstream work', async () => {
+  let loadSectionsCount = 0;
+  let enqueueCount = 0;
+
+  const result = await runNoteStructureRouteHandler({
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    route: 'note_leave',
+    cause: 'keystroke',
+    now,
+    ports: createSchedulerPorts({
+      noteSnapshot: {
+        async loadSections() {
+          loadSectionsCount += 1;
+          return schedulerSectionsFixture;
+        },
+      },
+      queue: {
+        enqueuedJobs: [],
+        async listCompletedJobs() {
+          return [];
+        },
+        async enqueueJobs(jobs) {
+          enqueueCount += 1;
+          return { ok: true, enqueuedCount: jobs.length, errors: [] };
+        },
+      },
+    }),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(loadSectionsCount, 0);
+  assert.equal(enqueueCount, 0);
+  assert.deepEqual(result.scheduledJobs, []);
+  assert.deepEqual(result.errors, [
+    'note_leave cause must be one of note_close, tab_switch, app_leave, note_closed, tab_switched, app_left',
+  ]);
   assert.deepEqual(result.providerCalls, []);
   assert.deepEqual(result.operationRoutingCalls, []);
   assert.deepEqual(result.auditWrites, []);

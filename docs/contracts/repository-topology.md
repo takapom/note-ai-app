@@ -57,6 +57,7 @@ Import / runtime dependency edges:
 - `apps/web` -> `apps/worker` API。
 - `apps/worker` -> `contexts/*/src/contract/*`。
 - `apps/worker` -> Cloudflare Agents -> Turso。
+- `apps/worker` Note document persistence port -> Turso canonical notes / sections / blocks。
 - `apps/worker` note structure route handler -> `apps/worker` scheduler runtime flow。
 - `apps/worker` scheduler runtime flow -> `SchedulerNoteSnapshotPort` -> Turso canonical sections / Agent-local dirty section marks。
 - `contexts/scheduler` -> `contexts/note-model` for section snapshots only。

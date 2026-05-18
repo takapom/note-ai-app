@@ -17,8 +17,8 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | blocking gap | `apps/web` は docs のみで editable NoteSurface がない。 |
 | 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model contract/test は実装済み。editor rendering/editing は未実装。 |
-| 3 | blocks と sections が内部正本として保存される | blocking gap | canonical Note/Section/Block Turso persistence が未実装。Agent-local save intent は canonical SoT ではない。 |
-| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain は対応済み。runtime route は `note_leave` に畳まれており trigger reason を保持しない。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter は追加済み。HTTP route 接続と実 DB integration は未実装。Agent-local save intent は canonical SoT ではない。 |
+| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain と worker route handler cause preservation は対応済み。HTTP entrypoint は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
@@ -57,6 +57,10 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 - blocks/sections が canonical model として保存・復元できる。
 - invalid IDs、invalid heading levels、invalid block origins/types は永続化前に拒否される。
 - AI runtime no-direct-SoT guard は通り続ける。
+
+実装状況:
+- `NoteDocumentPersistencePort`、in-memory port、Turso SQL adapter、focused contract tests は追加済み。
+- 残りは Worker HTTP route と実 Turso client wiring。
 
 検証コマンド:
 - `node --test tests/contracts/note-model-runtime.test.mjs`
