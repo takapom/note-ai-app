@@ -1,0 +1,82 @@
+{
+  "skill_name": "aggregate-design",
+  "evals": [
+    {
+      "id": "note-document-boundary-typescript",
+      "prompt": "Design a TypeScript aggregate boundary for the AI Native Note NoteDocument. It contains Note, Section, and Block semantics. User-authored blocks are the source of truth, H1/H2/H3 headings define section boundaries, and AI assist blocks are projections.",
+      "expected_output": "A NoteDocument aggregate rooted in Note Model semantics, with Section and Block internal consistency, immutable updates, heading boundary checks, and no AI policy ownership.",
+      "files": [
+        "docs/contracts/app-note-model.md",
+        "contexts/note-model/src/contract/noteContract.ts"
+      ],
+      "assertions": [
+        {
+          "id": "uses-note-language",
+          "text": "Uses Note, Section, Block, heading boundary, and AI assist block language instead of generic sample domain language"
+        },
+        {
+          "id": "preserves-user-sot",
+          "text": "States that user-authored blocks remain the source of truth and AI structure is projection"
+        },
+        {
+          "id": "immutable-boundary",
+          "text": "Shows immutable or copy-on-write updates with constructor/factory invariant validation"
+        },
+        {
+          "id": "does-not-own-ai-policy",
+          "text": "Keeps AI operation policy outside the Note Model aggregate"
+        }
+      ]
+    },
+    {
+      "id": "structure-job-boundary-review",
+      "prompt": "Review a StructureJob design where BlockChanged immediately creates an AI call, whole-note structuring is allowed for every trigger, and the job embeds a full mutable NoteDocument object.",
+      "expected_output": "Flags Scheduler invariant violations, rejects AI calls on BlockChanged, restricts whole-note scope, and replaces embedded NoteDocument with IDs or bounded snapshots.",
+      "files": [
+        "docs/contracts/ai-structuring-lifecycle.md",
+        "contexts/scheduler/src/contract/structureSchedulerContract.ts"
+      ],
+      "assertions": [
+        {
+          "id": "rejects-keypress-structuring",
+          "text": "Says BlockChanged must save/mark dirty only and must not call AI"
+        },
+        {
+          "id": "checks-whole-note-scope",
+          "text": "Mentions whole-note structuring is limited to description, summary, or manual organize cases"
+        },
+        {
+          "id": "uses-id-references",
+          "text": "Recommends noteId/sectionId/contextHash references instead of embedding full mutable note state"
+        }
+      ]
+    },
+    {
+      "id": "operation-router-audit-boundary",
+      "prompt": "Design the aggregate/value boundary for routing AI StructureOperation results. Unknown operation types, missing source spans, low confidence, and missing targets must be handled.",
+      "expected_output": "Defines Operation Router as the validation/policy/apply boundary with ApplyDecision and AuditRecord outputs, rejecting unsafe operations and never directly rewriting user-authored blocks.",
+      "files": [
+        "docs/contracts/operation-return-contract.md",
+        "contexts/ai-operations/src/contract/operationRouterContract.ts"
+      ],
+      "assertions": [
+        {
+          "id": "operation-list-only",
+          "text": "Requires AI responses to be operation lists rather than free-form structural output"
+        },
+        {
+          "id": "source-confidence-target-checks",
+          "text": "Covers source span, confidence threshold, schema, and target existence checks"
+        },
+        {
+          "id": "audit-record",
+          "text": "Creates or preserves an audit record for accept, reject, and no-apply outcomes"
+        },
+        {
+          "id": "no-direct-rewrite",
+          "text": "Rejects direct AI rewrite of user-authored blocks"
+        }
+      ]
+    }
+  ]
+}
