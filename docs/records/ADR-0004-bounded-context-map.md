@@ -82,6 +82,28 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Scheduler Agent-local SQL Adapter]
+  owns:
+    - SQL statement mapping for BlockChanged save intent evidence
+    - edit event buffer writes
+    - dirty section mark writes
+    - planned StructureJob queue writes
+    - completed StructureJob lookup for scheduler dedupe input
+    - next_open digest preparation intent writes
+
+  depends on:
+    - Runtime Scheduler Flow ports
+    - Scheduler contract output
+
+  must not own:
+    - canonical Note / Section / Block persistence
+    - trigger policy or context_hash computation
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+```
+
+```text
 [Context Assembly]
   owns:
     - ContextEnvelope
@@ -278,6 +300,10 @@ apps/worker scheduler runtime flow
   -> contexts/note-model Section snapshots
   -> runtime ports only
 
+apps/worker scheduler Agent-local SQL adapter
+  -> runtime scheduler ports
+  -> Agent-local temporary state
+
 contexts/context-assembly
   -> contexts/note-model
   -> contexts/memory
@@ -301,7 +327,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

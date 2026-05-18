@@ -38,11 +38,13 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - Cloudflare runtime では Turso Sync ではなく Turso serverless access を使用する。
 - NoteAgent は edit event buffer、dirty section tracking、note leave handling、structure job scheduling、context_hash dedupe を扱う。
 - Worker scheduler runtime flow は NoteAgent / runtime ports を通じて BlockChanged persistence、dirty tracking、StructureJob queue、next_open digest preparation を調整するが、AI provider、Operation Router、audit persistence を呼び出さない。
+- Scheduler Agent-local SQL adapter は BlockChanged save intent / edit event / dirty mark / lightweight index update、StructureJob queue、next_open digest intent を temporary state として保存する。canonical notes / sections / blocks を更新する Turso adapter ではない。
 - WorkspaceBrainAgent は related context retrieval、memory candidate management、workspace-wide semantic graph coordination を扱う。
 - ActionAgent は external action candidate、approval、retry/outbox のための将来候補であり、MVP runtime には入れない。
 - Agent-local SQL と Turso は自動 Sync しない。
 - AI operation audit persistence は runtime の port を通じて Turso に書き込む。SQL adapter は `ai_operations` と `source_spans` への mapping と infrastructure error handling のみを担当し、operation policy を再分類しない。
 - Operation audit recovery queue は audit persistence failure の retry/recovery intent を runtime/application port として記録する。MVP runtime では retry queue は Agent-local SQL に置いてよいが、canonical audit record は Turso の `ai_operations` / `source_spans` である。
+- Scheduler Agent-local SQL adapter は scheduler contract が作った output を statement に変換するだけであり、trigger policy、context_hash dedupe、whole-note eligibility を再実装しない。
 - Turso operation audit executor は、上流の audit persistence adapter が作った SQL statement list を Turso/libSQL-like client に順番どおり渡す薄い infrastructure executor である。
 - Turso operation audit executor は empty statement list を infrastructure misuse として拒否し、Turso client を呼び出してはならない。
 - Turso operation audit executor は途中の statement failure を infrastructure failure として上位へ伝播する。失敗時に routing decision、operation status、policy classification を書き換えてはならない。
