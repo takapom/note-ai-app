@@ -206,6 +206,25 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime StructureJob Work Queue Port]
+  owns:
+    - claiming queued StructureJobs as running work
+    - marking running StructureJobs completed
+    - marking running StructureJobs failed
+    - rejecting blank IDs, invalid status, and non-finite timestamps before returning valid results
+
+  depends on:
+    - Scheduler StructureJob contract shape
+
+  must not own:
+    - SQL adapter implementation details
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+    - canonical Note / Block writes
+```
+
+```text
 [Runtime Turso Context Assembly Target Snapshot Adapter]
   owns:
     - read-only SQL mapping from canonical notes / sections / blocks
@@ -454,6 +473,7 @@ Note close / tab switch / app leave / manual organize
   -> Runtime Scheduler Flow loads section snapshots and completed job hashes
   -> Scheduler plans StructureJob
   -> runtime enqueues planned StructureJobs
+  -> Runtime StructureJob Work Queue Port claims queued StructureJob as running
   -> Runtime StructureJob Agent Handler receives a runnable StructureJob
   -> Runtime Context Assembly Flow reads bounded retrieval port snapshots
   -> Context Assembly builds bounded ContextEnvelope
@@ -546,6 +566,7 @@ apps/worker context assembly memory context SQL adapter
   -> Turso canonical memory_items scoped by workspace_id / user_id
 
 apps/worker structure job Agent handler
+  -> apps/worker StructureJob work queue port
   -> apps/worker context assembly runtime flow
   -> apps/worker structure job operation orchestration flow
 
@@ -576,7 +597,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、structure job operation orchestration flow、operation audit persistence flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、note structure route handler、StructureJob Agent handler、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、structure job operation orchestration flow、StructureJob work queue port、operation audit persistence flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、note structure route handler、StructureJob Agent handler、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。
