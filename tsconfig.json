@@ -11,6 +11,7 @@
     "allowImportingTsExtensions": true
   },
   "include": [
+    "apps/**/*.ts",
     "contexts/**/*.ts"
   ]
 }
