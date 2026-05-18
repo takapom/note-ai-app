@@ -21,6 +21,7 @@
 - related semantic unit projections と explicit note/block excerpt candidates を `ContextAssemblyRelatedContextRetrievalPort` として読む context assembly related context adapter。
 - workspaceId / userId で境界付けた memory candidates と canonical memory_items を `ContextAssemblyMemoryRetrievalPort` として読む context assembly memory context adapter。
 - ContextEnvelopeBuilt と valid ContextEnvelope を provider registry boundary に渡す operation generation provider flow。
+- provider generation success の completed StructureJob response を structure job operation flow へ渡す structure job operation orchestration flow。
 
 ## 所有してはいけないもの
 
@@ -46,6 +47,7 @@
 - context assembly memory context adapter は `memory_context_candidates` と `memory_items` だけを read-only で読み、`memory_context_candidates.user_id = ?` と `memory_items.user_id = ?` を必須にしてください。returned memoryContext item に workspaceId/userId を含めず、active/pinned の最終 filtering、K limits、context budget、trust boundary を実装しないでください。
 - operation generation provider flow は running StructureJob、valid `ContextEnvelopeBuilt` event、valid ContextEnvelope だけを mockable provider port に渡してください。provider success のときだけ completed StructureJob response と operations payload を返し、provider failure / invalid runtime input / invalid ContextEnvelope では completed response を返さないでください。
 - operation generation provider flow は provider SDK、Operation Router、audit persistence、canonical Note/Block write、operation schema/policy validation を import または実行しないでください。provider adapter は ContextEnvelope を full workspace dump に戻してはいけません。
+- structure job operation orchestration flow は provider generation flow の `completedStructureJobResponse` だけを `structureJobOperationFlow` へ渡してください。downstream へ渡す AI payload は `completedStructureJobResponse.aiResponse` です。provider failure / unavailable / invalid generation input / invalid ContextEnvelope では connector 内で停止し、Operation Router、audit persistence、canonical Note/Block write を呼ばないでください。
 - Operation Router を経由しない AI operation 適用を行わないでください。
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。

@@ -325,6 +325,27 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Structure Job Operation Orchestration Flow]
+  owns:
+    - sequencing operation generation provider flow before structure job operation flow
+    - passing provider success completed StructureJob response to `structureJobOperationFlow`
+    - forwarding `completedStructureJobResponse.aiResponse` as the downstream operation payload
+    - stopping provider failure, provider unavailable, invalid runtime input, and invalid ContextEnvelope before routing/audit
+    - preserving provider-independent aiResponse payload for Operation Router validation
+
+  depends on:
+    - Runtime Operation Generation Provider Flow
+    - Runtime StructureJob Operation Flow
+
+  must not own:
+    - provider SDK imports
+    - operation schema or policy validation
+    - audit persistence semantics
+    - retry / transaction behavior
+    - canonical Note / Block writes
+```
+
+```text
 [Runtime Turso Operation Audit Executor]
   owns:
     - ordered execution of SQL statements produced by the audit persistence adapter
@@ -398,7 +419,7 @@ Note close / tab switch / app leave / manual organize
   -> Context Assembly builds bounded ContextEnvelope
   -> valid ContextEnvelopeBuilt result is emitted
   -> AI returns operation list
-  -> Runtime gates on completed StructureJob response
+  -> Runtime gates on completed StructureJob response in structure job operation orchestration flow
   -> Runtime adds stable operation audit IDs
   -> Operation Router validates and classifies operations
   -> runtime boundary persists audit records through an audit persistence port
@@ -491,6 +512,7 @@ AI Engine
 
 apps/worker
   -> contexts/ai-operations Operation Router contract
+  -> structure job operation orchestration flow
   -> operation audit persistence port
   -> schema-aware SQL adapter
   -> Turso operation audit executor
@@ -500,7 +522,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、structure job operation orchestration flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

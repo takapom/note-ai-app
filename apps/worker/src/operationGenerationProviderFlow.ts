@@ -75,6 +75,7 @@ export interface OperationGenerationProviderFlowResult {
   validation: ContextEnvelopeValidationResult;
   completedStructureJobResponse?: CompletedStructureJobResponse;
   event?: OperationsGeneratedEvent;
+  providerError?: unknown;
   providerCalls: Array<{ providerId: string; structureJobId: string }>;
   operationRoutingCalls: [];
   auditWrites: [];
@@ -166,6 +167,7 @@ export async function runOperationGenerationProviderFlow(
       ok: false,
       reason: 'provider_failed',
       validation,
+      providerError: error,
       providerCalls: [{ providerId: provider.id, structureJobId: input.structureJob.id }],
       errors: [toProviderErrorMessage(error)],
     });

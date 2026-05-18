@@ -48,7 +48,7 @@
 
 ## 許可されるトポロジー
 
-Editor events -> scheduler -> structure job -> context assembly -> AI engine -> completed StructureJob response -> operation router.
+Editor events -> scheduler -> structure job -> context assembly -> AI engine / provider registry -> operation generation provider -> structure job operation orchestration flow -> completed StructureJob response -> structure job operation flow -> operation router.
 
 ## 移行用の seam
 

@@ -63,8 +63,11 @@ test('topology contract separates authority edges from import edges', () => {
     ['ContextEnvelopeBuilt', 'ai-engine'],
     ['ai-engine', 'provider-registry'],
     ['provider-registry', 'operation-generation-provider'],
-    ['operation-generation-provider', 'completed StructureJob response'],
-    ['completed StructureJob response', 'runtime operation routing adapter'],
+    ['operation-generation-provider', 'apps/worker structure job operation orchestration flow'],
+    ['apps/worker structure job operation orchestration flow', 'completed StructureJob response'],
+    ['completed StructureJob response', 'structure job operation flow'],
+    ['apps/worker structure job operation orchestration flow', 'structure job operation flow'],
+    ['structure job operation flow', 'runtime operation routing adapter'],
     ['runtime operation routing adapter', 'operation-router'],
   ]) {
     assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) => from === edge[0] && to === edge[1]));
@@ -85,6 +88,21 @@ test('worker operation generation provider flow stops before operation routing a
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
   assert.doesNotMatch(source, /runOperationRoutingFlow|runStructureJobOperationFlow|auditPersistence|classifyOperationPolicy|validateStructureOperation/);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+});
+
+test('worker structure job operation orchestration flow only connects provider generation to structure job operation flow', async () => {
+  const source = await readFile(new URL('apps/worker/src/structureJobOperationOrchestrationFlow.ts', root), 'utf8');
+
+  assert.match(source, /runOperationGenerationProviderFlow/);
+  assert.match(source, /runStructureJobOperationFlow/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingAdapter\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationAudit/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|routeGeneratedOperations|auditPersistence\.save|classifyOperationPolicy|validateStructureOperation/);
   assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
 });
 
@@ -262,8 +280,11 @@ test('generated authority graph cites its owner contract', async () => {
     'ContextEnvelopeBuilt -> AI Engine',
     'AI Engine -> provider registry',
     'provider registry -> operation generation provider',
-    'operation generation provider -> completed StructureJob response',
-    'completed StructureJob response -> runtime operation routing adapter',
+    'operation generation provider -> apps/worker structure job operation orchestration flow',
+    'apps/worker structure job operation orchestration flow -> completed StructureJob response',
+    'completed StructureJob response -> structure job operation flow',
+    'apps/worker structure job operation orchestration flow -> structure job operation flow',
+    'structure job operation flow -> runtime operation routing adapter',
     'runtime operation routing adapter -> Operation Router',
   ]) {
     assert.ok(graph.topology.includes(edge), edge);
