@@ -71,7 +71,9 @@ Import / runtime dependency edges:
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> user-scoped memory projections。
 - `contexts/ai-operations` -> `contexts/note-model` for block origin and AI block vocabulary。
 - `contexts/ai-operations` -> `contexts/memory` for memory type vocabulary。
-- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> audit persistence port / operation proposal persistence port。
+- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> audit persistence port / operation projection persistence flow。
+- operation projection persistence flow -> operation projection persistence port for silent active projection effects。
+- operation projection persistence flow -> operation proposal persistence port for inline/review propose effects。
 - operation proposal accept/dismiss route handler -> operation approval runtime handler -> operation proposal persistence port。
 - accepted operation proposal -> approved intent for a later projection boundary。dismissed operation proposal -> no projection and no Note/Block SoT mutation。
 
