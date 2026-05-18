@@ -8,8 +8,7 @@ export const authorityTopologyEdges = [
 ] as const;
 
 export const allowedImportTopologyEdges = [
-  ['apps/*', 'contexts/*/src/contract/*'],
-  ['apps/web', 'apps/worker'],
+  ['apps/web', 'contexts/*/src/contract/*'],
   ['apps/worker', 'contexts/*/src/contract/*'],
   ['contexts/scheduler', 'contexts/note-model'],
   ['contexts/context-assembly', 'contexts/note-model'],
@@ -41,7 +40,6 @@ export const allowedRuntimeTopologyEdges = [
   ['operation-generation-provider', 'apps/worker structure job operation orchestration flow'],
   ['apps/worker structure job operation orchestration flow', 'completed StructureJob response'],
   ['completed StructureJob response', 'structure job operation flow'],
-  ['apps/worker structure job operation orchestration flow', 'structure job operation flow'],
   ['structure job operation flow', 'runtime operation routing adapter'],
   ['cloudflare-agents', 'turso'],
   ['runtime operation routing adapter', 'operation-router'],

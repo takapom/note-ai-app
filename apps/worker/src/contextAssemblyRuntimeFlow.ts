@@ -5,6 +5,7 @@
 import {
   assembleContextEnvelope,
   defaultContextAssemblyLimits,
+  hasForbiddenContextDumpField,
   validateContextEnvelope,
   type ContextAssemblyInput,
   type ContextAssemblyLimits,
@@ -91,7 +92,7 @@ export async function runContextEnvelopeAssemblyFlow(
     'target context snapshot failed',
   );
   if (!targetResult.ok) return invalidResult(targetResult.errors);
-  if (hasForbiddenDumpField(targetResult.value)) return invalidResult([forbiddenDumpMessage]);
+  if (hasForbiddenContextDumpField(targetResult.value)) return invalidResult([forbiddenDumpMessage]);
   if (targetResult.value.target.scope !== request.targetScope) {
     return invalidResult([
       `target snapshot scope ${targetResult.value.target.scope} must match requested targetScope ${request.targetScope}`,
@@ -103,21 +104,21 @@ export async function runContextEnvelopeAssemblyFlow(
     'local structure retrieval failed',
   );
   if (!localStructureResult.ok) return invalidResult(localStructureResult.errors);
-  if (hasForbiddenDumpField(localStructureResult.value)) return invalidResult([forbiddenDumpMessage]);
+  if (hasForbiddenContextDumpField(localStructureResult.value)) return invalidResult([forbiddenDumpMessage]);
 
   const relatedContextResult = await readPort(
     () => input.ports.relatedContext.loadRelatedContext(request),
     'related context retrieval failed',
   );
   if (!relatedContextResult.ok) return invalidResult(relatedContextResult.errors);
-  if (hasForbiddenDumpField(relatedContextResult.value)) return invalidResult([forbiddenDumpMessage]);
+  if (hasForbiddenContextDumpField(relatedContextResult.value)) return invalidResult([forbiddenDumpMessage]);
 
   const memoryContextResult = await readPort(
     () => input.ports.memoryContext.loadMemoryContext(request),
     'memory context retrieval failed',
   );
   if (!memoryContextResult.ok) return invalidResult(memoryContextResult.errors);
-  if (hasForbiddenDumpField(memoryContextResult.value)) return invalidResult([forbiddenDumpMessage]);
+  if (hasForbiddenContextDumpField(memoryContextResult.value)) return invalidResult([forbiddenDumpMessage]);
 
   const assemblyInput: ContextAssemblyInput = {
     target: targetResult.value.target,
@@ -246,29 +247,3 @@ function toPortErrorMessage(prefix: string, error: unknown): string {
 }
 
 const forbiddenDumpMessage = 'retrieval port output must not include full workspace, full notes, or dump fields';
-
-function hasForbiddenDumpField(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some(hasForbiddenDumpField);
-  }
-
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  for (const [key, child] of Object.entries(value)) {
-    const normalized = key.toLowerCase();
-    if (
-      normalized.includes('fullworkspace') ||
-      normalized.includes('fullnote') ||
-      normalized.includes('dump')
-    ) {
-      return true;
-    }
-    if (hasForbiddenDumpField(child)) {
-      return true;
-    }
-  }
-
-  return false;
-}

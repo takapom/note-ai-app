@@ -41,7 +41,12 @@ export class AgentLocalBlockChangedPersistenceAdapter implements BlockChangedPer
       };
     }
 
-    return executeStatements(this.executor, statements, 'BlockChanged agent-local SQL persistence failed');
+    const { executedCount: _executedCount, ...result } = await executeStatements(
+      this.executor,
+      statements,
+      'BlockChanged agent-local SQL persistence failed',
+    );
+    return result;
   }
 }
 
@@ -86,9 +91,11 @@ export class AgentLocalStructureJobQueueAdapter implements StructureJobQueuePort
       'structure job enqueue failed',
     );
 
+    const { executedCount, ...portResult } = result;
+
     return {
-      ...result,
-      enqueuedCount: result.ok ? statements.length : 0,
+      ...portResult,
+      enqueuedCount: executedCount,
     };
   }
 }
@@ -109,11 +116,12 @@ export class AgentLocalNextOpenDigestPreparationAdapter implements NextOpenDiges
       };
     }
 
-    return executeStatements(
+    const { executedCount: _executedCount, ...result } = await executeStatements(
       this.executor,
       statements,
       'next_open digest agent-local SQL preparation failed',
     );
+    return result;
   }
 }
 
@@ -302,20 +310,24 @@ async function executeStatements(
   executor: SchedulerAgentLocalSqlExecutor,
   statements: readonly SchedulerAgentLocalSqlStatement[],
   errorPrefix: string,
-): Promise<WorkerSchedulerPortResult> {
+): Promise<WorkerSchedulerPortResult & { executedCount: number }> {
+  let executedCount = 0;
   try {
     for (const statement of statements) {
       await executor.execute(statement);
+      executedCount += 1;
     }
   } catch (error) {
     return {
       ok: false,
+      executedCount,
       errors: [toSqlErrorMessage(errorPrefix, error)],
     };
   }
 
   return {
     ok: true,
+    executedCount,
     errors: [],
   };
 }

@@ -21,7 +21,6 @@ const runtimeInput = {
   completedStructureJobGate: {
     structureJobId: 'structure_job_001',
     status: 'completed',
-    providerSucceeded: true,
   },
 };
 
@@ -117,13 +116,12 @@ test('worker flow refuses direct calls without a completed StructureJob gate', a
   assert.deepEqual(result.directApplyResults, []);
 });
 
-test('worker flow refuses direct calls when provider success gate is false', async () => {
+test('worker flow refuses direct calls when completed job gate is not completed', async () => {
   const result = await runOperationRoutingFlow({
     ...runtimeInput,
     completedStructureJobGate: {
       structureJobId: 'structure_job_001',
-      status: 'completed',
-      providerSucceeded: false,
+      status: 'running',
     },
     aiResponse: [validOperationFixtures[0]],
     auditPersistence: {
@@ -135,8 +133,35 @@ test('worker flow refuses direct calls when provider success gate is false', asy
 
   assert.equal(result.routing.ok, false);
   assert.equal(result.routing.routedThroughOperationRouter, false);
-  assert.deepEqual(result.routing.errors, ['completedStructureJobGate.providerSucceeded must be true']);
+  assert.deepEqual(result.routing.errors, ['completedStructureJobGate.status must be completed']);
   assert.equal(result.auditPersistence.attempted, false);
+});
+
+test('worker flow refuses completed StructureJob gates for a different job', async () => {
+  let saveCount = 0;
+
+  const result = await runOperationRoutingFlow({
+    ...runtimeInput,
+    completedStructureJobGate: {
+      structureJobId: 'structure_job_other',
+      status: 'completed',
+    },
+    aiResponse: [validOperationFixtures[0]],
+    auditPersistence: {
+      async save(record) {
+        saveCount += 1;
+        return { ok: true, errors: [], record };
+      },
+    },
+  });
+
+  assert.equal(result.routing.ok, false);
+  assert.equal(result.routing.routedThroughOperationRouter, false);
+  assert.deepEqual(result.routing.errors, [
+    'completedStructureJobGate.structureJobId must match structureJobId',
+  ]);
+  assert.equal(result.auditPersistence.attempted, false);
+  assert.equal(saveCount, 0);
 });
 
 test('worker flow separates audit save failure from routing result', async () => {

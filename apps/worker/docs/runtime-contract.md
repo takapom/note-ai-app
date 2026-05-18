@@ -1,6 +1,6 @@
 # Worker Runtime のローカル契約
 
-ドキュメント種別: オーナーローカルのランタイムポリシー。権威: `docs/contracts/backend-runtime.md`、`docs/contracts/cloudflare-agents-turso.md`、`docs/contracts/api-events.md`、`docs/contracts/data-model.md`。
+ドキュメント種別: オーナーローカルのランタイムポリシー。権威: `docs/contracts/backend-runtime.md`、`docs/contracts/cloudflare-agents-turso.md`、`docs/contracts/api-events.md`、`docs/contracts/data-model.md`、`docs/contracts/vendor-lock-avoidance.md`。
 
 ## ローカルで所有するもの
 
@@ -22,6 +22,7 @@
 - workspaceId / userId で境界付けた memory candidates と canonical memory_items を `ContextAssemblyMemoryRetrievalPort` として読む context assembly memory context adapter。
 - ContextEnvelopeBuilt と valid ContextEnvelope を provider registry boundary に渡す operation generation provider flow。
 - provider generation success の completed StructureJob response を structure job operation flow へ渡す structure job operation orchestration flow。
+- Operation Router audit records を audit persistence port と recovery queue port へ渡す operation audit persistence flow。
 
 ## 所有してはいけないもの
 
@@ -52,6 +53,7 @@
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。
 - audit persistence failure は routing decision を書き換えず、retry/recovery 対象として扱ってください。
+- operation routing flow は Operation Router 呼び出しと operation audit persistence flow の接続だけを担い、audit save loop / recovery enqueue の詳細を直接所有しないでください。
 - operation audit recovery queue は failure payload を記録するだけにしてください。retry、transaction、Turso executor 呼び出し、policy/status 再分類を queue 内で実行しないでください。
 - Turso operation audit executor は audit persistence adapter から受け取った SQL statement list を順番どおり実行してください。
 - Turso operation audit executor は empty statement list を拒否し、Turso client を呼び出さないでください。

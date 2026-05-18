@@ -6,6 +6,7 @@ import type {
   ContextAssemblyInput,
   TargetScopeKind,
 } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+import { hasForbiddenContextDumpField } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import {
   isMemoryStatus,
   isMemoryType,
@@ -134,7 +135,7 @@ function mapMemoryContextRow(
   expected: { workspaceId: string; userId: string; noteId: string; targetScope: TargetScopeKind; targetId?: string },
 ): { ok: true; item: MemoryContextItemInput } | { ok: false; errors: string[] } {
   const errors: string[] = validateCandidateScope(row, expected);
-  if (hasForbiddenDumpField(row)) {
+  if (hasForbiddenContextDumpField(row)) {
     errors.push('row must not include full workspace, full note, dump, all notes, or all memory fields');
   }
 
@@ -430,33 +431,6 @@ function readRequiredConfidenceColumn(
   return value >= 0 && value <= 1 ? value : undefined;
 }
 
-function hasForbiddenDumpField(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some(hasForbiddenDumpField);
-  }
-
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  for (const [key, child] of Object.entries(value)) {
-    const normalized = key.toLowerCase();
-    if (
-      normalized.includes('fullworkspace') ||
-      normalized.includes('fullnote') ||
-      normalized.includes('dump') ||
-      normalized.includes('allnotes') ||
-      normalized.includes('allmemory')
-    ) {
-      return true;
-    }
-    if (hasForbiddenDumpField(child)) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 function isTrimmedNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value === value.trim();

@@ -14,7 +14,7 @@ import {
 } from './structureJobOperationFlow.ts';
 
 export interface StructureJobOperationOrchestrationFlowInput extends OperationGenerationProviderFlowInput {
-  operationFlow: Omit<StructureJobOperationFlowInput, 'structureJob' | 'aiResponse' | 'providerError'>;
+  operationFlow: Omit<StructureJobOperationFlowInput, 'structureJob' | 'aiResponse'>;
 }
 
 export interface StructureJobOperationOrchestrationFlowResult {

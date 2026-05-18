@@ -31,12 +31,19 @@ test('topology contract separates authority edges from import edges', () => {
     from === 'docs/contracts/**' && to === 'contexts/*/src/contract/*',
   ));
   assert.ok(allowedImportTopologyEdges.some(([from, to]) =>
-    from === 'apps/*' && to === 'contexts/*/src/contract/*',
+    from === 'apps/web' && to === 'contexts/*/src/contract/*',
+  ));
+  assert.ok(allowedImportTopologyEdges.some(([from, to]) =>
+    from === 'apps/worker' && to === 'contexts/*/src/contract/*',
   ));
   assert.equal(
     allowedImportTopologyEdges.some(([from, to]) =>
       from === 'contexts/*/src/contract/*' && to === 'apps/*',
     ),
+    false,
+  );
+  assert.equal(
+    allowedImportTopologyEdges.some(([from, to]) => from === 'apps/web' && to === 'apps/worker'),
     false,
   );
   assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
@@ -66,7 +73,6 @@ test('topology contract separates authority edges from import edges', () => {
     ['operation-generation-provider', 'apps/worker structure job operation orchestration flow'],
     ['apps/worker structure job operation orchestration flow', 'completed StructureJob response'],
     ['completed StructureJob response', 'structure job operation flow'],
-    ['apps/worker structure job operation orchestration flow', 'structure job operation flow'],
     ['structure job operation flow', 'runtime operation routing adapter'],
     ['runtime operation routing adapter', 'operation-router'],
   ]) {
@@ -103,6 +109,16 @@ test('worker structure job operation orchestration flow only connects provider g
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
   assert.doesNotMatch(source, /runOperationRoutingFlow|routeGeneratedOperations|auditPersistence\.save|classifyOperationPolicy|validateStructureOperation/);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+});
+
+test('worker structure job operation flow owns completed job routing only', async () => {
+  const source = await readFile(new URL('apps/worker/src/structureJobOperationFlow.ts', root), 'utf8');
+
+  assert.match(source, /runOperationRoutingFlow/);
+  assert.doesNotMatch(source, /providerError|provider_failed|OperationGenerationProvider/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationGenerationProviderFlow\.ts['"]/);
   assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
 });
 
@@ -283,10 +299,31 @@ test('generated authority graph cites its owner contract', async () => {
     'operation generation provider -> apps/worker structure job operation orchestration flow',
     'apps/worker structure job operation orchestration flow -> completed StructureJob response',
     'completed StructureJob response -> structure job operation flow',
-    'apps/worker structure job operation orchestration flow -> structure job operation flow',
     'structure job operation flow -> runtime operation routing adapter',
     'runtime operation routing adapter -> Operation Router',
   ]) {
     assert.ok(graph.topology.includes(edge), edge);
   }
 });
+
+test('generated authority graph topology is an exact projection of topology contract edges', async () => {
+  const source = await readFile(new URL('docs/generated/authority-graph.json', root), 'utf8');
+  const graph = JSON.parse(source);
+  const expected = [
+    ...authorityTopologyEdges,
+    ...allowedImportTopologyEdges,
+    ...allowedRuntimeTopologyEdges,
+  ].map(([from, to]) => `${formatTopologyNode(from)} -> ${formatTopologyNode(to)}`);
+
+  assert.deepEqual([...graph.topology].sort(), expected.sort());
+});
+
+function formatTopologyNode(node) {
+  return node
+    .replace(/^ai-engine$/, 'AI Engine')
+    .replace(/^provider-registry$/, 'provider registry')
+    .replace(/^operation-generation-provider$/, 'operation generation provider')
+    .replace(/^operation-router$/, 'Operation Router')
+    .replace(/^cloudflare-agents$/, 'Cloudflare Agents')
+    .replace(/^turso$/, 'Turso');
+}

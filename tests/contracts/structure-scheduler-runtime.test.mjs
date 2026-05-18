@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  completeStructureJob,
   discoverDirtySections,
   handleBlockChanged,
   isWholeNoteScopeAllowed,
@@ -230,6 +231,25 @@ test('completed contextHash dedupes a matching structure job', () => {
   assert.equal(plan.skippedJobs[0].sectionId, dirtySectionFixture.id);
   assert.equal(plan.skippedJobs[0].status, 'deduped');
   assert.equal(plan.skippedJobs[0].skipReason, 'completed_context_hash');
+});
+
+test('StructureJob completion is owned by scheduler lifecycle semantics', () => {
+  const result = completeStructureJob({
+    ...completedSectionJobFixture,
+    status: 'running',
+    completedAt: undefined,
+    startedAt: schedulerNow - 100,
+  }, schedulerNow);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.job.status, 'completed');
+  assert.equal(result.job.completedAt, schedulerNow);
+
+  const invalid = completeStructureJob(completedSectionJobFixture, schedulerNow);
+  assert.deepEqual(invalid, {
+    ok: false,
+    errors: ['structure job status completed is not running'],
+  });
 });
 
 test('invalid trigger and workspace target scope are rejected by validation', () => {

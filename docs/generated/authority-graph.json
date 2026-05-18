@@ -19,8 +19,7 @@
     "docs/contracts/** -> contexts/*/src/contract/*",
     "docs/contracts/repository-topology.md -> docs/generated/authority-graph.json",
     "docs/contracts/api-events.md -> apps/workspace-api/generated/openapi.json",
-    "apps/* -> contexts/*/src/contract/*",
-    "apps/web -> apps/worker API",
+    "apps/web -> contexts/*/src/contract/*",
     "apps/worker -> contexts/*/src/contract/*",
     "contexts/scheduler -> contexts/note-model",
     "contexts/context-assembly -> contexts/note-model",
@@ -42,13 +41,18 @@
     "operation generation provider -> apps/worker structure job operation orchestration flow",
     "apps/worker structure job operation orchestration flow -> completed StructureJob response",
     "completed StructureJob response -> structure job operation flow",
-    "apps/worker structure job operation orchestration flow -> structure job operation flow",
     "structure job operation flow -> runtime operation routing adapter",
     "runtime operation routing adapter -> Operation Router",
     "contexts/ai-operations -> contexts/note-model",
     "contexts/ai-operations -> contexts/memory",
+    "apps/web -> apps/worker",
     "apps/worker -> Cloudflare Agents",
-    "Cloudflare Agents -> Turso canonical DB",
-    "Operation Router -> projections"
+    "Cloudflare Agents -> Turso",
+    "Operation Router -> semantic-unit-projections",
+    "Operation Router -> memory-candidate-projections",
+    "Operation Router -> assist-block-projections",
+    "apps/worker scheduler runtime flow -> SchedulerNoteSnapshotPort",
+    "SchedulerNoteSnapshotPort -> Turso canonical sections",
+    "SchedulerNoteSnapshotPort -> Agent-local dirty section marks"
   ]
 }

@@ -507,12 +507,19 @@ contexts/ai-operations
   -> contexts/memory
 
 AI Engine
+  -> provider registry
+  -> operation generation provider
+  -> structure job operation orchestration flow
+  -> completed StructureJob response
+  -> structure job operation flow
+  -> runtime operation routing adapter
   -> Operation Router
   -> semantic unit / memory candidate / assist block projections
 
 apps/worker
   -> contexts/ai-operations Operation Router contract
   -> structure job operation orchestration flow
+  -> operation audit persistence flow
   -> operation audit persistence port
   -> schema-aware SQL adapter
   -> Turso operation audit executor
@@ -522,7 +529,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、structure job operation orchestration flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、structure job operation orchestration flow、operation audit persistence flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

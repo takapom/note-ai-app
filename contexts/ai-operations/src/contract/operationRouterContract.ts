@@ -2,7 +2,10 @@
 // Authority: docs/contracts/operation-return-contract.md
 // Companion: docs/contracts/app-note-model.md, docs/contracts/data-model.md, docs/contracts/api-events.md
 
-import type { BlockOrigin } from '../../../note-model/src/contract/noteContract.ts';
+import {
+  userAuthoredBlockOrigin,
+  type BlockOrigin,
+} from '../../../note-model/src/contract/noteContract.ts';
 import {
   classifyOperationPolicy,
   type OperationPolicy,
@@ -395,6 +398,74 @@ function validateOperationListRouteOptions(options: RouteOperationOptions, opera
   return errors;
 }
 
+export function validateOperationAuditRecordContract(auditRecord: AiOperationAuditRecordContract | unknown): string[] {
+  const errors: string[] = [];
+  const record = isRecord(auditRecord) ? auditRecord : undefined;
+
+  if (!record) {
+    return ['auditRecord must be an object'];
+  }
+
+  validateRequiredTrimmedString(record, 'id', 'auditRecord.id', errors);
+  validateRequiredTrimmedString(record, 'workspaceId', 'auditRecord.workspaceId', errors);
+  validateRequiredTrimmedString(record, 'operationType', 'auditRecord.operationType', errors);
+  validateRequiredTrimmedString(record, 'generatedBy', 'auditRecord.generatedBy', errors);
+
+  if (!isOperationPolicy(record.policy)) {
+    errors.push(`auditRecord.policy must be one of ${operationPolicies.join(', ')}`);
+  }
+  if (!isOperationStatus(record.status)) {
+    errors.push(`auditRecord.status must be one of ${operationStatuses.join(', ')}`);
+  }
+
+  for (const field of ['noteId', 'structureJobId', 'targetId'] as const) {
+    if (record[field] !== undefined && !isNonEmptyString(record[field])) {
+      errors.push(`auditRecord.${field} must be a non-empty string when provided`);
+    } else if (typeof record[field] === 'string' && record[field] !== record[field].trim()) {
+      errors.push(`auditRecord.${field} must be trimmed when provided`);
+    }
+  }
+
+  if (record.targetType !== undefined && !isOperationTargetType(record.targetType)) {
+    errors.push(`auditRecord.targetType must be one of ${operationTargetTypes.join(', ')}`);
+  }
+  if ((record.targetType === undefined) !== (record.targetId === undefined)) {
+    errors.push('auditRecord targetType and targetId must be provided together');
+  }
+
+  if (!Array.isArray(record.errors)) {
+    errors.push('auditRecord.errors must be an array');
+  } else {
+    for (const [index, error] of record.errors.entries()) {
+      if (!isNonEmptyString(error)) {
+        errors.push(`auditRecord.errors[${index}] must be a non-empty string`);
+      } else if (error !== error.trim()) {
+        errors.push(`auditRecord.errors[${index}] must be trimmed`);
+      }
+    }
+  }
+
+  if (!Array.isArray(record.sourceSpans)) {
+    errors.push('auditRecord.sourceSpans must be an array');
+  } else {
+    for (const [index, span] of record.sourceSpans.entries()) {
+      validateAuditSourceSpanContract(span, index, isNonEmptyString(record.id) ? record.id : undefined, errors);
+    }
+  }
+
+  if (!isFiniteNumber(record.createdAt)) {
+    errors.push('auditRecord.createdAt must be a finite number');
+  }
+  if (!isFiniteNumber(record.updatedAt)) {
+    errors.push('auditRecord.updatedAt must be a finite number');
+  }
+  if (record.confidence !== undefined && !isConfidenceThreshold(record.confidence)) {
+    errors.push('auditRecord.confidence must be a finite number between 0 and 1 when provided');
+  }
+
+  return errors;
+}
+
 function validateAuditRecordForRevert(auditRecord: unknown): string[] {
   const errors: string[] = [];
   const record = isRecord(auditRecord) ? auditRecord : undefined;
@@ -497,6 +568,41 @@ function validateAuditRecordForRevert(auditRecord: unknown): string[] {
   return errors;
 }
 
+function validateAuditSourceSpanContract(
+  span: unknown,
+  index: number,
+  recordId: string | undefined,
+  errors: string[],
+): void {
+  if (!isRecord(span)) {
+    errors.push(`auditRecord.sourceSpans[${index}] must be an object`);
+    return;
+  }
+
+  if (span.targetType !== 'operation') {
+    errors.push(`auditRecord.sourceSpans[${index}].targetType must be operation`);
+  }
+  validateRequiredTrimmedString(span, 'targetId', `auditRecord.sourceSpans[${index}].targetId`, errors);
+  if (recordId !== undefined && isNonEmptyString(span.targetId) && span.targetId !== recordId) {
+    errors.push(`auditRecord.sourceSpans[${index}].targetId must match auditRecord.id`);
+  }
+  validateRequiredTrimmedString(span, 'sourceBlockId', `auditRecord.sourceSpans[${index}].sourceBlockId`, errors);
+  validateRequiredTrimmedString(span, 'reason', `auditRecord.sourceSpans[${index}].reason`, errors);
+  if (span.startOffset !== undefined && !isNonNegativeNumber(span.startOffset)) {
+    errors.push(`auditRecord.sourceSpans[${index}].startOffset must be non-negative`);
+  }
+  if (span.endOffset !== undefined && !isNonNegativeNumber(span.endOffset)) {
+    errors.push(`auditRecord.sourceSpans[${index}].endOffset must be non-negative`);
+  }
+  if (
+    isNonNegativeNumber(span.startOffset) &&
+    isNonNegativeNumber(span.endOffset) &&
+    span.endOffset < span.startOffset
+  ) {
+    errors.push(`auditRecord.sourceSpans[${index}].endOffset must be greater than or equal to startOffset`);
+  }
+}
+
 function validateOperationTargets(operation: StructureOperation, snapshot: OperationRouterSnapshot): string[] {
   const errors: string[] = [];
 
@@ -553,7 +659,7 @@ function validateSourceSpansUseUserBlocks(
     const block = snapshot.blocks.find((candidate) => candidate.id === span.blockId);
     if (!block) {
       errors.push(`sourceSpans[${index}].blockId ${span.blockId} does not exist`);
-    } else if (block.origin !== 'user') {
+    } else if (block.origin !== userAuthoredBlockOrigin) {
       errors.push(`sourceSpans[${index}].blockId ${span.blockId} must reference a user-authored block`);
     }
   }
@@ -800,6 +906,10 @@ function isConfidenceThreshold(value: unknown): value is number {
 
 function isOperationPolicy(value: unknown): value is OperationPolicy {
   return typeof value === 'string' && (operationPolicies as readonly string[]).includes(value);
+}
+
+function isOperationStatus(value: unknown): value is OperationStatus {
+  return typeof value === 'string' && (operationStatuses as readonly string[]).includes(value);
 }
 
 function isOperationTargetType(value: unknown): value is OperationTargetType {

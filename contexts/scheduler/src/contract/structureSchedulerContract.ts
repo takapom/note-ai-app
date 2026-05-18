@@ -47,6 +47,22 @@ export interface StructureJobContract {
   skipReason?: StructureJobSkipReason;
 }
 
+export type CompletedStructureJobContract = StructureJobContract & {
+  status: 'completed';
+  completedAt: number;
+};
+
+export type StructureJobCompletionResult =
+  | {
+      ok: true;
+      job: CompletedStructureJobContract;
+      errors: [];
+    }
+  | {
+      ok: false;
+      errors: string[];
+    };
+
 export interface BlockSaveIntentContract {
   blockId: string;
   noteId: string;
@@ -157,6 +173,42 @@ export const noteCloseFlowSteps = [
 ] as const;
 
 export type NoteCloseFlowStep = (typeof noteCloseFlowSteps)[number];
+
+export function completeStructureJob(
+  structureJob: StructureJobContract,
+  completedAt: number,
+): StructureJobCompletionResult {
+  const errors: string[] = [];
+
+  for (const field of ['id', 'workspaceId', 'noteId', 'contextHash'] as const) {
+    if (!isNonEmptyString(structureJob[field])) {
+      errors.push(`structureJob.${field} must be a non-empty string`);
+    }
+  }
+  if (structureJob.status !== 'running') {
+    errors.push(`structure job status ${structureJob.status} is not running`);
+  }
+  if (typeof completedAt !== 'number' || !Number.isFinite(completedAt)) {
+    errors.push('completedAt must be a finite number');
+  }
+  if (structureJob.startedAt !== undefined && Number.isFinite(completedAt) && completedAt < structureJob.startedAt) {
+    errors.push('completedAt must be greater than or equal to startedAt when startedAt is provided');
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    job: {
+      ...structureJob,
+      status: 'completed',
+      completedAt,
+    },
+    errors: [],
+  };
+}
 
 export function handleBlockChanged(input: BlockChangedInput): BlockChangedResult {
   const errors = validateBlockChangedInput(input);

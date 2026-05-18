@@ -348,6 +348,40 @@ test('adapters report executor failures without changing scheduler plan semantic
   assert.deepEqual(successfulFlow.auditWrites, []);
 });
 
+test('StructureJob queue reports partial Agent-local SQL writes instead of hiding them', async () => {
+  let executeCount = 0;
+  const adapter = new AgentLocalStructureJobQueueAdapter({
+    async execute() {
+      executeCount += 1;
+      if (executeCount === 2) {
+        throw new Error('second write failed');
+      }
+    },
+    async query() {
+      return [];
+    },
+  });
+
+  const result = await adapter.enqueueJobs([
+    {
+      ...completedSectionJobFixture,
+      id: 'structure_job_partial_001',
+      status: 'queued',
+    },
+    {
+      ...completedSectionJobFixture,
+      id: 'structure_job_partial_002',
+      status: 'queued',
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    ok: false,
+    errors: ['structure job enqueue failed: second write failed'],
+    enqueuedCount: 1,
+  });
+});
+
 test('scheduler agent-local SQL adapter does not mention forbidden runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),

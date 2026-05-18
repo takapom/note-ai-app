@@ -367,7 +367,7 @@ export function validateContextEnvelope(
   const relatedContext = asRecord(root?.relatedContext);
   const memoryContext = asRecord(root?.memoryContext);
 
-  if (hasForbiddenDumpField(envelope)) {
+  if (hasForbiddenContextDumpField(envelope)) {
     errors.push('context envelope must not include full workspace, full notes, or dump fields');
   }
 
@@ -865,21 +865,17 @@ function validateNonEmptyStringArray(
   }
 }
 
-function hasForbiddenDumpField(value: unknown): boolean {
-  const forbiddenKeys = new Set([
-    'allNotes',
-    'allMemory',
-    'fullNote',
-    'fullNotes',
-    'fullNoteText',
-    'fullWorkspace',
-    'fullWorkspaceContent',
-    'fullWorkspaceDump',
-    'notesDump',
-    'workspaceDump',
-  ]);
-
-  return hasMatchingKey(value, (key) => forbiddenKeys.has(key));
+export function hasForbiddenContextDumpField(value: unknown): boolean {
+  return hasMatchingKey(value, (key) => {
+    const normalized = key.toLowerCase();
+    return (
+      normalized.includes('fullworkspace') ||
+      normalized.includes('fullnote') ||
+      normalized.includes('dump') ||
+      normalized.includes('allnotes') ||
+      normalized.includes('allmemory')
+    );
+  });
 }
 
 function hasTrustedContentBoundary(value: unknown): boolean {

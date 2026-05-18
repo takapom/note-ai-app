@@ -9,7 +9,11 @@ import {
   type ContextEnvelopeContract,
   type ContextEnvelopeValidationResult,
 } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
-import type { StructureJobContract } from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+import {
+  type CompletedStructureJobContract,
+  completeStructureJob,
+  type StructureJobContract,
+} from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 import type { ContextEnvelopeBuiltEvent } from './contextAssemblyRuntimeFlow.ts';
 
 export interface OperationGenerationProviderRequest {
@@ -50,10 +54,7 @@ export interface OperationsGeneratedEvent {
 }
 
 export interface CompletedStructureJobResponse {
-  structureJob: StructureJobContract & {
-    status: 'completed';
-    completedAt: number;
-  };
+  structureJob: CompletedStructureJobContract;
   aiResponse: unknown;
   providerId: string;
   providerMetadata?: Record<string, unknown>;
@@ -75,7 +76,6 @@ export interface OperationGenerationProviderFlowResult {
   validation: ContextEnvelopeValidationResult;
   completedStructureJobResponse?: CompletedStructureJobResponse;
   event?: OperationsGeneratedEvent;
-  providerError?: unknown;
   providerCalls: Array<{ providerId: string; structureJobId: string }>;
   operationRoutingCalls: [];
   auditWrites: [];
@@ -111,12 +111,17 @@ export async function runOperationGenerationProviderFlow(
     });
   }
 
-  const provider = await input.providerRegistry.resolveProvider({
-    workspaceId: input.structureJob.workspaceId,
-    noteId: input.structureJob.noteId,
-    structureJobId: input.structureJob.id,
-    targetScope: input.structureJob.targetScope,
-  });
+  const providerResult = await resolveProvider(input);
+  if (!providerResult.ok) {
+    return flowResult({
+      attempted: false,
+      ok: false,
+      reason: 'provider_unavailable',
+      validation,
+      errors: providerResult.errors,
+    });
+  }
+  const provider = providerResult.provider;
 
   if (!provider) {
     return flowResult({
@@ -135,7 +140,17 @@ export async function runOperationGenerationProviderFlow(
       contextEnvelopeBuilt: input.contextEnvelopeBuilt,
       now: input.now,
     });
-    const completedStructureJob = completeStructureJob(input.structureJob, input.now);
+    const completion = completeStructureJob(input.structureJob, input.now);
+    if (!completion.ok) {
+      return flowResult({
+        attempted: true,
+        ok: false,
+        reason: 'invalid_runtime_input',
+        validation,
+        providerCalls: [{ providerId: provider.id, structureJobId: input.structureJob.id }],
+        errors: completion.errors,
+      });
+    }
 
     return flowResult({
       attempted: true,
@@ -143,7 +158,7 @@ export async function runOperationGenerationProviderFlow(
       reason: 'operations_generated',
       validation,
       completedStructureJobResponse: {
-        structureJob: completedStructureJob,
+        structureJob: completion.job,
         aiResponse: generated.operations,
         providerId: provider.id,
         ...(generated.providerMetadata === undefined ? {} : { providerMetadata: generated.providerMetadata }),
@@ -167,10 +182,34 @@ export async function runOperationGenerationProviderFlow(
       ok: false,
       reason: 'provider_failed',
       validation,
-      providerError: error,
       providerCalls: [{ providerId: provider.id, structureJobId: input.structureJob.id }],
       errors: [toProviderErrorMessage(error)],
     });
+  }
+}
+
+async function resolveProvider(input: OperationGenerationProviderFlowInput): Promise<{
+  ok: true;
+  provider: OperationGenerationProviderPort | undefined;
+} | {
+  ok: false;
+  errors: string[];
+}> {
+  try {
+    return {
+      ok: true,
+      provider: await input.providerRegistry.resolveProvider({
+        workspaceId: input.structureJob.workspaceId,
+        noteId: input.structureJob.noteId,
+        structureJobId: input.structureJob.id,
+        targetScope: input.structureJob.targetScope,
+      }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      errors: [toProviderRegistryErrorMessage(error)],
+    };
   }
 }
 
@@ -181,17 +220,6 @@ export function createStaticOperationGenerationProviderRegistry(
     resolveProvider() {
       return provider;
     },
-  };
-}
-
-function completeStructureJob(
-  structureJob: StructureJobContract,
-  completedAt: number,
-): StructureJobContract & { status: 'completed'; completedAt: number } {
-  return {
-    ...structureJob,
-    status: 'completed',
-    completedAt,
   };
 }
 
@@ -266,4 +294,16 @@ function toProviderErrorMessage(error: unknown): string {
   }
 
   return 'operation generation provider failed';
+}
+
+function toProviderRegistryErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return `operation generation provider resolution failed: ${error.message.trim()}`;
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return `operation generation provider resolution failed: ${error.trim()}`;
+  }
+
+  return 'operation generation provider resolution failed';
 }

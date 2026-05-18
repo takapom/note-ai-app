@@ -3,6 +3,7 @@
 // Companion: docs/contracts/cloudflare-agents-turso.md, docs/contracts/app-note-model.md
 
 import {
+  userAuthoredBlockOrigin,
   userBlockTypes,
   type HeadingLevel,
 } from '../../../contexts/note-model/src/contract/noteContract.ts';
@@ -121,7 +122,7 @@ export function mapTargetBlocksLookupToSql(input: {
         'where notes.workspace_id = ? and blocks.note_id = ? and blocks.section_id = ? and blocks.origin = ?',
         'order by blocks.position asc, blocks.id asc',
       ].join(' '),
-      args: [input.workspaceId, input.noteId, input.targetId, 'user'],
+      args: [input.workspaceId, input.noteId, input.targetId, userAuthoredBlockOrigin],
     };
   }
 
@@ -133,7 +134,7 @@ export function mapTargetBlocksLookupToSql(input: {
       'where notes.workspace_id = ? and blocks.note_id = ? and blocks.origin = ?',
       'order by blocks.position asc, blocks.id asc',
     ].join(' '),
-    args: [input.workspaceId, input.noteId, 'user'],
+    args: [input.workspaceId, input.noteId, userAuthoredBlockOrigin],
   };
 }
 
@@ -283,7 +284,7 @@ export function mapTargetBlockRowsToContextAssemblyTarget(
     if (position === undefined) errors.push(`target block rows[${index}].position must be a finite number`);
     if (origin === undefined) {
       errors.push(`target block rows[${index}].origin must be user`);
-    } else if (origin !== 'user') {
+    } else if (origin !== userAuthoredBlockOrigin) {
       errors.push(`target block rows[${index}].origin must be user`);
     }
 
@@ -295,7 +296,7 @@ export function mapTargetBlockRowsToContextAssemblyTarget(
       isUserBlockTypeName(type) &&
       plainText !== undefined &&
       position !== undefined &&
-      origin === 'user'
+      origin === userAuthoredBlockOrigin
     ) {
       sourceBlockIds.push(id);
       targetTextParts.push(plainText);

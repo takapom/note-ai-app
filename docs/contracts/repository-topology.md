@@ -52,8 +52,11 @@ Authority edges:
 - `docs/contracts/api-events.md` -> `apps/workspace-api/generated/openapi.json`。
 
 Import / runtime dependency edges:
-- `apps/web` -> `contexts/*/src/contract/*` -> `apps/worker` API -> Cloudflare Agents -> Turso。
+- `apps/web` -> `contexts/*/src/contract/*`。
+- `apps/web` -> `apps/worker` API。
 - `apps/worker` -> `contexts/*/src/contract/*`。
+- `apps/worker` -> Cloudflare Agents -> Turso。
+- `apps/worker` scheduler runtime flow -> `SchedulerNoteSnapshotPort` -> Turso canonical sections / Agent-local dirty section marks。
 - `contexts/scheduler` -> `contexts/note-model` for section snapshots only。
 - `contexts/context-assembly` -> `contexts/note-model` for note-card semantics。
 - `contexts/context-assembly` -> `contexts/memory` for context-eligible memory semantics。
@@ -64,7 +67,7 @@ Import / runtime dependency edges:
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> user-scoped memory projections。
 - `contexts/ai-operations` -> `contexts/note-model` for block origin and AI block vocabulary。
 - `contexts/ai-operations` -> `contexts/memory` for memory type vocabulary。
-- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> semantic unit / memory candidate / assist block projections。
+- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> semantic unit projections / memory candidate projections / assist block projections。
 
 Contexts must not import from `apps/*` or generated projections. Apps and runtime adapters consume context contracts; they do not own product policy. AI SDK は runtime adapter boundaries の背後で呼び出される。
 

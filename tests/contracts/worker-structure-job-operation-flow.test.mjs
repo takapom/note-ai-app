@@ -77,32 +77,6 @@ test('structure job flow does not route non-completed jobs', async () => {
   assert.deepEqual(result.noteSotMutations, []);
 });
 
-test('structure job flow keeps provider failure separate from note/block SoT and routing', async () => {
-  let saveCount = 0;
-
-  const result = await runStructureJobOperationFlow({
-    structureJob: completedJob,
-    providerError: new Error('model timeout'),
-    snapshot: operationRouterSnapshotFixture,
-    auditPersistence: {
-      async save(record) {
-        saveCount += 1;
-        return { ok: true, errors: [], record };
-      },
-    },
-    now: 1_700_000_000_100,
-  });
-
-  assert.equal(result.attempted, false);
-  assert.equal(result.ok, false);
-  assert.equal(result.reason, 'provider_failed');
-  assert.deepEqual(result.errors, ['operation generation failed: model timeout']);
-  assert.equal(result.routingFlow, undefined);
-  assert.equal(saveCount, 0);
-  assert.deepEqual(result.directApplyResults, []);
-  assert.deepEqual(result.noteSotMutations, []);
-});
-
 test('structure job flow separates audit persistence failure from routing result', async () => {
   const auditRecoveryQueue = new InMemoryOperationAuditRecoveryQueue();
 

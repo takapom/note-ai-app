@@ -4,6 +4,7 @@
 
 export const blockOrigins = ['user', 'ai', 'user_modified_ai', 'system'] as const;
 export type BlockOrigin = (typeof blockOrigins)[number];
+export const userAuthoredBlockOrigin: Extract<BlockOrigin, 'user'> = 'user';
 
 export const userBlockTypes = [
   'paragraph',
@@ -162,7 +163,7 @@ export function blockOriginMatchesType(block: Pick<BlockContract, 'type' | 'orig
   if (isAiBlockType(block.type)) {
     return block.origin === 'ai' || block.origin === 'user_modified_ai';
   }
-  return block.origin === 'user' || block.origin === 'system';
+  return block.origin === userAuthoredBlockOrigin || block.origin === 'system';
 }
 
 export function isHeadingLevel(value: number): value is HeadingLevel {

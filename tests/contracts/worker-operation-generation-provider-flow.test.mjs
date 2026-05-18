@@ -210,3 +210,28 @@ test('operation generation provider flow keeps provider failure away from routin
   assert.deepEqual(result.directApplyResults, []);
   assert.deepEqual(result.noteSotMutations, []);
 });
+
+test('operation generation provider flow normalizes provider registry resolution failure', async () => {
+  const result = await runOperationGenerationProviderFlow({
+    structureJob: runningJob,
+    contextEnvelope: validEnvelope,
+    contextEnvelopeBuilt,
+    providerRegistry: {
+      resolveProvider() {
+        throw new Error('registry unavailable');
+      },
+    },
+    now,
+  });
+
+  assert.equal(result.attempted, false);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'provider_unavailable');
+  assert.deepEqual(result.errors, [
+    'operation generation provider resolution failed: registry unavailable',
+  ]);
+  assert.equal(result.completedStructureJobResponse, undefined);
+  assert.deepEqual(result.providerCalls, []);
+  assert.deepEqual(result.operationRoutingCalls, []);
+  assert.deepEqual(result.auditWrites, []);
+});

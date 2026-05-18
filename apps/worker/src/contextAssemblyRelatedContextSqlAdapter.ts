@@ -3,11 +3,13 @@
 // Companion: docs/contracts/repository-topology.md, docs/contracts/cloudflare-agents-turso.md
 
 import {
+  hasForbiddenContextDumpField,
   relatedContextRetrievalOrder,
   type ContextAssemblyInput,
   type RelatedContextRetrievalReason,
   type TargetScopeKind,
 } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+import { userAuthoredBlockOrigin } from '../../../contexts/note-model/src/contract/noteContract.ts';
 import type {
   ContextAssemblyRelatedContextRetrievalPort,
   ContextAssemblyRuntimeRequest,
@@ -172,7 +174,7 @@ export function mapRelatedSourceBlockExcerptsLookupToSql(input: {
         'section',
         input.targetId,
         input.workspaceId,
-        'user',
+        userAuthoredBlockOrigin,
         input.noteId,
         input.targetId,
       ],
@@ -185,7 +187,7 @@ export function mapRelatedSourceBlockExcerptsLookupToSql(input: {
       'where semantic_unit_related_candidates.workspace_id = ? and semantic_unit_related_candidates.source_note_id = ? and semantic_unit_related_candidates.source_scope = ? and notes.workspace_id = ? and semantic_unit_related_candidates.source_block_excerpt_id is not null and semantic_unit_related_candidates.source_block_id is not null and blocks.origin = ? and blocks.note_id <> ?',
       'order by semantic_unit_related_candidates.retrieval_rank asc, semantic_unit_related_candidates.relevance_score desc, semantic_unit_related_candidates.source_block_excerpt_id asc',
     ].join(' '),
-    args: [input.workspaceId, input.noteId, 'note', input.workspaceId, 'user', input.noteId],
+    args: [input.workspaceId, input.noteId, 'note', input.workspaceId, userAuthoredBlockOrigin, input.noteId],
   };
 }
 
@@ -266,7 +268,7 @@ function mapRelatedSemanticUnitRow(
   expected: { workspaceId: string; noteId: string; targetScope: TargetScopeKind; targetId?: string },
 ): { ok: true; semanticUnit: RelatedSemanticUnitInput } | { ok: false; errors: string[] } {
   const errors: string[] = validateCandidateScope(row, expected);
-  if (hasForbiddenDumpField(row)) {
+  if (hasForbiddenContextDumpField(row)) {
     errors.push('row must not include full workspace, full note, dump, all notes, or all memory fields');
   }
 
@@ -376,7 +378,7 @@ function mapRelatedNoteRow(
   expected: { workspaceId: string; noteId: string; targetScope: TargetScopeKind; targetId?: string },
 ): { ok: true; note: RelatedNoteInput } | { ok: false; errors: string[] } {
   const errors: string[] = validateCandidateScope(row, expected);
-  if (hasForbiddenDumpField(row)) {
+  if (hasForbiddenContextDumpField(row)) {
     errors.push('row must not include full workspace, full note, dump, all notes, or all memory fields');
   }
 
@@ -450,7 +452,7 @@ function mapRelatedSourceBlockExcerptRow(
   expected: { workspaceId: string; noteId: string; targetScope: TargetScopeKind; targetId?: string },
 ): { ok: true; sourceBlockExcerpt: SourceBlockExcerptInput } | { ok: false; errors: string[] } {
   const errors: string[] = validateCandidateScope(row, expected);
-  if (hasForbiddenDumpField(row)) {
+  if (hasForbiddenContextDumpField(row)) {
     errors.push('row must not include full workspace, full note, dump, all notes, or all memory fields');
   }
 
@@ -482,7 +484,7 @@ function mapRelatedSourceBlockExcerptRow(
   if (plainText === undefined) errors.push('plain_text must be a string');
   if (origin === undefined) {
     errors.push('origin must be user');
-  } else if (origin !== 'user') {
+  } else if (origin !== userAuthoredBlockOrigin) {
     errors.push('origin must be user');
   }
   if (sourceStartOffset === undefined) errors.push('source_start_offset must be a non-negative finite number');
@@ -734,33 +736,6 @@ function readOptionalRetrievalReasonColumn(
     : null;
 }
 
-function hasForbiddenDumpField(value: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some(hasForbiddenDumpField);
-  }
-
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  for (const [key, child] of Object.entries(value)) {
-    const normalized = key.toLowerCase();
-    if (
-      normalized.includes('fullworkspace') ||
-      normalized.includes('fullnote') ||
-      normalized.includes('dump') ||
-      normalized.includes('allnotes') ||
-      normalized.includes('allmemory')
-    ) {
-      return true;
-    }
-    if (hasForbiddenDumpField(child)) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 function isTrimmedNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value === value.trim();

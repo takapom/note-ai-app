@@ -14,7 +14,6 @@ import {
 export interface StructureJobOperationFlowInput {
   structureJob: StructureJobContract;
   aiResponse?: unknown;
-  providerError?: unknown;
   snapshot: OperationRouterSnapshot;
   auditPersistence: OperationAuditPersistencePort;
   auditRecoveryQueue?: OperationAuditRecoveryQueuePort;
@@ -27,7 +26,7 @@ export interface StructureJobOperationFlowInput {
 export interface StructureJobOperationFlowResult {
   attempted: boolean;
   ok: boolean;
-  reason: 'job_not_completed' | 'provider_failed' | 'routed';
+  reason: 'job_not_completed' | 'routed';
   errors: string[];
   routingFlow?: OperationRoutingFlowResult;
   directApplyResults: [];
@@ -42,18 +41,7 @@ export async function runStructureJobOperationFlow(
       attempted: false,
       ok: true,
       reason: 'job_not_completed',
-      errors: [`structure job status ${input.structureJob.status} is not completed`],
-      directApplyResults: [],
-      noteSotMutations: [],
-    };
-  }
-
-  if (input.providerError !== undefined) {
-    return {
-      attempted: false,
-      ok: false,
-      reason: 'provider_failed',
-      errors: [toProviderErrorMessage(input.providerError)],
+      errors: [],
       directApplyResults: [],
       noteSotMutations: [],
     };
@@ -72,7 +60,6 @@ export async function runStructureJobOperationFlow(
     completedStructureJobGate: {
       structureJobId: input.structureJob.id,
       status: 'completed',
-      providerSucceeded: true,
     },
     now: input.now,
     ...(input.generatedBy === undefined ? {} : { generatedBy: input.generatedBy }),
@@ -101,18 +88,6 @@ export function createStructureJobOperationIdPrefix(structureJobId: string): str
   }
 
   return `operation_${structureJobId}`;
-}
-
-function toProviderErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return `operation generation failed: ${error.message.trim()}`;
-  }
-
-  if (typeof error === 'string' && error.trim().length > 0) {
-    return `operation generation failed: ${error.trim()}`;
-  }
-
-  return 'operation generation failed';
 }
 
 function isStableRuntimeId(value: unknown): value is string {
