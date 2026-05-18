@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   allowedImportTopologyEdges,
+  allowedRuntimeTopologyEdges,
   authorityTopologyEdges,
 } from '../../contexts/topology/src/contract/topologyContract.ts';
 
@@ -38,6 +39,15 @@ test('topology contract separates authority edges from import edges', () => {
     ),
     false,
   );
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'apps/worker scheduler runtime flow' && to === 'SchedulerNoteSnapshotPort',
+  ));
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'SchedulerNoteSnapshotPort' && to === 'Turso canonical sections',
+  ));
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'SchedulerNoteSnapshotPort' && to === 'Agent-local dirty section marks',
+  ));
 });
 
 test('contexts do not import app implementation or generated projections', async () => {
@@ -72,6 +82,22 @@ test('worker scheduler runtime flow does not call provider, operation routing, o
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|operationAudit|operationRouting|structureJobOperation)/i);
   assert.doesNotMatch(source, /runOperationRoutingFlow|runStructureJobOperationFlow|auditPersistence/);
+});
+
+test('scheduler note snapshot SQL adapter only reads sections and dirty marks', async () => {
+  const source = await readFile(new URL('apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts', root), 'utf8');
+
+  assert.match(source, /SectionContract/);
+  assert.match(source, /SchedulerNoteSnapshotPort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /operationRouter|operation router|operation audit|OperationAudit|auditPersistence|provider|ai-sdk/i);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+  assert.match(source, /from sections/);
+  assert.match(source, /inner join notes/);
+  assert.match(source, /from agent_local_dirty_scope_marks/);
+  assert.doesNotMatch(source, /from blocks|join blocks|ai_operations|source_spans/i);
+  assert.match(source, /dirtyMarkExecutor === undefined/);
 });
 
 test('generated OpenAPI projection cites its owner contract', async () => {

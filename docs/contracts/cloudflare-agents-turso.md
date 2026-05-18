@@ -39,6 +39,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - NoteAgent は edit event buffer、dirty section tracking、note leave handling、structure job scheduling、context_hash dedupe を扱う。
 - Worker scheduler runtime flow は NoteAgent / runtime ports を通じて BlockChanged persistence、dirty tracking、StructureJob queue、next_open digest preparation を調整するが、AI provider、Operation Router、audit persistence を呼び出さない。
 - Scheduler Agent-local SQL adapter は BlockChanged save intent / edit event / dirty mark / lightweight index update、StructureJob queue、next_open digest intent を temporary state として保存する。canonical notes / sections / blocks を更新する Turso adapter ではない。
+- Turso Scheduler Note Snapshot adapter は Worker scheduler runtime flow から `SchedulerNoteSnapshotPort` として呼ばれ、Turso canonical sections を read-only で取得する。Agent-local dirty_scope_marks は scheduler planning のための一時 overlay であり、canonical section data でも Turso Sync でもない。
 - WorkspaceBrainAgent は related context retrieval、memory candidate management、workspace-wide semantic graph coordination を扱う。
 - ActionAgent は external action candidate、approval、retry/outbox のための将来候補であり、MVP runtime には入れない。
 - Agent-local SQL と Turso は自動 Sync しない。
@@ -54,7 +55,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 
 ## 許可されるトポロジー
 
-Worker -> NoteAgent/WorkspaceBrainAgent -> scheduler runtime flow -> StructureJob queue -> completed StructureJob response -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
+Worker -> NoteAgent/WorkspaceBrainAgent -> scheduler runtime flow -> SchedulerNoteSnapshotPort -> Turso canonical sections + optional Agent-local dirty_scope_marks overlay -> StructureJob queue -> completed StructureJob response -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
 
 ## 移行用の seam
 

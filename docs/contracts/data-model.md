@@ -30,6 +30,7 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 
 - `notes` は `id`, `workspace_id`, `title`, `description_user`, `description_ai`, `description_effective`, `created_at`, `updated_at` を持つ。
 - `sections` は `note_id`, `parent_section_id`, `heading_block_id`, `heading_level`, `title`, `description_ai`, `content_hash`, `last_structured_hash`, `last_structured_at`, `position` を持つ。
+- Scheduler section snapshot は canonical `sections` の read projection である。scheduler planning のために Agent-local dirty tracking から `isDirty` を overlay してよいが、この overlay は canonical section data ではなく、adapter は `notes`、`sections`、`blocks` を create/update してはならない。
 - `blocks` は `note_id`, `section_id`, `parent_block_id`, `type`, `content_json`, `plain_text`, `position`, `origin`, `content_hash` を持つ。
 - block `origin` は `user`, `ai`, `user_modified_ai`, `system` のいずれかである。
 - MVP の user block type は `paragraph`, `heading`, `bullet_list_item`, `numbered_list_item`, `todo`, `quote`, `code`, `divider` である。

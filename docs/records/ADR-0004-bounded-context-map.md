@@ -104,6 +104,29 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Turso Scheduler Note Snapshot Adapter]
+  owns:
+    - read-only SQL mapping from canonical sections to SectionContract
+    - workspace scoping through notes
+    - optional Agent-local dirty mark overlay
+    - infrastructure failure reporting to Scheduler runtime flow
+
+  depends on:
+    - SchedulerNoteSnapshotPort
+    - Note Model SectionContract
+    - Turso canonical sections
+    - Agent-local dirty section marks
+
+  must not own:
+    - canonical Note / Section / Block persistence
+    - dirty lifecycle writes
+    - trigger policy or context_hash dedupe
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+```
+
+```text
 [Context Assembly]
   owns:
     - ContextEnvelope
@@ -304,6 +327,11 @@ apps/worker scheduler Agent-local SQL adapter
   -> runtime scheduler ports
   -> Agent-local temporary state
 
+apps/worker scheduler note snapshot SQL adapter
+  -> SchedulerNoteSnapshotPort
+  -> Turso canonical sections
+  -> optional Agent-local dirty section marks
+
 contexts/context-assembly
   -> contexts/note-model
   -> contexts/memory
@@ -327,7 +355,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

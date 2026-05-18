@@ -21,6 +21,9 @@ export const allowedImportTopologyEdges = [
 export const allowedRuntimeTopologyEdges = [
   ['apps/web', 'apps/worker'],
   ['apps/worker', 'cloudflare-agents'],
+  ['apps/worker scheduler runtime flow', 'SchedulerNoteSnapshotPort'],
+  ['SchedulerNoteSnapshotPort', 'Turso canonical sections'],
+  ['SchedulerNoteSnapshotPort', 'Agent-local dirty section marks'],
   ['cloudflare-agents', 'turso'],
   ['ai-engine', 'operation-router'],
   ['operation-router', 'semantic-unit-projections'],
