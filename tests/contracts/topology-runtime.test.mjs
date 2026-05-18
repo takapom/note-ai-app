@@ -50,6 +50,18 @@ test('contexts do not import app implementation or generated projections', async
   }
 });
 
+test('worker runtime adapters depend on contracts, not generated projections or operation schema internals', async () => {
+  const files = await listFiles('apps/worker/src');
+
+  for (const file of files.filter((path) => path.endsWith('.ts'))) {
+    const source = await readFile(new URL(file, root), 'utf8');
+    assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//, file);
+    assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//, file);
+    assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/, file);
+    assert.doesNotMatch(source, /classifyOperationPolicy|validateStructureOperation/, file);
+  }
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);
