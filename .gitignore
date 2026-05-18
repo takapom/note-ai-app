@@ -5,6 +5,9 @@ build/
 coverage/
 .turbo/
 .wrangler/
+.serena/
+repomix-output.xml
+skills.zip
 .env
 .env.*
 !.env.example
