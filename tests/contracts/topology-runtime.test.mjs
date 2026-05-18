@@ -96,6 +96,44 @@ test('topology contract separates authority edges from import edges', () => {
   }
 });
 
+test('runtime topology excludes direct AI-to-SoT write edges', () => {
+  const aiRuntimeSources = [
+    'ContextEnvelopeBuilt',
+    'ai-engine',
+    'provider-registry',
+    'operation-generation-provider',
+    'apps/worker structure job operation orchestration flow',
+    'structure job operation flow',
+    'runtime operation routing adapter',
+    'operation-router',
+    'operation-projection-persistence-flow',
+  ];
+  const canonicalNoteSotTargets = [
+    'Turso canonical notes',
+    'Turso canonical sections',
+    'Turso canonical blocks',
+    'Turso canonical notes/sections/blocks',
+    'canonical Note SoT',
+    'canonical Section SoT',
+    'canonical Block SoT',
+  ];
+
+  for (const [from, to] of allowedRuntimeTopologyEdges) {
+    assert.equal(
+      aiRuntimeSources.includes(from) && canonicalNoteSotTargets.includes(to),
+      false,
+      `${from} -> ${to}`,
+    );
+  }
+
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'operation-router' && to === 'operation-projection-persistence-flow',
+  ));
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'operation-projection-persistence-flow' && to === 'operation-proposal-persistence-port',
+  ));
+});
+
 test('worker operation generation provider flow stops before operation routing and audit persistence', async () => {
   const source = await readFile(new URL('apps/worker/src/operationGenerationProviderFlow.ts', root), 'utf8');
 

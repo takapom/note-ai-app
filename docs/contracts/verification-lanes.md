@@ -38,7 +38,7 @@
 - scheduler lane: BlockChanged で AI なし、note leave が job を作成すること。
 - context lane: K limits、budget、title/description usage.
 - frontend lane: unified surface、chat panel なし、AI blocks inline.
-- runtime lane: provider abstraction、Turso canonical boundaries、note structure route handler と StructureJob Agent handler が policy-free connection boundary であること。
+- runtime lane: provider abstraction、Turso canonical boundaries、note structure route handler と StructureJob Agent handler が policy-free connection boundary であること、AI structuring runtime が canonical Note / Section / Block SoT を直接 mutate しないこと。
 - security lane: source spans、context minimization、untrusted instruction leakage なし。
 - api/event lane: UI events、backend events、route handlers が `api-events.md` に沿っていること。
 - NFR lane: writing flow、layout stability、AI failure tolerance、observability event が `non-functional-requirements.md` に沿っていること。
@@ -62,6 +62,11 @@ scaffold 後の標準コマンド:
 - unit tests: `node --test tests/**/*.test.mjs`
 - generated register check: `node scripts/generate-doc-register.mjs --check`
 
+Issue #6 no direct SoT mutation guard の重点コマンド:
+
+- e2e runtime guard: `node --test tests/contracts/worker-no-direct-sot-mutation-guard.test.mjs`
+- topology runtime guard: `node --test tests/contracts/topology-runtime.test.mjs`
+
 
 ## 許可されるトポロジー
 
@@ -77,4 +82,4 @@ validation lane assignment のない tasks を削除する。
 
 ## ガード / 検証
 
-Codex review は lane results、not-yet-available checks、blocking MVP gaps を一覧にしなければならない。
+Codex review は lane results、not-yet-available checks、blocking MVP gaps を一覧にしなければならない。AI runtime / topology 変更では no direct AI-to-SoT write path の e2e guard、source guard、topology guard の結果を含めなければならない。

@@ -355,6 +355,7 @@ apps / runtime / generated projections
   must not own:
     - direct DB writes
     - direct UI mutation
+    - canonical Note / Section / Block source-of-truth mutation
     - provider calls
 ```
 
@@ -400,6 +401,27 @@ apps / runtime / generated projections
     - audit persistence semantics
     - retry / transaction behavior
     - canonical Note / Block writes
+```
+
+```text
+[Runtime Operation Projection / Proposal Persistence Flow]
+  owns:
+    - converting Operation Router route results into active projection write intents
+    - sending inline/review operations to proposal persistence
+    - separating projection/proposal persistence failure from routing and audit decisions
+    - preserving empty directApplyResults / noteSotMutations / userAuthoredBlockMutations on AI paths
+
+  depends on:
+    - Operation Router route result
+    - operation projection persistence port
+    - operation proposal persistence port
+
+  must not own:
+    - provider calls
+    - operation schema or policy classification
+    - direct note repository mutation
+    - canonical Note / Section / Block writes
+    - user-authored Block mutation
 ```
 
 ```text
@@ -486,11 +508,13 @@ Note close / tab switch / app leave / manual organize
   -> audit persistence adapter maps records to ordered SQL statements
   -> Turso operation audit executor sends statements to Turso in order
   -> runtime applies/proposes/rejects projections only through approved boundaries
+  -> no direct AI-to-SoT write path mutates canonical notes / sections / blocks
 
 Non-completed StructureJob / provider failure
   -> runtime records or surfaces the runtime failure through the owning boundary
   -> no Operation Router call
-  -> no Note/Block source-of-truth mutation
+  -> no projection/proposal persistence
+  -> no Note/Section/Block source-of-truth mutation
 
 Audit persistence failure
   -> routing result is preserved
@@ -582,7 +606,10 @@ AI Engine
   -> structure job operation flow
   -> runtime operation routing adapter
   -> Operation Router
-  -> semantic unit / memory candidate / assist block projections
+  -> operation audit persistence
+  -> operation projection persistence flow
+  -> semantic unit active projections / memory candidate proposals / assist block proposals
+  -> no canonical Note / Section / Block SoT writes
 
 apps/worker
   -> contexts/ai-operations Operation Router contract

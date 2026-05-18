@@ -40,6 +40,7 @@ agents が layers を opportunistic に接続できないよう、allowed topolo
 - Agent-local SQL は canonical note data ではなく temporary state を所有する。
 - Operation Router は AI operations の validation/policy/apply boundary である。
 - Context Assembly は AI に渡す情報の最小化 boundary である。
+- AI structuring runtime から canonical Note / Section / Block source of truth への direct write edge は存在しない。AI は Operation Router、audit、active projection persistence、proposal/review boundary までしか進めず、user-authored Block の変更は Note Model 所有 boundary と明示的な user action を必要とする。
 - Generated artifacts は upstream decisions を所有しない。
 
 
@@ -76,6 +77,7 @@ Import / runtime dependency edges:
 - operation projection persistence flow -> operation proposal persistence port for inline/review propose effects。
 - operation proposal accept/dismiss route handler -> operation approval runtime handler -> operation proposal persistence port。
 - accepted operation proposal -> approved intent for a later projection boundary。dismissed operation proposal -> no projection and no Note/Block SoT mutation。
+- no direct AI-to-SoT write path: provider registry / operation generation provider / Operation Router / operation projection persistence flow / operation proposal persistence port は Turso canonical notes / sections / blocks に write しない。Turso canonical notes / sections / blocks は scheduler snapshot と context assembly retrieval ports から read-only snapshot/excerpt としてのみ AI path に入る。
 
 Contexts must not import from `apps/*` or generated projections. Apps and runtime adapters consume context contracts; they do not own product policy. AI SDK は runtime adapter boundaries の背後で呼び出される。
 
@@ -90,4 +92,4 @@ reason-to-change owner なしに invariants を所有する shared convenience p
 
 ## ガード / 検証
 
-2 つ以上の layers に触れる PRs では topology review を実行する。
+2 つ以上の layers に触れる PRs では topology review を実行する。AI runtime / projection / proposal path を変更する PR は、canonical notes / sections / blocks への raw SQL write と direct note repository mutation がないことを source guard と contract test で確認する。
