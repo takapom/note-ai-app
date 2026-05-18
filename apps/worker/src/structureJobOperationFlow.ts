@@ -5,6 +5,7 @@
 import type { OperationRouterSnapshot } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 import type { StructureJobContract } from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 import type { OperationAuditPersistencePort } from './operationAuditPort.ts';
+import type { OperationAuditRecoveryQueuePort } from './operationAuditRecoveryQueue.ts';
 import {
   runOperationRoutingFlow,
   type OperationRoutingFlowResult,
@@ -16,6 +17,7 @@ export interface StructureJobOperationFlowInput {
   providerError?: unknown;
   snapshot: OperationRouterSnapshot;
   auditPersistence: OperationAuditPersistencePort;
+  auditRecoveryQueue?: OperationAuditRecoveryQueuePort;
   now: number;
   generatedBy?: string;
   confidenceThreshold?: number;
@@ -66,6 +68,7 @@ export async function runStructureJobOperationFlow(
     aiResponse: input.aiResponse,
     snapshot: input.snapshot,
     auditPersistence: input.auditPersistence,
+    ...(input.auditRecoveryQueue === undefined ? {} : { auditRecoveryQueue: input.auditRecoveryQueue }),
     completedStructureJobGate: {
       structureJobId: input.structureJob.id,
       status: 'completed',
@@ -79,9 +82,13 @@ export async function runStructureJobOperationFlow(
 
   return {
     attempted: true,
-    ok: routingFlow.routing.ok && routingFlow.auditPersistence.ok,
+    ok: routingFlow.routing.ok && routingFlow.auditPersistence.ok && routingFlow.auditRecovery.ok,
     reason: 'routed',
-    errors: [...routingFlow.routing.errors, ...routingFlow.auditPersistence.errors],
+    errors: [
+      ...routingFlow.routing.errors,
+      ...routingFlow.auditPersistence.errors,
+      ...routingFlow.auditRecovery.errors,
+    ],
     routingFlow,
     directApplyResults: [],
     noteSotMutations: [],

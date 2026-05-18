@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
+import { InMemoryOperationAuditRecoveryQueue } from '../../apps/worker/src/operationAuditRecoveryQueue.ts';
 import {
   createStructureJobOperationIdPrefix,
   runStructureJobOperationFlow,
@@ -103,6 +104,8 @@ test('structure job flow keeps provider failure separate from note/block SoT and
 });
 
 test('structure job flow separates audit persistence failure from routing result', async () => {
+  const auditRecoveryQueue = new InMemoryOperationAuditRecoveryQueue();
+
   const result = await runStructureJobOperationFlow({
     structureJob: {
       ...completedJob,
@@ -110,6 +113,7 @@ test('structure job flow separates audit persistence failure from routing result
     },
     aiResponse: [validOperationFixtures[0]],
     snapshot: operationRouterSnapshotFixture,
+    auditRecoveryQueue,
     auditPersistence: {
       async save() {
         throw new Error('audit store unavailable');
@@ -126,6 +130,16 @@ test('structure job flow separates audit persistence failure from routing result
   assert.deepEqual(result.errors, [
     'audit operation_structure_job_audit_failure_0: audit persistence failed: audit store unavailable',
   ]);
+  assert.deepEqual(result.routingFlow.auditRecovery, {
+    attempted: true,
+    ok: true,
+    enqueuedCount: 1,
+    errors: [],
+  });
+  assert.deepEqual(
+    auditRecoveryQueue.list().map((item) => item.operationId),
+    ['operation_structure_job_audit_failure_0'],
+  );
   assert.deepEqual(result.directApplyResults, []);
   assert.deepEqual(result.noteSotMutations, []);
 });

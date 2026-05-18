@@ -9,6 +9,7 @@
 - Cloudflare Agent ルーティング。
 - Turso serverless 接続ヘルパー。
 - Turso/libSQL-like client interface に対する operation audit SQL executor。
+- operation audit persistence failure の recovery queue port。
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
 
@@ -28,6 +29,7 @@
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。
 - audit persistence failure は routing decision を書き換えず、retry/recovery 対象として扱ってください。
+- operation audit recovery queue は failure payload を記録するだけにしてください。retry、transaction、Turso executor 呼び出し、policy/status 再分類を queue 内で実行しないでください。
 - Turso operation audit executor は audit persistence adapter から受け取った SQL statement list を順番どおり実行してください。
 - Turso operation audit executor は empty statement list を拒否し、Turso client を呼び出さないでください。
 - Turso operation audit executor は途中 failure を infrastructure failure として上位へ伝播し、policy/status/routing decision へ変換しないでください。

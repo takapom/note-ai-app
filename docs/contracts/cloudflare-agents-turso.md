@@ -41,6 +41,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - ActionAgent は external action candidate、approval、retry/outbox のための将来候補であり、MVP runtime には入れない。
 - Agent-local SQL と Turso は自動 Sync しない。
 - AI operation audit persistence は runtime の port を通じて Turso に書き込む。SQL adapter は `ai_operations` と `source_spans` への mapping と infrastructure error handling のみを担当し、operation policy を再分類しない。
+- Operation audit recovery queue は audit persistence failure の retry/recovery intent を runtime/application port として記録する。MVP runtime では retry queue は Agent-local SQL に置いてよいが、canonical audit record は Turso の `ai_operations` / `source_spans` である。
 - Turso operation audit executor は、上流の audit persistence adapter が作った SQL statement list を Turso/libSQL-like client に順番どおり渡す薄い infrastructure executor である。
 - Turso operation audit executor は empty statement list を infrastructure misuse として拒否し、Turso client を呼び出してはならない。
 - Turso operation audit executor は途中の statement failure を infrastructure failure として上位へ伝播する。失敗時に routing decision、operation status、policy classification を書き換えてはならない。
@@ -50,7 +51,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 
 ## 許可されるトポロジー
 
-Worker -> NoteAgent/WorkspaceBrainAgent -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Agent-local SQL は canonical ではない。
+Worker -> NoteAgent/WorkspaceBrainAgent -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
 
 ## 移行用の seam
 

@@ -4,6 +4,7 @@
 
 import type { AiOperationAuditRecordContract } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 import type { OperationAuditPersistencePort } from './operationAuditPort.ts';
+import type { OperationAuditRecoveryQueuePort } from './operationAuditRecoveryQueue.ts';
 import {
   routeGeneratedOperations,
   type RuntimeOperationRoutingInput,
@@ -18,6 +19,7 @@ export interface CompletedStructureJobOperationGate {
 
 export interface OperationRoutingFlowInput extends RuntimeOperationRoutingInput {
   auditPersistence: OperationAuditPersistencePort;
+  auditRecoveryQueue?: OperationAuditRecoveryQueuePort;
   completedStructureJobGate: CompletedStructureJobOperationGate;
 }
 
@@ -31,7 +33,15 @@ export interface OperationAuditPersistenceResult {
 export interface OperationRoutingFlowResult {
   routing: RuntimeOperationRoutingResult;
   auditPersistence: OperationAuditPersistenceResult;
+  auditRecovery: OperationAuditRecoveryResult;
   directApplyResults: [];
+}
+
+export interface OperationAuditRecoveryResult {
+  attempted: boolean;
+  ok: boolean;
+  enqueuedCount: number;
+  errors: string[];
 }
 
 export async function runOperationRoutingFlow(
@@ -59,6 +69,7 @@ export async function runOperationRoutingFlow(
         savedCount: 0,
         errors: [],
       },
+      auditRecovery: noAuditRecovery(),
       directApplyResults: [],
     };
   }
@@ -74,15 +85,22 @@ export async function runOperationRoutingFlow(
         savedCount: 0,
         errors: [],
       },
+      auditRecovery: noAuditRecovery(),
       directApplyResults: [],
     };
   }
 
-  const auditPersistence = await saveAuditRecords(input.auditPersistence, routing.auditRecords);
+  const { auditPersistence, auditRecovery } = await saveAuditRecords({
+    port: input.auditPersistence,
+    records: routing.auditRecords,
+    failedAt: input.now,
+    ...(input.auditRecoveryQueue === undefined ? {} : { recoveryQueue: input.auditRecoveryQueue }),
+  });
 
   return {
     routing,
     auditPersistence,
+    auditRecovery,
     directApplyResults: [],
   };
 }
@@ -108,32 +126,85 @@ function validateCompletedStructureJobOperationGate(
   return errors;
 }
 
-async function saveAuditRecords(
-  port: OperationAuditPersistencePort,
-  records: readonly AiOperationAuditRecordContract[],
-): Promise<OperationAuditPersistenceResult> {
+async function saveAuditRecords(input: {
+  port: OperationAuditPersistencePort;
+  records: readonly AiOperationAuditRecordContract[];
+  recoveryQueue?: OperationAuditRecoveryQueuePort;
+  failedAt: number;
+}): Promise<{
+  auditPersistence: OperationAuditPersistenceResult;
+  auditRecovery: OperationAuditRecoveryResult;
+}> {
   let savedCount = 0;
-  const errors: string[] = [];
+  const persistenceErrors: string[] = [];
+  const auditRecovery: OperationAuditRecoveryResult = noAuditRecovery();
 
-  for (const record of records) {
+  for (const record of input.records) {
     try {
-      const saveResult = await port.save(record);
+      const saveResult = await input.port.save(record);
 
       if (saveResult.ok) {
         savedCount += 1;
       } else {
-        errors.push(...saveResult.errors.map((error) => `audit ${record.id}: ${error}`));
+        const failureMessages = normalizePersistenceErrors(saveResult.errors);
+        persistenceErrors.push(...failureMessages.map((error) => `audit ${record.id}: ${error}`));
+        await enqueueAuditRecovery(input.recoveryQueue, auditRecovery, record, failureMessages.join('; '), input.failedAt);
       }
     } catch (error) {
-      errors.push(`audit ${record.id}: ${toPersistenceErrorMessage(error)}`);
+      const failureMessage = toPersistenceErrorMessage(error);
+      persistenceErrors.push(`audit ${record.id}: ${failureMessage}`);
+      await enqueueAuditRecovery(input.recoveryQueue, auditRecovery, record, failureMessage, input.failedAt);
     }
   }
 
   return {
-    attempted: true,
-    ok: errors.length === 0,
-    savedCount,
-    errors,
+    auditPersistence: {
+      attempted: true,
+      ok: persistenceErrors.length === 0,
+      savedCount,
+      errors: persistenceErrors,
+    },
+    auditRecovery,
+  };
+}
+
+async function enqueueAuditRecovery(
+  queue: OperationAuditRecoveryQueuePort | undefined,
+  result: OperationAuditRecoveryResult,
+  record: AiOperationAuditRecordContract,
+  failureMessage: string,
+  failedAt: number,
+): Promise<void> {
+  if (queue === undefined) {
+    return;
+  }
+
+  result.attempted = true;
+  const enqueueResult = await queue.enqueue({
+    operationId: record.id,
+    workspaceId: record.workspaceId,
+    ...(record.noteId === undefined ? {} : { noteId: record.noteId }),
+    ...(record.structureJobId === undefined ? {} : { structureJobId: record.structureJobId }),
+    auditRecord: record,
+    failureMessage,
+    failedAt,
+  });
+
+  if (enqueueResult.ok) {
+    result.enqueuedCount += 1;
+    return;
+  }
+
+  result.ok = false;
+  result.errors.push(...enqueueResult.errors.map((error) => `audit ${record.id} recovery: ${error}`));
+}
+
+function noAuditRecovery(): OperationAuditRecoveryResult {
+  return {
+    attempted: false,
+    ok: true,
+    enqueuedCount: 0,
+    errors: [],
   };
 }
 
@@ -143,4 +214,9 @@ function toPersistenceErrorMessage(error: unknown): string {
   }
 
   return 'audit persistence failed';
+}
+
+function normalizePersistenceErrors(errors: readonly string[]): string[] {
+  const normalized = errors.filter((error) => error.trim().length > 0);
+  return normalized.length > 0 ? normalized : ['audit persistence failed'];
 }

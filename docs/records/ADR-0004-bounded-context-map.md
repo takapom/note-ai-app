@@ -163,6 +163,25 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Operation Audit Recovery Queue]
+  owns:
+    - retry/recovery intent for audit persistence failure
+    - stable operationId/workspaceId identity for failed audit writes
+    - original audit record snapshot
+    - failure message and failedAt timestamp
+
+  depends on:
+    - Operation Router audit record contract
+    - runtime flow failure reporting
+
+  must not own:
+    - retry execution
+    - transaction or rollback semantics
+    - Turso executor invocation
+    - policy/status reclassification
+```
+
+```text
 [Topology / Generated Projections]
   owns:
     - allowed authority/import/runtime edges
@@ -208,6 +227,7 @@ Audit persistence failure
   -> routing result is preserved
   -> SQL adapter or Turso executor reports an infrastructure failure
   -> current Turso executor may have partial writes because it is sequential and non-transactional
+  -> runtime enqueues recovery intent when an operation audit recovery queue is provided
   -> persistence failure is handled as retry/recovery state
   -> routing decision is not rewritten by persistence
 ```
@@ -247,12 +267,13 @@ apps/worker
   -> operation audit persistence port
   -> schema-aware SQL adapter
   -> Turso operation audit executor
+  -> operation audit recovery queue port
 ```
 
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。
