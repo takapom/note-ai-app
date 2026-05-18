@@ -40,6 +40,7 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - `trigger_reason` は `note_closed`, `tab_switched`, `app_left`, `next_open`, `manual_organize` のいずれかである。
 - `semantic_units` と `semantic_edges` は AI-derived projection であり、user blocks を置き換えない。
 - `semantic_unit_section_summaries` と `semantic_unit_structure_snapshots` は Context Assembly の local structure input 用 projection であり、canonical Note/Section/Block data ではない。
+- `semantic_unit_related_candidates` は Context Assembly の related context input 用 read projection であり、related semantic_units、note card IDs、explicit source block excerpt relation を束ねるが、full note / full workspace data を保持または返却してはならない。
 - `memory_items` は source reference と status を持ち、source のない memory を active にしてはならない。
 - `ai_operations` は generated operation の audit record であり、Operation Router を経由せずに適用してはならない。
 - `ai_operations.id` は runtime/application boundary が routing 前に供給した stable operation audit ID であり、Operation Router が生成した placeholder、sentinel、または blank ID であってはならない。

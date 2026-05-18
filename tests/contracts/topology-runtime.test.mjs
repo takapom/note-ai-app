@@ -164,6 +164,23 @@ test('context assembly local structure SQL adapter only reads semantic unit proj
   assert.match(source, /inner join notes/);
 });
 
+test('context assembly related context SQL adapter only reads related candidates and bounded excerpts', async () => {
+  const source = await readFile(new URL('apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts', root), 'utf8');
+
+  assert.match(source, /ContextAssemblyRelatedContextRetrievalPort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /operationRouter|operation router|operation audit|OperationAudit|auditPersistence|provider|ai-sdk/i);
+  assert.doesNotMatch(source, /memory_items|source_spans|agent_local|content_json|select \*/i);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+  assert.match(source, /from semantic_unit_related_candidates/);
+  assert.match(source, /inner join semantic_units/);
+  assert.match(source, /inner join notes/);
+  assert.match(source, /inner join blocks/);
+  assert.match(source, /notes\.description_effective/);
+  assert.match(source, /blocks\.origin = \?/);
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);
