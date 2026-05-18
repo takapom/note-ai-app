@@ -53,6 +53,7 @@
 - `docs/records/ADR-0002-ai-structuring-trigger.md`
 - `docs/records/ADR-0003-block-section-document-model.md`
 - `docs/records/ADR-0004-bounded-context-map.md`
+- `docs/records/MVP-acceptance-gap-review-2026-05-18.md`
 
 ## スキル
 
