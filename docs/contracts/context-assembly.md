@@ -49,7 +49,7 @@ MVP のコンテキストエンベロープ は次を含む。
 
 ## 許可されるトポロジー
 
-Structure job -> context assembly -> AI engine. Retrieval は semantic units と memory projections を使用する。
+Structure job -> apps/worker context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI engine. Retrieval ports は canonical note/section/block snapshots、semantic unit projections、context-eligible memory projections を使用する。Retrieval ports は candidate input を返し、K limits、budget、retrieval order、trust boundary は Context Assembly contract が所有する。
 
 ## 移行用の seam
 

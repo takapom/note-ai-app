@@ -15,6 +15,7 @@
 - scheduler contract output を runtime ports へ渡す scheduler runtime flow。
 - scheduler runtime ports の Agent-local SQL statement adapter。
 - Turso canonical sections を `SchedulerNoteSnapshotPort` として読む scheduler note snapshot adapter。
+- StructureJob target と retrieval port output を Context Assembly contract へ渡す context assembly runtime flow。
 
 ## 所有してはいけないもの
 
@@ -32,6 +33,8 @@
 - invalid scheduler input を persistence port に渡さないでください。
 - scheduler Agent-local SQL adapter は temporary state だけを書いてください。canonical notes/sections/blocks を更新せず、trigger/dedupe policy を再計算しないでください。
 - scheduler note snapshot adapter は sections を read-only で読み、任意の Agent-local dirty mark overlay 以外の policy を持たないでください。
+- context assembly runtime flow は `ContextEnvelopeBuilt` を valid ContextEnvelope からだけ返してください。invalid runtime input、retrieval failure、invalid envelope、budget violation では provider、Operation Router、audit persistence を呼び出さないでください。
+- Context Assembly retrieval ports は target snapshot、local structure、related context、memory candidates の read-only input だけを返してください。retrieval order、K limits、context budget、trust boundary は Context Assembly contract の責務です。
 - Operation Router を経由しない AI operation 適用を行わないでください。
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。

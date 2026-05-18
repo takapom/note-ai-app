@@ -48,6 +48,22 @@ test('topology contract separates authority edges from import edges', () => {
   assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
     from === 'SchedulerNoteSnapshotPort' && to === 'Agent-local dirty section marks',
   ));
+  for (const edge of [
+    ['StructureJob queue', 'apps/worker context assembly runtime flow'],
+    ['apps/worker context assembly runtime flow', 'contexts/context-assembly contract'],
+    ['apps/worker context assembly runtime flow', 'ContextAssemblyTargetSnapshotPort'],
+    ['apps/worker context assembly runtime flow', 'ContextAssemblyLocalStructurePort'],
+    ['apps/worker context assembly runtime flow', 'ContextAssemblyRelatedContextRetrievalPort'],
+    ['apps/worker context assembly runtime flow', 'ContextAssemblyMemoryRetrievalPort'],
+    ['ContextAssemblyTargetSnapshotPort', 'Turso canonical notes/sections/blocks'],
+    ['ContextAssemblyLocalStructurePort', 'semantic-unit projections'],
+    ['ContextAssemblyRelatedContextRetrievalPort', 'semantic-unit projections'],
+    ['ContextAssemblyRelatedContextRetrievalPort', 'Turso canonical note/block excerpts'],
+    ['ContextAssemblyMemoryRetrievalPort', 'memory projections'],
+    ['ContextEnvelopeBuilt', 'ai-engine'],
+  ]) {
+    assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) => from === edge[0] && to === edge[1]));
+  }
 });
 
 test('contexts do not import app implementation or generated projections', async () => {
@@ -75,6 +91,7 @@ test('worker runtime adapters depend on contracts, not generated projections or 
 test('worker scheduler runtime flow does not call provider, operation routing, or audit persistence boundaries', async () => {
   const source = await readFile(new URL('apps/worker/src/structureSchedulerRuntimeFlow.ts', root), 'utf8');
 
+  assert.doesNotMatch(source, /contextAssembly|ContextEnvelope|assembleContextEnvelope/i);
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*structureJobOperationFlow\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationAuditPort\.ts['"]/);
@@ -82,6 +99,22 @@ test('worker scheduler runtime flow does not call provider, operation routing, o
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|operationAudit|operationRouting|structureJobOperation)/i);
   assert.doesNotMatch(source, /runOperationRoutingFlow|runStructureJobOperationFlow|auditPersistence/);
+});
+
+test('worker context assembly runtime flow uses Context Assembly contract and no provider or operation boundaries', async () => {
+  const source = await readFile(new URL('apps/worker/src/contextAssemblyRuntimeFlow.ts', root), 'utf8');
+
+  assert.match(source, /assembleContextEnvelope/);
+  assert.match(source, /validateContextEnvelope/);
+  assert.match(source, /ContextAssemblyTargetSnapshotPort/);
+  assert.match(source, /ContextAssemblyLocalStructurePort/);
+  assert.match(source, /ContextAssemblyRelatedContextRetrievalPort/);
+  assert.match(source, /ContextAssemblyMemoryRetrievalPort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|operationAudit|operationRouting|operationRouter|turso|sql)/i);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|OperationAudit|auditPersistence|classifyOperationPolicy|validateStructureOperation/);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
 });
 
 test('scheduler note snapshot SQL adapter only reads sections and dirty marks', async () => {
@@ -128,4 +161,20 @@ test('generated authority graph cites its owner contract', async () => {
   assert.equal(graph['x-authority-contract'], 'docs/contracts/authority-graph.md');
   assert.equal(graph['x-projection-only'], true);
   assert.ok(graph.topology.includes('docs/contracts/** -> contexts/*/src/contract/*'));
+  for (const edge of [
+    'StructureJob queue -> apps/worker context assembly runtime flow',
+    'apps/worker context assembly runtime flow -> contexts/context-assembly contract',
+    'apps/worker context assembly runtime flow -> ContextAssemblyTargetSnapshotPort',
+    'apps/worker context assembly runtime flow -> ContextAssemblyLocalStructurePort',
+    'apps/worker context assembly runtime flow -> ContextAssemblyRelatedContextRetrievalPort',
+    'apps/worker context assembly runtime flow -> ContextAssemblyMemoryRetrievalPort',
+    'ContextAssemblyTargetSnapshotPort -> Turso canonical notes/sections/blocks',
+    'ContextAssemblyLocalStructurePort -> semantic-unit projections',
+    'ContextAssemblyRelatedContextRetrievalPort -> semantic-unit projections',
+    'ContextAssemblyRelatedContextRetrievalPort -> Turso canonical note/block excerpts',
+    'ContextAssemblyMemoryRetrievalPort -> memory projections',
+    'ContextEnvelopeBuilt -> AI Engine',
+  ]) {
+    assert.ok(graph.topology.includes(edge), edge);
+  }
 });
