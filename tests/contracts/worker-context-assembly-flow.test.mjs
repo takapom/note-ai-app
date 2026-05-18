@@ -9,6 +9,7 @@ import { runContextEnvelopeAssemblyFlow } from '../../apps/worker/src/contextAss
 
 const runtimeInput = {
   workspaceId: 'workspace_001',
+  userId: 'user_001',
   noteId: 'note_001',
   structureJobId: 'structure_job_context_001',
   targetScope: 'section',
@@ -17,7 +18,8 @@ const runtimeInput = {
 };
 
 test('context assembly flow builds a valid envelope from retrieval ports without provider or routing calls', async () => {
-  const ports = createPorts();
+  const calls = [];
+  const ports = createPorts({ calls });
 
   const result = await runContextEnvelopeAssemblyFlow({
     ...runtimeInput,
@@ -31,6 +33,7 @@ test('context assembly flow builds a valid envelope from retrieval ports without
   assert.deepEqual(result.event, {
     type: 'ContextEnvelopeBuilt',
     workspaceId: runtimeInput.workspaceId,
+    userId: runtimeInput.userId,
     noteId: runtimeInput.noteId,
     structureJobId: runtimeInput.structureJobId,
     targetScope: runtimeInput.targetScope,
@@ -40,6 +43,13 @@ test('context assembly flow builds a valid envelope from retrieval ports without
   assert.deepEqual(result.operationRoutingCalls, []);
   assert.deepEqual(result.auditWrites, []);
   assert.deepEqual(result.errors, []);
+  assert.deepEqual(calls.map(([name]) => name), ['target', 'local', 'related', 'memory']);
+  assert.deepEqual(calls.map(([, input]) => input.userId), [
+    runtimeInput.userId,
+    runtimeInput.userId,
+    runtimeInput.userId,
+    runtimeInput.userId,
+  ]);
 });
 
 test('context assembly flow rejects invalid runtime input before calling ports', async () => {
@@ -47,6 +57,7 @@ test('context assembly flow rejects invalid runtime input before calling ports',
 
   const result = await runContextEnvelopeAssemblyFlow({
     workspaceId: '',
+    userId: '',
     noteId: ' ',
     structureJobId: '',
     targetScope: 'workspace',
@@ -59,6 +70,7 @@ test('context assembly flow rejects invalid runtime input before calling ports',
   assert.equal(result.event, undefined);
   assert.equal(result.validation.valid, false);
   assert.ok(result.errors.includes('workspaceId must be a non-empty string'));
+  assert.ok(result.errors.includes('userId must be a non-empty string'));
   assert.ok(result.errors.includes('noteId must be a non-empty string'));
   assert.ok(result.errors.includes('structureJobId must be a non-empty string'));
   assert.ok(result.errors.includes('targetScope must be section, chunk, or note'));

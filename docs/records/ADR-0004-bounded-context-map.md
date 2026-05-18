@@ -453,6 +453,11 @@ apps/worker context assembly related context SQL adapter
   -> semantic_unit_related_candidates / semantic_units projections
   -> Turso canonical note card / block excerpts
 
+apps/worker context assembly memory context SQL adapter
+  -> ContextAssemblyMemoryRetrievalPort
+  -> memory_context_candidates projection
+  -> Turso canonical memory_items scoped by workspace_id / user_id
+
 contexts/ai-operations
   -> contexts/note-model
   -> contexts/memory
@@ -472,7 +477,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

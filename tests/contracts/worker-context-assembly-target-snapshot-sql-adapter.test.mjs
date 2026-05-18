@@ -17,6 +17,7 @@ import { blockFixtures, noteFixture, sectionFixture } from '../../contexts/note-
 
 const runtimeInput = {
   workspaceId: noteFixture.workspaceId,
+  userId: 'user_001',
   noteId: noteFixture.id,
   structureJobId: 'structure_job_context_001',
   targetScope: 'section',

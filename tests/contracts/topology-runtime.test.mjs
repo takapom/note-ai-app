@@ -181,6 +181,22 @@ test('context assembly related context SQL adapter only reads related candidates
   assert.match(source, /blocks\.origin = \?/);
 });
 
+test('context assembly memory context SQL adapter only reads user-scoped memory candidates', async () => {
+  const source = await readFile(new URL('apps/worker/src/contextAssemblyMemoryContextSqlAdapter.ts', root), 'utf8');
+
+  assert.match(source, /ContextAssemblyMemoryRetrievalPort/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /operationRouter|operation router|operation audit|OperationAudit|auditPersistence|provider|ai-sdk/i);
+  assert.doesNotMatch(source, /from blocks|join blocks|from notes|join notes|source_spans|agent_local|content_json|select \*/i);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
+  assert.match(source, /from memory_context_candidates/);
+  assert.match(source, /inner join memory_items/);
+  assert.match(source, /memory_context_candidates\.user_id = \?/);
+  assert.match(source, /memory_items\.workspace_id = \?/);
+  assert.match(source, /memory_items\.user_id = \?/);
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);

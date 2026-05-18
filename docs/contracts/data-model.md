@@ -41,6 +41,7 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - `semantic_units` と `semantic_edges` は AI-derived projection であり、user blocks を置き換えない。
 - `semantic_unit_section_summaries` と `semantic_unit_structure_snapshots` は Context Assembly の local structure input 用 projection であり、canonical Note/Section/Block data ではない。
 - `semantic_unit_related_candidates` は Context Assembly の related context input 用 read projection であり、related semantic_units、note card IDs、explicit source block excerpt relation を束ねるが、full note / full workspace data を保持または返却してはならない。
+- `memory_context_candidates` は Context Assembly の memory context input 用 read projection であり、`workspace_id`, `user_id`, `source_note_id`, `source_scope`, optional `source_target_id`, `memory_item_id`, `retrieval_rank`, `relevance_score` を持つ。target-scoped memory item IDs と relevance metadata のみを束ね、memory content/provenance/status は canonical `memory_items` から `workspace_id` と `user_id` で境界付けて読む。command-side SoT ではなく、memory content、provenance、full memory dump を保持してはならない。
 - `memory_items` は source reference と status を持ち、source のない memory を active にしてはならない。
 - `ai_operations` は generated operation の audit record であり、Operation Router を経由せずに適用してはならない。
 - `ai_operations.id` は runtime/application boundary が routing 前に供給した stable operation audit ID であり、Operation Router が生成した placeholder、sentinel、または blank ID であってはならない。

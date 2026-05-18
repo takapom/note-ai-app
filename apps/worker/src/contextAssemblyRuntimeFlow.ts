@@ -15,6 +15,7 @@ import {
 
 export interface ContextAssemblyRuntimeRequest {
   workspaceId: string;
+  userId: string;
   noteId: string;
   structureJobId: string;
   targetScope: TargetScopeKind;
@@ -52,6 +53,7 @@ export interface ContextAssemblyRuntimePorts {
 export interface ContextEnvelopeBuiltEvent {
   type: 'ContextEnvelopeBuilt';
   workspaceId: string;
+  userId: string;
   noteId: string;
   structureJobId: string;
   targetScope: TargetScopeKind;
@@ -144,6 +146,7 @@ export async function runContextEnvelopeAssemblyFlow(
     event: {
       type: 'ContextEnvelopeBuilt',
       workspaceId: request.workspaceId,
+      userId: request.userId,
       noteId: request.noteId,
       structureJobId: request.structureJobId,
       targetScope: request.targetScope,
@@ -159,6 +162,7 @@ export async function runContextEnvelopeAssemblyFlow(
 function toRuntimeRequest(input: ContextEnvelopeAssemblyFlowInput): ContextAssemblyRuntimeRequest {
   return {
     workspaceId: input.workspaceId,
+    userId: input.userId,
     noteId: input.noteId,
     structureJobId: input.structureJobId,
     targetScope: input.targetScope,
@@ -171,6 +175,7 @@ function validateRuntimeRequest(input: ContextAssemblyRuntimeRequest): string[] 
   const errors: string[] = [];
 
   validateRequiredTrimmedString(input.workspaceId, 'workspaceId', errors);
+  validateRequiredTrimmedString(input.userId, 'userId', errors);
   validateRequiredTrimmedString(input.noteId, 'noteId', errors);
   validateRequiredTrimmedString(input.structureJobId, 'structureJobId', errors);
 

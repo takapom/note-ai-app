@@ -61,7 +61,7 @@ Import / runtime dependency edges:
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyTargetSnapshotPort` -> Turso canonical notes / sections / blocks。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyLocalStructurePort` -> semantic unit projections。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyRelatedContextRetrievalPort` -> semantic unit projections / Turso canonical note and block excerpts。
-- `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> memory projections。
+- `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> user-scoped memory projections。
 - `contexts/ai-operations` -> `contexts/note-model` for block origin and AI block vocabulary。
 - `contexts/ai-operations` -> `contexts/memory` for memory type vocabulary。
 - AI Engine -> Operation Router -> semantic unit / memory candidate / assist block projections。
