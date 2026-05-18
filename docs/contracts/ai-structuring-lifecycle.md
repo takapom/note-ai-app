@@ -43,11 +43,12 @@
 - 各 section は content_hash、last_structured_hash、last_structured_at、is_dirty を持つ。
 - 構造化は `content_hash != last_structured_hash` の section のみ対象にする。
 - structure job は context_hash を持ち、同じ context_hash の成功済み job を再実行しない。
+- completed StructureJob の AI response だけが Operation Router に渡される。non-completed job と provider failure は Note/Block の source of truth を変更せず、operation routing も実行しない。
 
 
 ## 許可されるトポロジー
 
-Editor events -> scheduler -> structure job -> context assembly -> AI engine -> operation router.
+Editor events -> scheduler -> structure job -> context assembly -> AI engine -> completed StructureJob response -> operation router.
 
 ## 移行用の seam
 
@@ -59,4 +60,4 @@ raw keypress handler 内の LLM 呼び出しを削除する。
 
 ## ガード / 検証
 
-テストは BlockChanged が AI を直接呼び出さないことを示さなければならない。
+テストは BlockChanged が AI を直接呼び出さないこと、および non-completed StructureJob / provider failure が Operation Router に到達しないことを示さなければならない。

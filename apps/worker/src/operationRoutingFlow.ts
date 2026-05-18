@@ -10,8 +10,15 @@ import {
   type RuntimeOperationRoutingResult,
 } from './operationRoutingAdapter.ts';
 
+export interface CompletedStructureJobOperationGate {
+  structureJobId: string;
+  status: 'completed';
+  providerSucceeded: true;
+}
+
 export interface OperationRoutingFlowInput extends RuntimeOperationRoutingInput {
   auditPersistence: OperationAuditPersistencePort;
+  completedStructureJobGate: CompletedStructureJobOperationGate;
 }
 
 export interface OperationAuditPersistenceResult {
@@ -30,6 +37,32 @@ export interface OperationRoutingFlowResult {
 export async function runOperationRoutingFlow(
   input: OperationRoutingFlowInput,
 ): Promise<OperationRoutingFlowResult> {
+  const gateErrors = validateCompletedStructureJobOperationGate(input.completedStructureJobGate);
+  if (gateErrors.length > 0) {
+    return {
+      routing: {
+        ok: false,
+        policy: 'blocked',
+        acceptedCount: 0,
+        rejectedCount: 0,
+        errors: gateErrors,
+        results: [],
+        auditRecords: [],
+        applyResults: [],
+        operationIds: [],
+        routedThroughOperationRouter: false,
+        directApplyResults: [],
+      },
+      auditPersistence: {
+        attempted: false,
+        ok: true,
+        savedCount: 0,
+        errors: [],
+      },
+      directApplyResults: [],
+    };
+  }
+
   const routing = routeGeneratedOperations(input);
 
   if (routing.auditRecords.length === 0) {
@@ -52,6 +85,27 @@ export async function runOperationRoutingFlow(
     auditPersistence,
     directApplyResults: [],
   };
+}
+
+function validateCompletedStructureJobOperationGate(
+  gate: CompletedStructureJobOperationGate | unknown,
+): string[] {
+  if (!gate || typeof gate !== 'object' || Array.isArray(gate)) {
+    return ['completedStructureJobGate is required'];
+  }
+
+  const record = gate as Partial<CompletedStructureJobOperationGate>;
+  const errors: string[] = [];
+  if (typeof record.structureJobId !== 'string' || record.structureJobId.trim().length === 0) {
+    errors.push('completedStructureJobGate.structureJobId must be a non-empty string');
+  }
+  if (record.status !== 'completed') {
+    errors.push('completedStructureJobGate.status must be completed');
+  }
+  if (record.providerSucceeded !== true) {
+    errors.push('completedStructureJobGate.providerSucceeded must be true');
+  }
+  return errors;
 }
 
 async function saveAuditRecords(

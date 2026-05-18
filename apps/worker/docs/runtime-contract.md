@@ -24,3 +24,6 @@
 - Agent-local SQL は一時的なものに限ります。
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
 - Operation Router を経由しない AI operation 適用を行わないでください。
+- completed StructureJob response 以外を Operation Router に渡さないでください。
+- provider failure は operation routing せず、Note/Block source of truth を変更しないでください。
+- audit persistence failure は routing decision を書き換えず、retry/recovery 対象として扱ってください。

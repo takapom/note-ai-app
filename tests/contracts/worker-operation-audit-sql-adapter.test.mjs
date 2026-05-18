@@ -59,16 +59,16 @@ test('SQL adapter writes mapped statements through executor without reclassifyin
   });
   const record = {
     ...auditRecord,
-    policy: 'runtime_passthrough_policy',
-    status: 'runtime_passthrough_status',
+    policy: 'review',
+    status: 'failed',
   };
 
   const result = await adapter.save(record);
 
   assert.equal(result.ok, true);
   assert.equal(writes.length, 1);
-  assert.equal(writes[0][0].args[5], 'runtime_passthrough_policy');
-  assert.equal(writes[0][0].args[6], 'runtime_passthrough_status');
+  assert.equal(writes[0][0].args[5], 'review');
+  assert.equal(writes[0][0].args[6], 'failed');
 });
 
 test('SQL adapter rejects invalid persistence shape before writing', async () => {

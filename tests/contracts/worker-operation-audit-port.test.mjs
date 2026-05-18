@@ -26,18 +26,18 @@ test('in-memory operation audit port saves Operation Router audit records withou
   const port = new InMemoryOperationAuditPersistencePort();
   const record = {
     ...reviewRecord,
-    policy: 'runtime_passthrough_policy',
-    status: 'runtime_passthrough_status',
+    policy: 'silent',
+    status: 'failed',
   };
 
   const result = await port.save(record);
 
   assert.equal(result.ok, true);
   assert.deepEqual(result.errors, []);
-  assert.equal(result.record.policy, 'runtime_passthrough_policy');
-  assert.equal(result.record.status, 'runtime_passthrough_status');
-  assert.equal(port.findById(record.id).policy, 'runtime_passthrough_policy');
-  assert.equal(port.findById(record.id).status, 'runtime_passthrough_status');
+  assert.equal(result.record.policy, 'silent');
+  assert.equal(result.record.status, 'failed');
+  assert.equal(port.findById(record.id).policy, 'silent');
+  assert.equal(port.findById(record.id).status, 'failed');
 });
 
 test('in-memory operation audit port rejects invalid required primitives without sentinel fallback', async () => {
@@ -94,6 +94,19 @@ test('operation audit persistence validation does not validate operation policy 
   });
 
   assert.deepEqual(errors, []);
+});
+
+test('operation audit persistence validates policy and status vocabulary without reclassifying', () => {
+  const errors = validateOperationAuditRecordForPersistence({
+    ...reviewRecord,
+    policy: 'runtime_passthrough_policy',
+    status: 'runtime_passthrough_status',
+  });
+
+  assert.deepEqual(errors, [
+    'auditRecord.policy must be one of silent, inline, review, blocked',
+    'auditRecord.status must be one of proposed, applied, rejected, reverted, failed',
+  ]);
 });
 
 test('in-memory operation audit port rejects duplicate audit ids instead of overwriting records', async () => {

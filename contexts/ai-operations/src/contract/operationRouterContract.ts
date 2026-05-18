@@ -8,6 +8,7 @@ import {
   type OperationPolicy,
   type OperationStatus,
   operationPolicies,
+  operationStatuses,
   type SourceSpanContract,
   type StructureOperation,
   validateStructureOperation,
@@ -28,6 +29,9 @@ export type OperationApplyEffect = (typeof operationApplyEffects)[number];
 
 export const operationTargetTypes = ['block', 'section', 'semantic_unit', 'memory_candidate', 'assist_block'] as const;
 export type OperationTargetType = (typeof operationTargetTypes)[number];
+
+export const operationAuditPolicies = operationPolicies;
+export const operationAuditStatuses = operationStatuses;
 
 export interface OperationRouterBlockSnapshot {
   id: string;

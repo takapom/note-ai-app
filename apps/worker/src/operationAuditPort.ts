@@ -3,6 +3,8 @@
 // Companion: docs/contracts/data-model.md, docs/contracts/repository-topology.md
 
 import {
+  operationAuditPolicies,
+  operationAuditStatuses,
   type AiOperationAuditRecordContract,
 } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
@@ -66,6 +68,13 @@ export function validateOperationAuditRecordForPersistence(
   validateRequiredTrimmedString(record.workspaceId, 'auditRecord.workspaceId', errors);
   validateRequiredTrimmedString(record.operationType, 'auditRecord.operationType', errors);
   validateRequiredTrimmedString(record.generatedBy, 'auditRecord.generatedBy', errors);
+
+  if (!isOneOf(record.policy, operationAuditPolicies)) {
+    errors.push(`auditRecord.policy must be one of ${operationAuditPolicies.join(', ')}`);
+  }
+  if (!isOneOf(record.status, operationAuditStatuses)) {
+    errors.push(`auditRecord.status must be one of ${operationAuditStatuses.join(', ')}`);
+  }
 
   for (const field of ['noteId', 'structureJobId', 'targetId'] as const) {
     const value = record[field];
@@ -178,4 +187,8 @@ function isNonNegativeNumber(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOneOf<T extends string>(value: unknown, allowed: readonly T[]): value is T {
+  return typeof value === 'string' && (allowed as readonly string[]).includes(value);
 }

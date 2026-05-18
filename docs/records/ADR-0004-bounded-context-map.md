@@ -170,10 +170,21 @@ Note close / tab switch / app leave / manual organize
   -> Scheduler plans StructureJob
   -> Context Assembly builds bounded ContextEnvelope
   -> AI returns operation list
+  -> Runtime gates on completed StructureJob response
   -> Runtime adds stable operation audit IDs
   -> Operation Router validates and classifies operations
   -> runtime boundary persists audit records through an audit persistence port
   -> runtime applies/proposes/rejects projections only through approved boundaries
+
+Non-completed StructureJob / provider failure
+  -> runtime records or surfaces the runtime failure through the owning boundary
+  -> no Operation Router call
+  -> no Note/Block source-of-truth mutation
+
+Audit persistence failure
+  -> routing result is preserved
+  -> persistence failure is handled as retry/recovery state
+  -> routing decision is not rewritten by persistence
 ```
 
 ## Dependency Shape
