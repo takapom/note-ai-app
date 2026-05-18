@@ -61,9 +61,31 @@ test('topology contract separates authority edges from import edges', () => {
     ['ContextAssemblyRelatedContextRetrievalPort', 'Turso canonical note/block excerpts'],
     ['ContextAssemblyMemoryRetrievalPort', 'memory projections'],
     ['ContextEnvelopeBuilt', 'ai-engine'],
+    ['ai-engine', 'provider-registry'],
+    ['provider-registry', 'operation-generation-provider'],
+    ['operation-generation-provider', 'completed StructureJob response'],
+    ['completed StructureJob response', 'runtime operation routing adapter'],
+    ['runtime operation routing adapter', 'operation-router'],
   ]) {
     assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) => from === edge[0] && to === edge[1]));
   }
+});
+
+test('worker operation generation provider flow stops before operation routing and audit persistence', async () => {
+  const source = await readFile(new URL('apps/worker/src/operationGenerationProviderFlow.ts', root), 'utf8');
+
+  assert.match(source, /validateContextEnvelope/);
+  assert.match(source, /OperationGenerationProviderRegistry/);
+  assert.match(source, /ContextEnvelopeBuiltEvent/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouting/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationAudit/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|runStructureJobOperationFlow|auditPersistence|classifyOperationPolicy|validateStructureOperation/);
+  assert.doesNotMatch(source, /\b(insert|update|delete|upsert|create|alter)\b/i);
 });
 
 test('contexts do not import app implementation or generated projections', async () => {
@@ -238,6 +260,11 @@ test('generated authority graph cites its owner contract', async () => {
     'ContextAssemblyRelatedContextRetrievalPort -> Turso canonical note/block excerpts',
     'ContextAssemblyMemoryRetrievalPort -> memory projections',
     'ContextEnvelopeBuilt -> AI Engine',
+    'AI Engine -> provider registry',
+    'provider registry -> operation generation provider',
+    'operation generation provider -> completed StructureJob response',
+    'completed StructureJob response -> runtime operation routing adapter',
+    'runtime operation routing adapter -> Operation Router',
   ]) {
     assert.ok(graph.topology.includes(edge), edge);
   }

@@ -37,10 +37,15 @@
     "ContextAssemblyRelatedContextRetrievalPort -> Turso canonical note/block excerpts",
     "ContextAssemblyMemoryRetrievalPort -> memory projections",
     "ContextEnvelopeBuilt -> AI Engine",
+    "AI Engine -> provider registry",
+    "provider registry -> operation generation provider",
+    "operation generation provider -> completed StructureJob response",
+    "completed StructureJob response -> runtime operation routing adapter",
+    "runtime operation routing adapter -> Operation Router",
     "contexts/ai-operations -> contexts/note-model",
     "contexts/ai-operations -> contexts/memory",
     "apps/worker -> Cloudflare Agents",
     "Cloudflare Agents -> Turso canonical DB",
-    "AI Engine -> Operation Router -> projections"
+    "Operation Router -> projections"
   ]
 }

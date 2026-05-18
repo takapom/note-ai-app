@@ -302,6 +302,29 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Operation Generation Provider Flow]
+  owns:
+    - adapting ContextEnvelopeBuilt + valid ContextEnvelope to provider registry requests
+    - resolving a mockable operation generation provider port
+    - returning completed StructureJob response and provider-independent operations payload on provider success
+    - keeping provider failure and invalid runtime input away from routing, audit, and Note/Block source of truth
+
+  depends on:
+    - Runtime Context Assembly Flow event shape
+    - Context Assembly validation
+    - Scheduler StructureJob contract
+    - provider registry boundary
+
+  must not own:
+    - Context Assembly budget / K / trust boundary semantics
+    - provider SDK imports in the flow
+    - operation schema or policy validation
+    - Operation Router calls
+    - audit persistence
+    - canonical Note / Block writes
+```
+
+```text
 [Runtime Turso Operation Audit Executor]
   owns:
     - ordered execution of SQL statements produced by the audit persistence adapter

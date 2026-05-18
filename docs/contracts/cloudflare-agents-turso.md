@@ -55,7 +55,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 
 ## 許可されるトポロジー
 
-Worker -> NoteAgent/WorkspaceBrainAgent -> scheduler runtime flow -> SchedulerNoteSnapshotPort -> Turso canonical sections + optional Agent-local dirty_scope_marks overlay -> StructureJob queue -> completed StructureJob response -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
+Worker -> NoteAgent/WorkspaceBrainAgent -> scheduler runtime flow -> SchedulerNoteSnapshotPort -> Turso canonical sections + optional Agent-local dirty_scope_marks overlay -> StructureJob queue -> context assembly runtime flow -> ContextEnvelopeBuilt -> provider registry -> operation generation provider -> completed StructureJob response -> runtime operation routing adapter -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. AI SDK は provider adapter boundary の背後に置く。Agent-local SQL は canonical ではない。
 
 ## 移行用の seam
 

@@ -57,14 +57,14 @@ Import / runtime dependency edges:
 - `contexts/scheduler` -> `contexts/note-model` for section snapshots only。
 - `contexts/context-assembly` -> `contexts/note-model` for note-card semantics。
 - `contexts/context-assembly` -> `contexts/memory` for context-eligible memory semantics。
-- StructureJob queue -> `apps/worker` context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI Engine。
+- StructureJob queue -> `apps/worker` context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI Engine / provider registry -> operation generation provider -> completed StructureJob response。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyTargetSnapshotPort` -> Turso canonical notes / sections / blocks。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyLocalStructurePort` -> semantic unit projections。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyRelatedContextRetrievalPort` -> semantic unit projections / Turso canonical note and block excerpts。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> user-scoped memory projections。
 - `contexts/ai-operations` -> `contexts/note-model` for block origin and AI block vocabulary。
 - `contexts/ai-operations` -> `contexts/memory` for memory type vocabulary。
-- AI Engine -> Operation Router -> semantic unit / memory candidate / assist block projections。
+- completed StructureJob response -> runtime operation routing adapter -> Operation Router -> semantic unit / memory candidate / assist block projections。
 
 Contexts must not import from `apps/*` or generated projections. Apps and runtime adapters consume context contracts; they do not own product policy. AI SDK は runtime adapter boundaries の背後で呼び出される。
 

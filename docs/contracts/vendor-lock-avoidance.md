@@ -36,11 +36,13 @@ product logic を変更せずに AI provider switching を可能に保つ。
 - Operation schema は provider-independent である。
 - context contracts、UI、operation router 内に provider-specific SDK calls を置かない。
 - Provider switch は registry / env config で行う。
+- Operation generation provider port は ContextEnvelope と StructureJob metadata を受け取り、provider-independent operations payload を返す。Provider adapter は ContextEnvelope を full note / full workspace dump に拡張してはならない。
+- Provider registry boundary は runtime adapter 内に留まり、AI Operations schema validation、Operation Router、audit persistence を所有しない。
 
 
 ## 許可されるトポロジー
 
-AI Engine -> プロバイダーレジストリ -> model provider. Operation schema は providers 間で stable のままである。
+AI Engine -> プロバイダーレジストリ -> operation generation provider. Operation schema は providers 間で stable のままである。
 
 ## 移行用の seam
 
@@ -52,4 +54,4 @@ app code 全体に散在する direct provider calls を削除する。
 
 ## ガード / 検証
 
-allowed runtime adapter 外の provider imports を検索する。
+allowed runtime adapter 外の provider imports を検索し、provider flow が Operation Router / audit persistence / provider SDK へ直接依存していないことを確認する。
