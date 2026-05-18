@@ -62,6 +62,18 @@ test('worker runtime adapters depend on contracts, not generated projections or 
   }
 });
 
+test('worker scheduler runtime flow does not call provider, operation routing, or audit persistence boundaries', async () => {
+  const source = await readFile(new URL('apps/worker/src/structureSchedulerRuntimeFlow.ts', root), 'utf8');
+
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*structureJobOperationFlow\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationAuditPort\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|operationAudit|operationRouting|structureJobOperation)/i);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|runStructureJobOperationFlow|auditPersistence/);
+});
+
 test('generated OpenAPI projection cites its owner contract', async () => {
   const source = await readFile(new URL('apps/workspace-api/generated/openapi.json', root), 'utf8');
   const openapi = JSON.parse(source);

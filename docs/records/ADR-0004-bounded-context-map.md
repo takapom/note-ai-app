@@ -62,6 +62,26 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Scheduler Flow]
+  owns:
+    - adapting BlockChanged input to scheduler contract
+    - passing valid save/edit/dirty/index outputs to runtime ports
+    - loading section snapshots for structure triggers
+    - passing planned StructureJobs to the queue
+    - preparing next_open digest intent
+
+  depends on:
+    - Scheduler contract
+    - Note Model Section snapshots
+
+  must not own:
+    - trigger policy or context_hash dedupe semantics
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+```
+
+```text
 [Context Assembly]
   owns:
     - ContextEnvelope
@@ -202,12 +222,15 @@ apps / runtime / generated projections
 ```text
 User edits block
   -> Note Model validates block semantics
-  -> Scheduler handles BlockChanged
+  -> Runtime Scheduler Flow calls Scheduler BlockChanged contract
+  -> valid save/edit/dirty/index outputs are persisted through runtime ports
   -> dirty section marked
   -> no AI call
 
 Note close / tab switch / app leave / manual organize
+  -> Runtime Scheduler Flow loads section snapshots and completed job hashes
   -> Scheduler plans StructureJob
+  -> runtime enqueues planned StructureJobs
   -> Context Assembly builds bounded ContextEnvelope
   -> AI returns operation list
   -> Runtime gates on completed StructureJob response
@@ -249,6 +272,11 @@ apps/web
 
 contexts/scheduler
   -> contexts/note-model
+
+apps/worker scheduler runtime flow
+  -> contexts/scheduler contract
+  -> contexts/note-model Section snapshots
+  -> runtime ports only
 
 contexts/context-assembly
   -> contexts/note-model

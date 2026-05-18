@@ -37,6 +37,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - Cloudflare Agent-local SQL は edit buffers、current session、dirty section tracking、pending jobs、retry queues、local transient logs のみを保存する。
 - Cloudflare runtime では Turso Sync ではなく Turso serverless access を使用する。
 - NoteAgent は edit event buffer、dirty section tracking、note leave handling、structure job scheduling、context_hash dedupe を扱う。
+- Worker scheduler runtime flow は NoteAgent / runtime ports を通じて BlockChanged persistence、dirty tracking、StructureJob queue、next_open digest preparation を調整するが、AI provider、Operation Router、audit persistence を呼び出さない。
 - WorkspaceBrainAgent は related context retrieval、memory candidate management、workspace-wide semantic graph coordination を扱う。
 - ActionAgent は external action candidate、approval、retry/outbox のための将来候補であり、MVP runtime には入れない。
 - Agent-local SQL と Turso は自動 Sync しない。
@@ -51,7 +52,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 
 ## 許可されるトポロジー
 
-Worker -> NoteAgent/WorkspaceBrainAgent -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
+Worker -> NoteAgent/WorkspaceBrainAgent -> scheduler runtime flow -> StructureJob queue -> completed StructureJob response -> Operation Router -> audit persistence port -> schema-aware audit SQL adapter -> Turso operation audit executor -> Turso + AI SDK. Audit persistence failure -> operation audit recovery queue port -> Agent-local SQL retry queue. Agent-local SQL は canonical ではない。
 
 ## 移行用の seam
 

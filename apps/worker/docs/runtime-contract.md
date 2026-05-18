@@ -12,6 +12,7 @@
 - operation audit persistence failure の recovery queue port。
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
+- scheduler contract output を runtime ports へ渡す scheduler runtime flow。
 
 ## 所有してはいけないもの
 
@@ -25,6 +26,8 @@
 - Turso は正規の永続化先です。
 - Agent-local SQL は一時的なものに限ります。
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
+- scheduler runtime flow から provider、Operation Router、audit persistence を呼び出さないでください。
+- invalid scheduler input を persistence port に渡さないでください。
 - Operation Router を経由しない AI operation 適用を行わないでください。
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。
