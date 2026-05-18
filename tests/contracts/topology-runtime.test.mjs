@@ -83,6 +83,12 @@ test('topology contract separates authority edges from import edges', () => {
     ['completed StructureJob response', 'structure job operation flow'],
     ['structure job operation flow', 'runtime operation routing adapter'],
     ['runtime operation routing adapter', 'operation-router'],
+    ['operation-router', 'audit-persistence-port'],
+    ['operation-router', 'operation-proposal-persistence-port'],
+    ['operation proposal accept/dismiss route handler', 'operation approval runtime handler'],
+    ['operation approval runtime handler', 'operation-proposal-persistence-port'],
+    ['accepted operation proposal', 'approved-intent-for-later-projection-boundary'],
+    ['dismissed operation proposal', 'no-projection-or-note-block-sot-mutation'],
   ]) {
     assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) => from === edge[0] && to === edge[1]));
   }

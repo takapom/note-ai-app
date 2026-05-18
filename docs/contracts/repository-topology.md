@@ -71,7 +71,9 @@ Import / runtime dependency edges:
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyMemoryRetrievalPort` -> user-scoped memory projections。
 - `contexts/ai-operations` -> `contexts/note-model` for block origin and AI block vocabulary。
 - `contexts/ai-operations` -> `contexts/memory` for memory type vocabulary。
-- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> semantic unit projections / memory candidate projections / assist block projections。
+- completed StructureJob response -> structure job operation flow -> runtime operation routing adapter -> Operation Router -> audit persistence port / operation proposal persistence port。
+- operation proposal accept/dismiss route handler -> operation approval runtime handler -> operation proposal persistence port。
+- accepted operation proposal -> approved intent for a later projection boundary。dismissed operation proposal -> no projection and no Note/Block SoT mutation。
 
 Contexts must not import from `apps/*` or generated projections. Apps and runtime adapters consume context contracts; they do not own product policy. AI SDK は runtime adapter boundaries の背後で呼び出される。
 

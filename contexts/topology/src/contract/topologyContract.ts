@@ -49,7 +49,10 @@ export const allowedRuntimeTopologyEdges = [
   ['structure job operation flow', 'runtime operation routing adapter'],
   ['cloudflare-agents', 'turso'],
   ['runtime operation routing adapter', 'operation-router'],
-  ['operation-router', 'semantic-unit-projections'],
-  ['operation-router', 'memory-candidate-projections'],
-  ['operation-router', 'assist-block-projections'],
+  ['operation-router', 'audit-persistence-port'],
+  ['operation-router', 'operation-proposal-persistence-port'],
+  ['operation proposal accept/dismiss route handler', 'operation approval runtime handler'],
+  ['operation approval runtime handler', 'operation-proposal-persistence-port'],
+  ['accepted operation proposal', 'approved-intent-for-later-projection-boundary'],
+  ['dismissed operation proposal', 'no-projection-or-note-block-sot-mutation'],
 ] as const;
