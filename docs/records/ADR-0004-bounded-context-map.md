@@ -142,6 +142,27 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Turso Operation Audit Executor]
+  owns:
+    - ordered execution of SQL statements produced by the audit persistence adapter
+    - Turso/libSQL-like client invocation
+    - empty statement list rejection
+    - propagation of infrastructure failures from the Turso client
+    - explicit non-transactional sequential execution semantics for this slice
+
+  depends on:
+    - runtime audit persistence adapter for schema-aware SQL statement construction
+    - Turso/libSQL-like client interface
+
+  must not own:
+    - hidden rollback, retry, or transaction semantics
+    - operation schema interpretation
+    - policy/status classification
+    - routing decision mutation
+    - `ai_operations` / `source_spans` field semantics
+```
+
+```text
 [Topology / Generated Projections]
   owns:
     - allowed authority/import/runtime edges
@@ -174,6 +195,8 @@ Note close / tab switch / app leave / manual organize
   -> Runtime adds stable operation audit IDs
   -> Operation Router validates and classifies operations
   -> runtime boundary persists audit records through an audit persistence port
+  -> audit persistence adapter maps records to ordered SQL statements
+  -> Turso operation audit executor sends statements to Turso in order
   -> runtime applies/proposes/rejects projections only through approved boundaries
 
 Non-completed StructureJob / provider failure
@@ -183,6 +206,8 @@ Non-completed StructureJob / provider failure
 
 Audit persistence failure
   -> routing result is preserved
+  -> SQL adapter or Turso executor reports an infrastructure failure
+  -> current Turso executor may have partial writes because it is sequential and non-transactional
   -> persistence failure is handled as retry/recovery state
   -> routing decision is not rewritten by persistence
 ```
@@ -220,13 +245,14 @@ AI Engine
 apps/worker
   -> contexts/ai-operations Operation Router contract
   -> operation audit persistence port
-  -> SQL/Turso adapter
+  -> schema-aware SQL adapter
+  -> Turso operation audit executor
 ```
 
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

@@ -8,6 +8,7 @@
 - 認証境界。
 - Cloudflare Agent ルーティング。
 - Turso serverless 接続ヘルパー。
+- Turso/libSQL-like client interface に対する operation audit SQL executor。
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
 
@@ -27,3 +28,8 @@
 - completed StructureJob response 以外を Operation Router に渡さないでください。
 - provider failure は operation routing せず、Note/Block source of truth を変更しないでください。
 - audit persistence failure は routing decision を書き換えず、retry/recovery 対象として扱ってください。
+- Turso operation audit executor は audit persistence adapter から受け取った SQL statement list を順番どおり実行してください。
+- Turso operation audit executor は empty statement list を拒否し、Turso client を呼び出さないでください。
+- Turso operation audit executor は途中 failure を infrastructure failure として上位へ伝播し、policy/status/routing decision へ変換しないでください。
+- 現在の Turso operation audit executor は非トランザクショナルな逐次 executor です。途中 failure 時に partial write があり得ることを隠さず、rollback/retry/transaction は明示的な別境界として扱ってください。
+- Turso operation audit executor は operation schema、policy/status semantics、`ai_operations` / `source_spans` の field-level 意味を見ないでください。
