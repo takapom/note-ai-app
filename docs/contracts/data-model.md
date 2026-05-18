@@ -40,6 +40,7 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - `semantic_units` と `semantic_edges` は AI-derived projection であり、user blocks を置き換えない。
 - `memory_items` は source reference と status を持ち、source のない memory を active にしてはならない。
 - `ai_operations` は generated operation の audit record であり、Operation Router を経由せずに適用してはならない。
+- `ai_operations.id` は runtime/application boundary が routing 前に供給した stable operation audit ID であり、Operation Router が生成した placeholder、sentinel、または blank ID であってはならない。
 - `source_spans` は `target_type`, `target_id`, `source_block_id`, `start_offset`, `end_offset`, `reason` を持つ。
 
 ## 許可されるトポロジー

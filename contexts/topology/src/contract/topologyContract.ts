@@ -2,15 +2,15 @@
 // Authority: docs/contracts/repository-topology.md
 
 export const authorityTopologyEdges = [
-  ['docs/contracts', 'contexts/*/src/contract'],
+  ['docs/contracts/**', 'contexts/*/src/contract/*'],
   ['docs/contracts/repository-topology.md', 'docs/generated/authority-graph.json'],
   ['docs/contracts/api-events.md', 'apps/workspace-api/generated/openapi.json'],
 ] as const;
 
 export const allowedImportTopologyEdges = [
-  ['apps/*', 'contexts/*/src/contract'],
+  ['apps/*', 'contexts/*/src/contract/*'],
   ['apps/web', 'apps/worker'],
-  ['apps/worker', 'contexts/*/src/contract'],
+  ['apps/worker', 'contexts/*/src/contract/*'],
   ['contexts/scheduler', 'contexts/note-model'],
   ['contexts/context-assembly', 'contexts/note-model'],
   ['contexts/context-assembly', 'contexts/memory'],

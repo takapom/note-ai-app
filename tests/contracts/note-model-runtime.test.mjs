@@ -109,3 +109,43 @@ test('block content validation keeps heading semantics always valid', () => {
     ['non-heading block content must not carry a heading level'],
   );
 });
+
+test('block validation rejects blank optional ids and invalid annotation spans', () => {
+  const aiBlock = noteDocumentFixture.blocks[2];
+
+  assert.deepEqual(
+    validateBlockContract({
+      ...aiBlock,
+      sectionId: ' ',
+      parentBlockId: '',
+      contentJson: {
+        ...aiBlock.contentJson,
+        annotations: [
+          {
+            kind: 'source_span',
+            sourceBlockId: '',
+            startOffset: 9,
+            endOffset: 3,
+          },
+        ],
+      },
+    }).errors,
+    [
+      'block sectionId must be a non-empty string when provided',
+      'block parentBlockId must be a non-empty string when provided',
+      'block content annotations[0].sourceBlockId must be a non-empty string',
+      'block content annotations[0].endOffset must be greater than or equal to startOffset',
+    ],
+  );
+
+  assert.deepEqual(
+    validateBlockContract({
+      ...aiBlock,
+      contentJson: {
+        ...aiBlock.contentJson,
+        annotations: [{ kind: 'unknown_annotation' }],
+      },
+    }).errors,
+    ['block content annotations[0].kind must be source_span, provenance, or comment'],
+  );
+});

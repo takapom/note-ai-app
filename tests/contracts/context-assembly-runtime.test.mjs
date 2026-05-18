@@ -528,3 +528,45 @@ test('context envelope rejects blank source ids', () => {
   assert.ok(result.errors.includes('target.sourceBlockIds[1] must be a non-empty string'));
   assert.ok(result.errors.includes('relatedContext.sourceBlockExcerpts[0].blockId must be a non-empty string'));
 });
+
+test('context envelope requires content boundaries and object source-backed items', () => {
+  const envelope = assembleContextEnvelope(contextAssemblyInputFixture);
+  const invalid = {
+    ...envelope,
+    target: {
+      ...envelope.target,
+      contentBoundary: undefined,
+    },
+    localStructure: {
+      ...envelope.localStructure,
+      existingSemanticUnits: [
+        'not an object',
+        {
+          ...envelope.localStructure.existingSemanticUnits[0],
+          contentBoundary: undefined,
+          sourceBlockIds: [],
+        },
+      ],
+    },
+    relatedContext: {
+      ...envelope.relatedContext,
+      notes: [
+        {
+          ...envelope.relatedContext.notes[0],
+          contentBoundary: undefined,
+          semanticUnitIds: [' '],
+        },
+      ],
+    },
+  };
+
+  const result = validateContextEnvelope(invalid);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.includes('target.contentBoundary must mark content as untrusted and non-instructional'));
+  assert.ok(result.errors.includes('localStructure.existingSemanticUnits[0] must be an object'));
+  assert.ok(result.errors.includes('localStructure.existingSemanticUnits[1].contentBoundary must mark content as untrusted and non-instructional'));
+  assert.ok(result.errors.includes('localStructure.existingSemanticUnits[1].sourceBlockIds must contain at least one source block id'));
+  assert.ok(result.errors.includes('relatedContext.notes[0].contentBoundary must mark content as untrusted and non-instructional'));
+  assert.ok(result.errors.includes('relatedContext.notes[0].semanticUnitIds[0] must be a non-empty string'));
+});

@@ -7,6 +7,7 @@ import {
   classifyOperationPolicy,
   type OperationPolicy,
   type OperationStatus,
+  operationPolicies,
   type SourceSpanContract,
   type StructureOperation,
   validateStructureOperation,
@@ -50,6 +51,7 @@ export interface RouteOperationOptions {
   confidenceThreshold?: number;
   generatedBy?: string;
   operationId?: string;
+  operationIds?: readonly string[];
   sequence?: number;
   workspaceId?: string;
   noteId?: string;
@@ -151,7 +153,7 @@ export function routeOperation(
     const operation = schemaResult.ok ? input as StructureOperation : undefined;
     return blockedRoute({
       input,
-      operationId,
+      ...(operationId === undefined ? {} : { operationId }),
       operationType: operation?.type ?? operationType,
       ...(operation === undefined ? {} : { operation }),
       errors: [...routeOptionErrors, ...(schemaResult.ok ? [] : schemaResult.errors)],
@@ -169,7 +171,7 @@ export function routeOperation(
     const noApplyForLowConfidence = confidenceErrors.length > 0 && targetErrors.length === 0;
     return blockedRoute({
       input,
-      operationId,
+      ...(operationId === undefined ? {} : { operationId }),
       operationType: operation.type,
       operation,
       errors,
@@ -191,7 +193,7 @@ export function routeOperation(
   const auditRecord = createAuditRecord({
     input,
     operation,
-    operationId,
+    ...(operationId === undefined ? {} : { operationId }),
     operationType: operation.type,
     policy,
     status: 'proposed',
@@ -230,19 +232,29 @@ export function routeOperationList(
     };
   }
 
-  const results = input.map((operation, index) =>
-    routeOperation(operation, snapshot, {
-      ...options,
+  const listOptionErrors = validateOperationListRouteOptions(options, input.length);
+  if (listOptionErrors.length > 0) {
+    return {
+      ok: false,
+      policy: 'blocked',
+      acceptedCount: 0,
+      rejectedCount: input.length,
+      errors: listOptionErrors,
+      results: [],
+      auditRecords: [],
+      applyResults: [],
+    };
+  }
+
+  const { operationId: _operationId, operationIds, ...listOptions } = options;
+  const results = input.map((operation, index) => {
+    const itemOperationId = operationIds?.[index];
+    return routeOperation(operation, snapshot, {
+      ...listOptions,
       sequence: options.sequence === undefined ? index : options.sequence + index,
-      ...(options.operationId === undefined
-        ? {}
-        : {
-            operationId: isNonEmptyString(options.operationId)
-              ? `${options.operationId.trim()}_${index}`
-              : options.operationId,
-          }),
-    }),
-  );
+      ...(itemOperationId === undefined ? {} : { operationId: itemOperationId }),
+    });
+  });
 
   const errors = results.flatMap((result, index) =>
     result.errors.map((error) => `operations[${index}]: ${error}`),
@@ -263,17 +275,20 @@ export function routeOperationList(
 }
 
 export function revertOperationAuditRecord(
-  auditRecord: AiOperationAuditRecordContract,
+  auditRecord: AiOperationAuditRecordContract | unknown,
   now: number,
 ): OperationRevertResult {
   const errors: string[] = [];
+  errors.push(...validateAuditRecordForRevert(auditRecord));
 
   if (!isFiniteNumber(now)) {
     errors.push('now must be a finite number');
   }
 
-  if (auditRecord.status !== 'applied' && auditRecord.status !== 'proposed') {
-    errors.push(`operation status ${auditRecord.status} cannot be reverted`);
+  const record = isRecord(auditRecord) ? auditRecord as Partial<AiOperationAuditRecordContract> : undefined;
+
+  if (record?.status !== 'applied' && record?.status !== 'proposed') {
+    errors.push(`operation status ${String(record?.status)} cannot be reverted`);
   }
 
   if (errors.length > 0) {
@@ -281,21 +296,17 @@ export function revertOperationAuditRecord(
       ok: false,
       status: 'failed',
       errors,
-      auditRecord: {
-        ...auditRecord,
-        status: 'failed',
-        errors: [...auditRecord.errors, ...errors],
-        updatedAt: isFiniteNumber(now) ? now : auditRecord.updatedAt,
-      },
     };
   }
+
+  const validRecord = auditRecord as AiOperationAuditRecordContract;
 
   return {
     ok: true,
     status: 'reverted',
     errors: [],
     auditRecord: {
-      ...auditRecord,
+      ...validRecord,
       status: 'reverted',
       updatedAt: now,
     },
@@ -316,8 +327,8 @@ function validateRouteOptions(options: RouteOperationOptions): string[] {
     errors.push('workspaceId must be a non-empty string');
   }
 
-  if (options.operationId !== undefined && !isNonEmptyString(options.operationId)) {
-    errors.push('operationId must be a non-empty string when provided');
+  if (!isNonEmptyString(options.operationId)) {
+    errors.push('operationId must be a non-empty string');
   }
 
   if (options.noteId !== undefined && !isNonEmptyString(options.noteId)) {
@@ -342,6 +353,141 @@ function validateRouteOptions(options: RouteOperationOptions): string[] {
 
   if (options.confidenceThreshold !== undefined && !isConfidenceThreshold(options.confidenceThreshold)) {
     errors.push('confidenceThreshold must be a finite number between 0 and 1 when provided');
+  }
+
+  return errors;
+}
+
+function validateOperationListRouteOptions(options: RouteOperationOptions, operationCount: number): string[] {
+  const errors: string[] = [];
+
+  if (options.sequence !== undefined && !isNonNegativeInteger(options.sequence)) {
+    errors.push('sequence must be a finite non-negative integer when provided');
+  }
+
+  if (!Array.isArray(options.operationIds)) {
+    errors.push('operationIds must be an array for operation list routing');
+    return errors;
+  }
+
+  if (options.operationIds.length !== operationCount) {
+    errors.push('operationIds length must match operation list length');
+  }
+
+  const seen = new Set<string>();
+  for (const [index, operationId] of options.operationIds.entries()) {
+    if (!isNonEmptyString(operationId)) {
+      errors.push(`operationIds[${index}] must be a non-empty string`);
+      continue;
+    }
+
+    const normalized = operationId.trim();
+    if (seen.has(normalized)) {
+      errors.push(`operationIds[${index}] duplicates another operation id`);
+    }
+    seen.add(normalized);
+  }
+
+  return errors;
+}
+
+function validateAuditRecordForRevert(auditRecord: unknown): string[] {
+  const errors: string[] = [];
+  const record = isRecord(auditRecord) ? auditRecord : undefined;
+
+  if (!record) {
+    return ['auditRecord must be an object'];
+  }
+
+  validateRequiredTrimmedString(record, 'id', 'auditRecord.id', errors);
+  validateRequiredTrimmedString(record, 'workspaceId', 'auditRecord.workspaceId', errors);
+  validateRequiredTrimmedString(record, 'operationType', 'auditRecord.operationType', errors);
+  if (!isOperationPolicy(record.policy)) {
+    errors.push(`auditRecord.policy must be one of ${operationPolicies.join(', ')}`);
+  }
+  if (!('operation' in record) || record.operation === undefined) {
+    errors.push('auditRecord.operation is required');
+  } else {
+    const operationValidation = validateStructureOperation(record.operation);
+    if (!operationValidation.ok) {
+      errors.push(...operationValidation.errors.map((error) => `auditRecord.operation: ${error}`));
+    } else {
+      const operation = record.operation as StructureOperation;
+      if (record.operationType !== operation.type) {
+        errors.push('auditRecord.operationType must match auditRecord.operation.type');
+      }
+      if (isOperationPolicy(record.policy) && record.policy !== classifyOperationPolicy(operation)) {
+        errors.push('auditRecord.policy must match auditRecord.operation policy');
+      }
+    }
+  }
+  validateRequiredTrimmedString(record, 'generatedBy', 'auditRecord.generatedBy', errors);
+  for (const field of ['noteId', 'structureJobId', 'targetId'] as const) {
+    if (record[field] !== undefined && !isNonEmptyString(record[field])) {
+      errors.push(`auditRecord.${field} must be a non-empty string when provided`);
+    }
+    if (typeof record[field] === 'string' && record[field] !== record[field].trim()) {
+      errors.push(`auditRecord.${field} must be trimmed when provided`);
+    }
+  }
+  if (record.targetType !== undefined && !isOperationTargetType(record.targetType)) {
+    errors.push(`auditRecord.targetType must be one of ${operationTargetTypes.join(', ')}`);
+  }
+  if ((record.targetType === undefined) !== (record.targetId === undefined)) {
+    errors.push('auditRecord targetType and targetId must be provided together');
+  }
+  if (!Array.isArray(record.errors)) {
+    errors.push('auditRecord.errors must be an array');
+  } else {
+    for (const [index, error] of record.errors.entries()) {
+      if (!isNonEmptyString(error)) {
+        errors.push(`auditRecord.errors[${index}] must be a non-empty string`);
+      } else if (error !== error.trim()) {
+        errors.push(`auditRecord.errors[${index}] must be trimmed`);
+      }
+    }
+  }
+  if (!Array.isArray(record.sourceSpans)) {
+    errors.push('auditRecord.sourceSpans must be an array');
+  } else {
+    for (const [index, span] of record.sourceSpans.entries()) {
+      if (!isRecord(span)) {
+        errors.push(`auditRecord.sourceSpans[${index}] must be an object`);
+        continue;
+      }
+
+      if (span.targetType !== 'operation') {
+        errors.push(`auditRecord.sourceSpans[${index}].targetType must be operation`);
+      }
+      validateRequiredTrimmedString(span, 'targetId', `auditRecord.sourceSpans[${index}].targetId`, errors);
+      if (isNonEmptyString(record.id) && isNonEmptyString(span.targetId) && span.targetId !== record.id) {
+        errors.push(`auditRecord.sourceSpans[${index}].targetId must match auditRecord.id`);
+      }
+      validateRequiredTrimmedString(span, 'sourceBlockId', `auditRecord.sourceSpans[${index}].sourceBlockId`, errors);
+      validateRequiredTrimmedString(span, 'reason', `auditRecord.sourceSpans[${index}].reason`, errors);
+      if (span.startOffset !== undefined && !isNonNegativeNumber(span.startOffset)) {
+        errors.push(`auditRecord.sourceSpans[${index}].startOffset must be non-negative`);
+      }
+      if (span.endOffset !== undefined && !isNonNegativeNumber(span.endOffset)) {
+        errors.push(`auditRecord.sourceSpans[${index}].endOffset must be non-negative`);
+      }
+      if (
+        isNonNegativeNumber(span.startOffset) &&
+        isNonNegativeNumber(span.endOffset) &&
+        span.endOffset < span.startOffset
+      ) {
+        errors.push(`auditRecord.sourceSpans[${index}].endOffset must be greater than or equal to startOffset`);
+      }
+    }
+  }
+  if (!isFiniteNumber(record.createdAt)) {
+    errors.push('auditRecord.createdAt must be a finite number');
+  }
+  if (!isFiniteNumber(record.updatedAt)) {
+    errors.push('auditRecord.updatedAt must be a finite number');
+  }
+  if (record.confidence !== undefined && !isConfidenceThreshold(record.confidence)) {
+    errors.push('auditRecord.confidence must be a finite number between 0 and 1 when provided');
   }
 
   return errors;
@@ -467,7 +613,7 @@ function createApplyResult(operation: StructureOperation, policy: OperationPolic
 
 function blockedRoute(input: {
   input: unknown;
-  operationId: string;
+  operationId?: string;
   operationType: string;
   operation?: StructureOperation;
   errors: string[];
@@ -478,11 +624,11 @@ function blockedRoute(input: {
   const auditRecord = createAuditRecord({
     input: input.input,
     ...(input.operation === undefined ? {} : { operation: input.operation }),
-    operationId: input.operationId,
-    operationType: input.operationType,
+    ...(input.operationId === undefined ? {} : { operationId: input.operationId }),
+    operationType: input.operationType.trim(),
     policy: 'blocked',
     status: 'rejected',
-    errors: input.errors,
+    errors: input.errors.map((error) => error.trim()),
     options: input.options,
     now: input.now,
   });
@@ -502,7 +648,7 @@ function blockedRoute(input: {
 function createAuditRecord(input: {
   input: unknown;
   operation?: StructureOperation;
-  operationId: string;
+  operationId?: string;
   operationType: string;
   policy: OperationPolicy;
   status: OperationStatus;
@@ -510,7 +656,7 @@ function createAuditRecord(input: {
   options: RouteOperationOptions;
   now: number;
 }): AiOperationAuditRecordContract | undefined {
-  if (!isNonEmptyString(input.options.workspaceId)) {
+  if (!isNonEmptyString(input.options.workspaceId) || !isNonEmptyString(input.operationId)) {
     return undefined;
   }
 
@@ -529,7 +675,7 @@ function createAuditRecord(input: {
     errors: input.errors,
     sourceSpans: input.operation === undefined ? [] : mapAuditSourceSpans(input.operation, input.operationId),
     ...(confidence === undefined ? {} : { confidence }),
-    ...(target === undefined ? {} : { targetType: target.targetType, targetId: target.targetId }),
+    ...(target === undefined ? {} : { targetType: target.targetType, targetId: target.targetId.trim() }),
     generatedBy: isNonEmptyString(input.options.generatedBy) ? input.options.generatedBy.trim() : 'ai',
     createdAt: input.now,
     updatedAt: input.now,
@@ -547,7 +693,7 @@ function mapAuditSourceSpans(
   return operation.sourceSpans.map((span) => ({
     targetType: 'operation',
     targetId: operationId,
-    sourceBlockId: span.blockId,
+    sourceBlockId: span.blockId.trim(),
     ...(span.startOffset === undefined ? {} : { startOffset: span.startOffset }),
     ...(span.endOffset === undefined ? {} : { endOffset: span.endOffset }),
     reason: operation.type,
@@ -592,13 +738,11 @@ function getConfidence(input: unknown): number | undefined {
   return undefined;
 }
 
-function resolveOperationId(options: RouteOperationOptions): string {
+function resolveOperationId(options: RouteOperationOptions): string | undefined {
   if (isNonEmptyString(options.operationId)) {
     return options.operationId.trim();
   }
-  const now = resolveNow(options);
-  const sequence = resolveSequence(options);
-  return `operation_${now}_${sequence}`;
+  return undefined;
 }
 
 function resolveNow(options: RouteOperationOptions): number {
@@ -642,8 +786,34 @@ function isNonNegativeInteger(value: unknown): value is number {
   return isFiniteNumber(value) && Number.isInteger(value) && value >= 0;
 }
 
+function isNonNegativeNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0;
+}
+
 function isConfidenceThreshold(value: unknown): value is number {
   return isFiniteNumber(value) && value >= 0 && value <= 1;
+}
+
+function isOperationPolicy(value: unknown): value is OperationPolicy {
+  return typeof value === 'string' && (operationPolicies as readonly string[]).includes(value);
+}
+
+function isOperationTargetType(value: unknown): value is OperationTargetType {
+  return typeof value === 'string' && (operationTargetTypes as readonly string[]).includes(value);
+}
+
+function validateRequiredTrimmedString(
+  record: Record<string, unknown>,
+  key: string,
+  path: string,
+  errors: string[],
+): void {
+  const value = record[key];
+  if (!isNonEmptyString(value)) {
+    errors.push(`${path} must be a non-empty string`);
+  } else if (value !== value.trim()) {
+    errors.push(`${path} must be trimmed`);
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -52,6 +52,7 @@
 - `docs/records/ADR-0001-ai-native-note-target-model.md`
 - `docs/records/ADR-0002-ai-structuring-trigger.md`
 - `docs/records/ADR-0003-block-section-document-model.md`
+- `docs/records/ADR-0004-bounded-context-map.md`
 
 ## スキル
 

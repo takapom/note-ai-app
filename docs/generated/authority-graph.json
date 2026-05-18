@@ -1,5 +1,12 @@
 {
   "generated": "2026-05-17",
+  "x-generated": true,
+  "x-projection-only": true,
+  "x-authority-contract": "docs/contracts/authority-graph.md",
+  "x-companion-contracts": [
+    "docs/contracts/repository-topology.md",
+    "docs/contracts/sot-and-projection.md"
+  ],
   "authority": {
     "policy_architecture_decision": "docs/contracts/**",
     "live_product_semantics": "contexts/*/src/contract/*",
@@ -9,12 +16,12 @@
     "api_generated_contract": "apps/workspace-api/generated/openapi.json"
   },
   "topology": [
-    "docs/contracts -> contexts/*/src/contract",
+    "docs/contracts/** -> contexts/*/src/contract/*",
     "docs/contracts/repository-topology.md -> docs/generated/authority-graph.json",
     "docs/contracts/api-events.md -> apps/workspace-api/generated/openapi.json",
-    "apps/* -> contexts/*/src/contract",
+    "apps/* -> contexts/*/src/contract/*",
     "apps/web -> apps/worker API",
-    "apps/worker -> contexts/*/src/contract",
+    "apps/worker -> contexts/*/src/contract/*",
     "contexts/scheduler -> contexts/note-model",
     "contexts/context-assembly -> contexts/note-model",
     "contexts/context-assembly -> contexts/memory",

@@ -92,14 +92,22 @@ export interface BlockChangedInput {
   updateLightweightIndex?: boolean;
 }
 
-export interface BlockChangedResult {
+export type BlockChangedResult =
+  | {
   savedBlocks: BlockSaveIntentContract[];
   editEvent: EditEventContract;
   dirtyScopeMark: DirtyScopeMarkContract;
   lightweightIndexUpdate?: LightweightIndexUpdateContract;
   structureJobs: [];
   aiCalls: [];
+  errors: [];
 }
+  | {
+      savedBlocks: [];
+      structureJobs: [];
+      aiCalls: [];
+      errors: string[];
+    };
 
 export interface StructureJobDedupeDecision {
   enqueue: boolean;
@@ -151,6 +159,16 @@ export const noteCloseFlowSteps = [
 export type NoteCloseFlowStep = (typeof noteCloseFlowSteps)[number];
 
 export function handleBlockChanged(input: BlockChangedInput): BlockChangedResult {
+  const errors = validateBlockChangedInput(input);
+  if (errors.length > 0) {
+    return {
+      savedBlocks: [],
+      structureJobs: [],
+      aiCalls: [],
+      errors,
+    };
+  }
+
   const savedBlock: BlockSaveIntentContract = {
     blockId: input.blockId,
     noteId: input.noteId,
@@ -192,7 +210,33 @@ export function handleBlockChanged(input: BlockChangedInput): BlockChangedResult
     ...(lightweightIndexUpdate ? { lightweightIndexUpdate } : {}),
     structureJobs: [],
     aiCalls: [],
+    errors: [],
   };
+}
+
+export function validateBlockChangedInput(input: unknown): string[] {
+  const errors: string[] = [];
+  const event = asRecord(input);
+
+  if (!event) {
+    return ['BlockChanged input must be an object'];
+  }
+
+  for (const field of ['blockId', 'noteId', 'sectionId', 'contentHash'] as const) {
+    if (!isNonEmptyString(event[field])) {
+      errors.push(`${field} must be a non-empty string`);
+    }
+  }
+
+  if (event.previousContentHash !== undefined && !isNonEmptyString(event.previousContentHash)) {
+    errors.push('previousContentHash must be a non-empty string when provided');
+  }
+
+  if (typeof event.now !== 'number' || !Number.isFinite(event.now)) {
+    errors.push('now must be a finite number');
+  }
+
+  return errors;
 }
 
 export function discoverDirtySections(sections: readonly SectionContract[]): SectionContract[] {

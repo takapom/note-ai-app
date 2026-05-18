@@ -380,6 +380,7 @@ export function validateContextEnvelope(
   if (target && typeof target.text !== 'string') {
     errors.push('target text must be a string');
   }
+  validateUntrustedBoundary(target, 'target.contentBoundary', errors);
 
   const targetSourceBlockIds = readRequiredArray(target, 'sourceBlockIds', 'target source block ids must be an array', errors);
   if (targetSourceBlockIds && targetSourceBlockIds.length === 0) {
@@ -397,6 +398,7 @@ export function validateContextEnvelope(
   ) {
     errors.push('note card must include title, descriptionEffective, and outline');
   }
+  validateUntrustedBoundary(note, 'note.contentBoundary', errors);
 
   const existingSemanticUnits = readRequiredArray(
     localStructure,
@@ -462,7 +464,9 @@ export function validateContextEnvelope(
   validateSourceBackedItems(existingSemanticUnits, 'localStructure.existingSemanticUnits', errors);
   validateSourceBackedItems(sectionSummaries, 'localStructure.sectionSummaries', errors);
   validateSourceBackedItems(relatedSemanticUnits, 'relatedContext.semanticUnits', errors);
+  validateRelatedNotes(relatedNotes, errors);
   validateSourceBlockExcerpts(sourceBlockExcerpts, errors);
+  validateOptionalContentItem(localStructure?.previousStructureSnapshot, 'localStructure.previousStructureSnapshot', errors);
 
   for (const memory of memoryItems ?? []) {
     const memoryRecord = asRecord(memory);
@@ -470,6 +474,8 @@ export function validateContextEnvelope(
       errors.push('memory item must be an object');
       continue;
     }
+
+    validateUntrustedBoundary(memoryRecord, `memory ${String(memoryRecord.id)} contentBoundary`, errors);
 
     if (!isEnvelopeMemoryStatus(memoryRecord.status)) {
       errors.push(`memory ${String(memoryRecord.id)} has non-context status ${String(memoryRecord.status)}`);
@@ -740,18 +746,51 @@ function validateSourceBackedItems(
   for (const [index, item] of (items ?? []).entries()) {
     const record = asRecord(item);
     if (!record) {
+      errors.push(`${path}[${index}] must be an object`);
       continue;
     }
 
-    validateNonEmptyStringArray(
-      Array.isArray(record.sourceBlockIds) ? record.sourceBlockIds : undefined,
-      `${path}[${index}].sourceBlockIds`,
+    validateUntrustedBoundary(record, `${path}[${index}].contentBoundary`, errors);
+
+    const sourceBlockIds = readRequiredArray(
+      record,
+      'sourceBlockIds',
+      `${path}[${index}].sourceBlockIds must be an array`,
       errors,
     );
+    if (sourceBlockIds && sourceBlockIds.length === 0) {
+      errors.push(`${path}[${index}].sourceBlockIds must contain at least one source block id`);
+    }
+    validateNonEmptyStringArray(sourceBlockIds, `${path}[${index}].sourceBlockIds`, errors);
 
     if (record.sourceSpan !== undefined && !isValidSourceSpan(record.sourceSpan)) {
       errors.push(`${path}[${index}].sourceSpan must be valid`);
     }
+  }
+}
+
+function validateRelatedNotes(
+  items: unknown[] | undefined,
+  errors: string[],
+): void {
+  for (const [index, item] of (items ?? []).entries()) {
+    const record = asRecord(item);
+    if (!record) {
+      errors.push(`relatedContext.notes[${index}] must be an object`);
+      continue;
+    }
+
+    validateUntrustedBoundary(record, `relatedContext.notes[${index}].contentBoundary`, errors);
+    validateNonEmptyStringArray(
+      readRequiredArray(record, 'semanticUnitIds', `relatedContext.notes[${index}].semanticUnitIds must be an array`, errors),
+      `relatedContext.notes[${index}].semanticUnitIds`,
+      errors,
+    );
+    validateNonEmptyStringArray(
+      readRequiredArray(record, 'sourceBlockExcerptIds', `relatedContext.notes[${index}].sourceBlockExcerptIds must be an array`, errors),
+      `relatedContext.notes[${index}].sourceBlockExcerptIds`,
+      errors,
+    );
   }
 }
 
@@ -762,8 +801,11 @@ function validateSourceBlockExcerpts(
   for (const [index, item] of (items ?? []).entries()) {
     const record = asRecord(item);
     if (!record) {
+      errors.push(`relatedContext.sourceBlockExcerpts[${index}] must be an object`);
       continue;
     }
+
+    validateUntrustedBoundary(record, `relatedContext.sourceBlockExcerpts[${index}].contentBoundary`, errors);
 
     for (const field of ['id', 'noteId', 'blockId'] as const) {
       if (!isNonEmptyString(record[field])) {
@@ -774,6 +816,40 @@ function validateSourceBlockExcerpts(
     if (record.sourceSpan !== undefined && !isValidSourceSpan(record.sourceSpan)) {
       errors.push(`relatedContext.sourceBlockExcerpts[${index}].sourceSpan must be valid`);
     }
+  }
+}
+
+function validateOptionalContentItem(
+  item: unknown,
+  path: string,
+  errors: string[],
+): void {
+  if (item === undefined) {
+    return;
+  }
+
+  const record = asRecord(item);
+  if (!record) {
+    errors.push(`${path} must be an object`);
+    return;
+  }
+
+  validateUntrustedBoundary(record, `${path}.contentBoundary`, errors);
+}
+
+function validateUntrustedBoundary(
+  object: Record<string, unknown> | undefined,
+  path: string,
+  errors: string[],
+): void {
+  const boundary = asRecord(object?.contentBoundary);
+  if (
+    !boundary ||
+    boundary.trust !== 'untrusted' ||
+    boundary.treatAsInstruction !== false ||
+    !isContextContentOrigin(boundary.origin)
+  ) {
+    errors.push(`${path} must mark content as untrusted and non-instructional`);
   }
 }
 

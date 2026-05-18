@@ -194,6 +194,12 @@ export function validateBlockContract(block: unknown): BlockValidationResult {
     errors.push('block noteId must be a non-empty string');
   }
 
+  for (const field of ['sectionId', 'parentBlockId'] as const) {
+    if (candidate[field] !== undefined && !isNonEmptyString(candidate[field])) {
+      errors.push(`block ${field} must be a non-empty string when provided`);
+    }
+  }
+
   if (!isBlockType(candidate.type)) {
     errors.push(`block type must be one of ${[...userBlockTypes, ...aiBlockTypes].join(', ')}`);
   }
@@ -260,6 +266,8 @@ export function validateBlockContract(block: unknown): BlockValidationResult {
     errors.push('block updatedAt must be a finite timestamp');
   }
 
+  validateAnnotations(content, errors);
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -321,4 +329,55 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   }
 
   return value as Record<string, unknown>;
+}
+
+function validateAnnotations(content: Record<string, unknown> | undefined, errors: string[]): void {
+  if (!content || content.annotations === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(content.annotations)) {
+    errors.push('block content annotations must be an array when provided');
+    return;
+  }
+
+  for (const [index, annotation] of content.annotations.entries()) {
+    const record = asRecord(annotation);
+    if (!record) {
+      errors.push(`block content annotations[${index}] must be an object`);
+      continue;
+    }
+
+    if (!isAnnotationKind(record.kind)) {
+      errors.push(`block content annotations[${index}].kind must be source_span, provenance, or comment`);
+      continue;
+    }
+
+    if (record.kind === 'source_span') {
+      if (!isNonEmptyString(record.sourceBlockId)) {
+        errors.push(`block content annotations[${index}].sourceBlockId must be a non-empty string`);
+      }
+      if (!isNonNegativeFiniteNumber(record.startOffset)) {
+        errors.push(`block content annotations[${index}].startOffset must be non-negative`);
+      }
+      if (!isNonNegativeFiniteNumber(record.endOffset)) {
+        errors.push(`block content annotations[${index}].endOffset must be non-negative`);
+      }
+      if (
+        isNonNegativeFiniteNumber(record.startOffset) &&
+        isNonNegativeFiniteNumber(record.endOffset) &&
+        record.endOffset < record.startOffset
+      ) {
+        errors.push(`block content annotations[${index}].endOffset must be greater than or equal to startOffset`);
+      }
+    }
+  }
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function isAnnotationKind(value: unknown): value is AnnotationKind {
+  return value === 'source_span' || value === 'provenance' || value === 'comment';
 }

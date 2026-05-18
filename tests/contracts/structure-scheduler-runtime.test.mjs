@@ -46,6 +46,32 @@ test('BlockChanged saves blocks, records edit event, marks dirty, and does not c
   assert.equal(result.lightweightIndexUpdate.blockId, blockChangedInputFixture.blockId);
   assert.deepEqual(result.structureJobs, []);
   assert.deepEqual(result.aiCalls, []);
+  assert.deepEqual(result.errors, []);
+});
+
+test('invalid BlockChanged primitives do not create save intents or dirty marks', () => {
+  const result = handleBlockChanged({
+    blockId: '',
+    noteId: ' ',
+    sectionId: '',
+    contentHash: '',
+    previousContentHash: ' ',
+    now: Number.NaN,
+  });
+
+  assert.deepEqual(result.savedBlocks, []);
+  assert.deepEqual(result.structureJobs, []);
+  assert.deepEqual(result.aiCalls, []);
+  assert.deepEqual(result.errors, [
+    'blockId must be a non-empty string',
+    'noteId must be a non-empty string',
+    'sectionId must be a non-empty string',
+    'contentHash must be a non-empty string',
+    'previousContentHash must be a non-empty string when provided',
+    'now must be a finite number',
+  ]);
+  assert.equal('editEvent' in result, false);
+  assert.equal('dirtyScopeMark' in result, false);
 });
 
 test('primary leave triggers create section jobs from dirty sections only', () => {

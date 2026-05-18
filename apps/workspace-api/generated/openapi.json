@@ -4,7 +4,295 @@
     "title": "Workspace API",
     "version": "0.0.0"
   },
-  "paths": {},
+  "paths": {
+    "/notes": {
+      "get": {
+        "operationId": "listNotes",
+        "summary": "List notes",
+        "responses": {
+          "200": {
+            "description": "Notes listed"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md"
+      },
+      "post": {
+        "operationId": "createNote",
+        "summary": "Create note",
+        "responses": {
+          "201": {
+            "description": "Note created"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md"
+      }
+    },
+    "/notes/{noteId}": {
+      "get": {
+        "operationId": "getNote",
+        "summary": "Get note",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note returned"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md"
+      },
+      "patch": {
+        "operationId": "updateNote",
+        "summary": "Update note metadata",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note updated"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md"
+      }
+    },
+    "/notes/{noteId}/blocks": {
+      "post": {
+        "operationId": "createBlock",
+        "summary": "Create block in note",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Block created"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "BlockChanged"
+      }
+    },
+    "/blocks/{blockId}": {
+      "patch": {
+        "operationId": "updateBlock",
+        "summary": "Update block content",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/blockId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Block updated"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "BlockChanged"
+      },
+      "delete": {
+        "operationId": "deleteBlock",
+        "summary": "Delete block",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/blockId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Block deleted"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "BlockChanged"
+      }
+    },
+    "/notes/{noteId}/leave": {
+      "post": {
+        "operationId": "leaveNote",
+        "summary": "End note session and enqueue structure jobs",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Structure jobs enqueued"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-events": [
+          "NoteClosed",
+          "TabSwitched",
+          "AppLeft"
+        ],
+        "x-backend-events": [
+          "DirtySectionMarked",
+          "StructureJobEnqueued"
+        ]
+      }
+    },
+    "/notes/{noteId}/structure/manual": {
+      "post": {
+        "operationId": "manualOrganizeNote",
+        "summary": "Request manual note organization",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Manual organize job enqueued"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "ManualOrganizeRequested",
+        "x-backend-event": "StructureJobEnqueued"
+      }
+    },
+    "/notes/{noteId}/digest": {
+      "get": {
+        "operationId": "getNextOpenDigest",
+        "summary": "Get next-open digest",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/noteId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Digest returned"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "NextOpen",
+        "x-backend-event": "DigestPrepared"
+      }
+    },
+    "/ai-operations/{operationId}/accept": {
+      "post": {
+        "operationId": "acceptAiOperation",
+        "summary": "Accept AI operation proposal",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/operationId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation accepted"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "AssistBlockAccepted",
+        "x-backend-events": [
+          "OperationValidated",
+          "OperationApplied"
+        ]
+      }
+    },
+    "/ai-operations/{operationId}/dismiss": {
+      "post": {
+        "operationId": "dismissAiOperation",
+        "summary": "Dismiss AI operation proposal",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/operationId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation dismissed"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "AssistBlockDismissed",
+        "x-backend-event": "OperationRejected"
+      }
+    },
+    "/memory/{memoryId}/accept": {
+      "post": {
+        "operationId": "acceptMemoryCandidate",
+        "summary": "Accept memory candidate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/memoryId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memory accepted"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "MemoryCandidateAccepted"
+      }
+    },
+    "/memory/{memoryId}/reject": {
+      "post": {
+        "operationId": "rejectMemoryCandidate",
+        "summary": "Reject memory candidate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/memoryId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memory rejected"
+          }
+        },
+        "x-authority-contract": "docs/contracts/api-events.md",
+        "x-ui-event": "MemoryCandidateRejected"
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "noteId": {
+        "name": "noteId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "blockId": {
+        "name": "blockId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "operationId": {
+        "name": "operationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "memoryId": {
+        "name": "memoryId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
   "x-generated": true,
   "x-authority-contract": "docs/contracts/api-events.md",
   "x-projection-only": true

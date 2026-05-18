@@ -131,11 +131,44 @@ async function verifyTopologyConstraints() {
 async function verifyGeneratedOpenApiAuthority() {
   const source = await read('apps/workspace-api/generated/openapi.json');
   const openapi = JSON.parse(source);
+  const expectedPaths = [
+    '/notes',
+    '/notes/{noteId}',
+    '/notes/{noteId}/blocks',
+    '/blocks/{blockId}',
+    '/notes/{noteId}/leave',
+    '/notes/{noteId}/structure/manual',
+    '/notes/{noteId}/digest',
+    '/ai-operations/{operationId}/accept',
+    '/ai-operations/{operationId}/dismiss',
+    '/memory/{memoryId}/accept',
+    '/memory/{memoryId}/reject',
+  ];
+
   if (openapi['x-authority-contract'] !== 'docs/contracts/api-events.md') {
     fail('apps/workspace-api/generated/openapi.json must cite docs/contracts/api-events.md as x-authority-contract');
   }
   if (openapi['x-projection-only'] !== true) {
     fail('apps/workspace-api/generated/openapi.json must be marked x-projection-only');
+  }
+  for (const path of expectedPaths) {
+    if (!openapi.paths || !openapi.paths[path]) {
+      fail(`apps/workspace-api/generated/openapi.json is missing MVP API path ${path}`);
+    }
+  }
+}
+
+async function verifyGeneratedAuthorityGraph() {
+  const source = await read('docs/generated/authority-graph.json');
+  const graph = JSON.parse(source);
+  if (graph['x-authority-contract'] !== 'docs/contracts/authority-graph.md') {
+    fail('docs/generated/authority-graph.json must cite docs/contracts/authority-graph.md as x-authority-contract');
+  }
+  if (graph['x-projection-only'] !== true) {
+    fail('docs/generated/authority-graph.json must be marked x-projection-only');
+  }
+  if (!Array.isArray(graph.topology) || !graph.topology.includes('docs/contracts/** -> contexts/*/src/contract/*')) {
+    fail('docs/generated/authority-graph.json must preserve repository-topology glob precision');
   }
 }
 
@@ -145,6 +178,7 @@ await verifyForbiddenMvpConcepts();
 await verifyLiveContractAuthorityComments();
 await verifyTopologyConstraints();
 await verifyGeneratedOpenApiAuthority();
+await verifyGeneratedAuthorityGraph();
 
 if (failures.length > 0) {
   for (const failure of failures) {
