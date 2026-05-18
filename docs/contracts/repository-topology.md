@@ -56,11 +56,13 @@ Import / runtime dependency edges:
 - `apps/web` -> `apps/worker` API。
 - `apps/worker` -> `contexts/*/src/contract/*`。
 - `apps/worker` -> Cloudflare Agents -> Turso。
+- `apps/worker` note structure route handler -> `apps/worker` scheduler runtime flow。
 - `apps/worker` scheduler runtime flow -> `SchedulerNoteSnapshotPort` -> Turso canonical sections / Agent-local dirty section marks。
 - `contexts/scheduler` -> `contexts/note-model` for section snapshots only。
 - `contexts/context-assembly` -> `contexts/note-model` for note-card semantics。
 - `contexts/context-assembly` -> `contexts/memory` for context-eligible memory semantics。
 - StructureJob queue -> `apps/worker` context assembly runtime flow -> Context Assembly contract -> valid ContextEnvelope -> AI Engine / provider registry -> operation generation provider -> `apps/worker` structure job operation orchestration flow -> completed StructureJob response。
+- `apps/worker` StructureJob Agent handler -> `apps/worker` context assembly runtime flow / `apps/worker` structure job operation orchestration flow。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyTargetSnapshotPort` -> Turso canonical notes / sections / blocks。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyLocalStructurePort` -> semantic unit projections。
 - `apps/worker` context assembly runtime flow -> `ContextAssemblyRelatedContextRetrievalPort` -> semantic unit projections / Turso canonical note and block excerpts。

@@ -82,6 +82,25 @@ apps / runtime / generated projections
 ```
 
 ```text
+[Runtime Note Structure Route Handler]
+  owns:
+    - mapping note leave / manual organize / next open route input to scheduler trigger input
+    - runtime port wiring for scheduler flow invocation
+    - response summaries for scheduled jobs
+
+  depends on:
+    - Runtime Scheduler Flow
+    - Scheduler trigger vocabulary
+
+  must not own:
+    - trigger policy or context_hash dedupe semantics
+    - provider calls
+    - Operation Router calls
+    - audit persistence
+    - canonical Note / Block writes
+```
+
+```text
 [Scheduler Agent-local SQL Adapter]
   owns:
     - SQL statement mapping for BlockChanged save intent evidence
@@ -164,6 +183,25 @@ apps / runtime / generated projections
     - provider choice
     - Operation Router calls
     - audit persistence
+    - canonical Note / Block writes
+```
+
+```text
+[Runtime StructureJob Agent Handler]
+  owns:
+    - sequencing context assembly before provider/orchestration
+    - stopping invalid context assembly before provider, Operation Router, audit, and Note/Block writes
+    - passing valid ContextEnvelopeBuilt and StructureJob to structure job operation orchestration flow
+
+  depends on:
+    - Runtime Context Assembly Flow
+    - Runtime Structure Job Operation Orchestration Flow
+
+  must not own:
+    - Context Assembly budget / K / trust boundary semantics
+    - provider SDK imports
+    - operation schema or policy validation
+    - audit persistence semantics
     - canonical Note / Block writes
 ```
 
@@ -412,9 +450,11 @@ User edits block
   -> no AI call
 
 Note close / tab switch / app leave / manual organize
+  -> Runtime Note Structure Route Handler maps the route to scheduler trigger input
   -> Runtime Scheduler Flow loads section snapshots and completed job hashes
   -> Scheduler plans StructureJob
   -> runtime enqueues planned StructureJobs
+  -> Runtime StructureJob Agent Handler receives a runnable StructureJob
   -> Runtime Context Assembly Flow reads bounded retrieval port snapshots
   -> Context Assembly builds bounded ContextEnvelope
   -> valid ContextEnvelopeBuilt result is emitted
@@ -464,6 +504,9 @@ apps/worker scheduler runtime flow
   -> contexts/note-model Section snapshots
   -> runtime ports only
 
+apps/worker note structure route handler
+  -> apps/worker scheduler runtime flow
+
 apps/worker scheduler Agent-local SQL adapter
   -> runtime scheduler ports
   -> Agent-local temporary state
@@ -502,6 +545,10 @@ apps/worker context assembly memory context SQL adapter
   -> memory_context_candidates projection
   -> Turso canonical memory_items scoped by workspace_id / user_id
 
+apps/worker structure job Agent handler
+  -> apps/worker context assembly runtime flow
+  -> apps/worker structure job operation orchestration flow
+
 contexts/ai-operations
   -> contexts/note-model
   -> contexts/memory
@@ -529,7 +576,7 @@ apps/worker
 ## 現在の実装状態
 
 - Live contracts は `contexts/*/src/contract/*` に配置されています。
-- Runtime operation routing adapter、structure job operation orchestration flow、operation audit persistence flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
+- Runtime operation routing adapter、structure job operation orchestration flow、operation audit persistence flow、audit persistence port、SQL/Turso mapping adapter、Turso operation audit executor、operation audit recovery queue port、note structure route handler、StructureJob Agent handler、scheduler runtime flow、scheduler Agent-local SQL adapter、scheduler note snapshot SQL adapter、context assembly runtime flow、context assembly target snapshot SQL adapter、context assembly local structure SQL adapter、context assembly related context SQL adapter、context assembly memory context SQL adapter は `apps/worker/src/*` にあります。
 - UI/DB の実接続はまだ scaffold 段階です。
 - Generated projections は `docs/generated/authority-graph.json` と `apps/workspace-api/generated/openapi.json` にあります。
 - この記録は説明用の projection であり、判断が必要な場合は `docs/contracts/**` を参照します。

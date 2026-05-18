@@ -12,6 +12,8 @@
 - operation audit persistence failure の recovery queue port。
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
+- note leave / manual organize / next open route input を scheduler runtime flow に接続する note structure route handler。
+- valid ContextEnvelopeBuilt から provider/orchestration boundary に接続する StructureJob Agent handler。
 - scheduler contract output を runtime ports へ渡す scheduler runtime flow。
 - scheduler runtime ports の Agent-local SQL statement adapter。
 - Turso canonical sections を `SchedulerNoteSnapshotPort` として読む scheduler note snapshot adapter。
@@ -36,6 +38,8 @@
 - Turso は正規の永続化先です。
 - Agent-local SQL は一時的なものに限ります。
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
+- note structure route handler は route/event normalization、auth/workspace context、runtime port wiring、scheduler runtime flow 呼び出し、response mapping だけを担当してください。provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
+- StructureJob Agent handler は context assembly runtime flow を先に呼び、valid ContextEnvelopeBuilt の場合だけ structure job operation orchestration flow に進んでください。invalid context assembly では provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
 - scheduler runtime flow から provider、Operation Router、audit persistence を呼び出さないでください。
 - invalid scheduler input を persistence port に渡さないでください。
 - scheduler Agent-local SQL adapter は temporary state だけを書いてください。canonical notes/sections/blocks を更新せず、trigger/dedupe policy を再計算しないでください。

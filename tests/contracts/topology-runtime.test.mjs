@@ -50,6 +50,9 @@ test('topology contract separates authority edges from import edges', () => {
     from === 'apps/worker scheduler runtime flow' && to === 'SchedulerNoteSnapshotPort',
   ));
   assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
+    from === 'apps/worker note structure route handler' && to === 'apps/worker scheduler runtime flow',
+  ));
+  assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
     from === 'SchedulerNoteSnapshotPort' && to === 'Turso canonical sections',
   ));
   assert.ok(allowedRuntimeTopologyEdges.some(([from, to]) =>
@@ -57,6 +60,8 @@ test('topology contract separates authority edges from import edges', () => {
   ));
   for (const edge of [
     ['StructureJob queue', 'apps/worker context assembly runtime flow'],
+    ['apps/worker structure job Agent handler', 'apps/worker context assembly runtime flow'],
+    ['apps/worker structure job Agent handler', 'apps/worker structure job operation orchestration flow'],
     ['apps/worker context assembly runtime flow', 'contexts/context-assembly contract'],
     ['apps/worker context assembly runtime flow', 'ContextAssemblyTargetSnapshotPort'],
     ['apps/worker context assembly runtime flow', 'ContextAssemblyLocalStructurePort'],
@@ -282,7 +287,10 @@ test('generated authority graph cites its owner contract', async () => {
   assert.equal(graph['x-projection-only'], true);
   assert.ok(graph.topology.includes('docs/contracts/** -> contexts/*/src/contract/*'));
   for (const edge of [
+    'apps/worker note structure route handler -> apps/worker scheduler runtime flow',
     'StructureJob queue -> apps/worker context assembly runtime flow',
+    'apps/worker structure job Agent handler -> apps/worker context assembly runtime flow',
+    'apps/worker structure job Agent handler -> apps/worker structure job operation orchestration flow',
     'apps/worker context assembly runtime flow -> contexts/context-assembly contract',
     'apps/worker context assembly runtime flow -> ContextAssemblyTargetSnapshotPort',
     'apps/worker context assembly runtime flow -> ContextAssemblyLocalStructurePort',

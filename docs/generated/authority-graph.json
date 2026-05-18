@@ -47,12 +47,15 @@
     "contexts/ai-operations -> contexts/memory",
     "apps/web -> apps/worker",
     "apps/worker -> Cloudflare Agents",
+    "apps/worker note structure route handler -> apps/worker scheduler runtime flow",
     "Cloudflare Agents -> Turso",
     "Operation Router -> semantic-unit-projections",
     "Operation Router -> memory-candidate-projections",
     "Operation Router -> assist-block-projections",
     "apps/worker scheduler runtime flow -> SchedulerNoteSnapshotPort",
     "SchedulerNoteSnapshotPort -> Turso canonical sections",
-    "SchedulerNoteSnapshotPort -> Agent-local dirty section marks"
+    "SchedulerNoteSnapshotPort -> Agent-local dirty section marks",
+    "apps/worker structure job Agent handler -> apps/worker context assembly runtime flow",
+    "apps/worker structure job Agent handler -> apps/worker structure job operation orchestration flow"
   ]
 }

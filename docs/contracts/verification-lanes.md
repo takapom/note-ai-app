@@ -38,7 +38,7 @@
 - scheduler lane: BlockChanged で AI なし、note leave が job を作成すること。
 - context lane: K limits、budget、title/description usage.
 - frontend lane: unified surface、chat panel なし、AI blocks inline.
-- runtime lane: provider abstraction、Turso canonical boundaries.
+- runtime lane: provider abstraction、Turso canonical boundaries、note structure route handler と StructureJob Agent handler が policy-free connection boundary であること。
 - security lane: source spans、context minimization、untrusted instruction leakage なし。
 - api/event lane: UI events、backend events、route handlers が `api-events.md` に沿っていること。
 - NFR lane: writing flow、layout stability、AI failure tolerance、observability event が `non-functional-requirements.md` に沿っていること。

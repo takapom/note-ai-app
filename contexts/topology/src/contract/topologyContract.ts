@@ -20,10 +20,13 @@ export const allowedImportTopologyEdges = [
 export const allowedRuntimeTopologyEdges = [
   ['apps/web', 'apps/worker'],
   ['apps/worker', 'cloudflare-agents'],
+  ['apps/worker note structure route handler', 'apps/worker scheduler runtime flow'],
   ['apps/worker scheduler runtime flow', 'SchedulerNoteSnapshotPort'],
   ['SchedulerNoteSnapshotPort', 'Turso canonical sections'],
   ['SchedulerNoteSnapshotPort', 'Agent-local dirty section marks'],
   ['StructureJob queue', 'apps/worker context assembly runtime flow'],
+  ['apps/worker structure job Agent handler', 'apps/worker context assembly runtime flow'],
+  ['apps/worker structure job Agent handler', 'apps/worker structure job operation orchestration flow'],
   ['apps/worker context assembly runtime flow', 'contexts/context-assembly contract'],
   ['apps/worker context assembly runtime flow', 'ContextAssemblyTargetSnapshotPort'],
   ['apps/worker context assembly runtime flow', 'ContextAssemblyLocalStructurePort'],
