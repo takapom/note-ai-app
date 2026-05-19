@@ -17,8 +17,8 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | partial | dependency-free AppShell / NoteSurface / Block Editor view model、HTML rendering、browser runtime、DOM host、explicit save click -> Worker request wiring、API-free browser projection actions、successful save 後の browser UI projection 更新、dirty/saving/saved/error status と same-path retry affordance、repo-local hosted contract E2E、composition 中 save suppression、focused block identity / draft text / fixed status region DOM hooks、DOM host Selection snapshot/restore、public artifact reserved status CSS、real browser editor guard は追加済み。現 sandbox では Chrome DevTools が OS 権限で起動できず guard は skip。残りは Chrome-capable 環境での real browser guard 実行。 |
 | 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model document validation、web NoteSurface view model / renderer、explicit heading save click -> `PATCH /blocks/:blockId`、Worker Note Model command boundary での heading block text + owning section title/contentHash 同時更新、successful heading save 後の browser UI projection 更新、dirty/saving/saved/error status と fixed status region、repo-local hosted contract E2E、composition 中 save suppression、focused block identity DOM hooks、DOM host Selection snapshot/restore、public artifact reserved status CSS、real browser editor guard は追加済み。現 sandbox では Chrome DevTools が OS 権限で起動できず guard は skip。残りは Chrome-capable 環境での real browser guard 実行。 |
-| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring、auth/workspace boundary、Cloudflare Agent binding foundation、wrangler deployment config、Web explicit save click -> `PATCH /blocks/:blockId` wiring、deployment environment values の repo-tracked 直書き禁止 contract / guard、repo-local hosted contract E2E は追加済み。Agent-local save intent は canonical SoT ではない。 |
-| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint、framework-neutral NoteAgent binding foundation、descriptor-derived Durable Object binding record、wrangler deployment config は対応済み。hosted runtime env/binding injection と exact production auth provider integration は未実装。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring、auth/workspace boundary、Cloudflare Agent binding foundation、wrangler deployment config、Web explicit save click -> `PATCH /blocks/:blockId` wiring、deployment environment values の repo-tracked 直書き禁止 contract / guard、repo-local hosted contract E2E、default Worker env binding E2E は追加済み。Agent-local save intent は canonical SoT ではない。 |
+| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint、framework-neutral NoteAgent binding foundation、descriptor-derived Durable Object binding record、Worker main Agent class exports、wrangler Durable Object bindings/migration、default Worker env binding E2E は対応済み。exact production auth provider integration は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
@@ -96,8 +96,8 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 - framework-neutral `workerHttpRouter` と route/delegation guard tests は追加済み。
 - standard `Request` / `Response` の Worker fetch entrypoint、header based workspace/user normalization、JSON response mapping、default Turso / Agent-local executor wiring は追加済み。
 - worker auth/workspace boundary は request header/env/context から stable workspace/user identity を正規化し、configured shared secret mismatch では port factory 前に止める。exact auth provider/JWT package は未固定。
-- framework-neutral Cloudflare Agent binding foundation として NoteAgent / WorkspaceBrainAgent class、deployment binding descriptor、descriptor-derived Durable Object binding record、runtime flow delegation guard は追加済み。
-- wrangler deployment config は追加済み。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。残りは hosted runtime env/binding injection の E2E 確認、exact production auth provider integration。
+- framework-neutral Cloudflare Agent binding foundation として NoteAgent / WorkspaceBrainAgent delegate class、deployment binding descriptor、descriptor-derived Durable Object binding record、serializable RPC DTO surface を持つ deployable Durable Object adapter、Cloudflare deployment entrypoint named export、runtime flow delegation guard は追加済み。
+- wrangler deployment config は Cloudflare deployment entrypoint / static assets / Worker-first API routes / Durable Object bindings / migration class list まで追加済み。deployment environment values の repo-tracked 直書き禁止 contract / guard と default Worker env binding E2E は追加済み。残りは exact production auth provider integration。
 
 検証コマンド:
 - `node --test tests/contracts/worker-*.test.mjs`
@@ -158,7 +158,7 @@ MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP route
 
 実装状況:
 - `NextOpenDigestReadPort`、in-memory read port、Agent-local SQL read adapter、HTTP router delegation、Worker fetch wiring、Web compact/expandable view model / renderer / local expand-collapse、browser response projection reducer、focused contract tests は追加済み。
-- 残りは hosted runtime env/binding injection の E2E と production editor polish 側の Chrome-capable 環境での real browser guard 実行。
+- 残りは production editor polish 側の Chrome-capable 環境での real browser guard 実行。
 
 検証コマンド:
 - `node --test tests/contracts/worker-structure-scheduler-flow.test.mjs`
@@ -333,7 +333,7 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 - 既存 Web integration source guard は `noteSurface*.ts` の application boundary guard として維持する。browser deployment embedding adapter guard は別責務として、browser global / DOM query / deployment detail が application files に戻らないことを確認する。
 - browser app entry deployment bootstrap は `browserNoteSurfaceAppEntry.ts` に閉じる責務として記録する。import-time side effect を持たず、deployment descriptor / injected runtime で mount adapter を起動するだけに留める。NoteSurface application boundary、domain policy、framework package selection、bundler/build artifact serving、deployment config、provider SDK、auth policy、ID generation、canonical Note / Section / Block direct mutation は所有しない。
 - browser static build artifact path は追加済み。`npm run build:web` は external dependency を増やさず `apps/web/public` を `dist/web` にコピーし、TypeScript browser ESM を `dist/web/assets` に emit し、root `noEmit` typecheck semantics は維持する。`apps/web/public/index.html` は compiled `browserNoteSurfaceAppEntry.js` を import して `startBrowserNoteSurfaceApp` を明示実行する deployment template であり、required dataset metadata は deployment が埋める。
-- wrangler deployment config は `main = "apps/worker/src/workerEntrypoint.ts"`、`[assets].directory = "./dist/web"`、Worker-first API route patterns を固定する volatile deployment detail として追加済み。deployment environment values は `docs/contracts/backend-runtime.md` / `docs/contracts/cloudflare-agents-turso.md` に追記し、`tests/contracts/deployment-environment-values.test.mjs` で `wrangler.toml`、public HTML、browser dataset keys、Worker env interface を guard する。browser deployment embedding adapter、browser app entry deployment bootstrap、browser static build artifact path 後の hosted page から Worker endpoint への repo-local contract E2E は `tests/contracts/hosted-note-surface-e2e.test.mjs` で追加済み。
+- wrangler deployment config は `main = "apps/worker/src/workerEntrypoint.ts"`、`[assets].directory = "./dist/web"`、Worker-first API route patterns、Durable Object bindings、migration class list を固定する volatile deployment detail として追加済み。deployment environment values は `docs/contracts/backend-runtime.md` / `docs/contracts/cloudflare-agents-turso.md` に追記し、`tests/contracts/deployment-environment-values.test.mjs` で `wrangler.toml`、public HTML、browser dataset keys、Worker env interface を guard する。browser deployment embedding adapter、browser app entry deployment bootstrap、browser static build artifact path 後の hosted page から Worker endpoint への repo-local contract E2E と default Worker env binding E2E は `tests/contracts/hosted-note-surface-e2e.test.mjs` で追加済み。
 
 検証コマンド:
 - `node --test tests/contracts/web-note-surface.test.mjs`
@@ -351,9 +351,8 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 ## Suggested Implementation Order
 
 1. Production-grade editor ergonomics: Chrome-capable 環境で real browser editor guard を実行。
-2. Hosted runtime env/binding injection E2E。
-3. Exact production auth provider integration。
-4. GitHub issue close/create と push による traceability projection 更新。
+2. Exact production auth provider integration。
+3. GitHub issue close/create と push による traceability projection 更新。
 
 ## Review Notes
 

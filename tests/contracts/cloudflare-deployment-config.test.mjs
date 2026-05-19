@@ -2,14 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+import {
+  NOTE_AGENT_CLASS_NAME,
+  WORKSPACE_BRAIN_AGENT_CLASS_NAME,
+  createCloudflareDurableObjectBindingDescriptors,
+} from '../../apps/worker/src/cloudflareAgentBindings.ts';
+
 const wranglerUrl = new URL('../../wrangler.toml', import.meta.url);
-const workerEntrypointUrl = new URL('../../apps/worker/src/workerEntrypoint.ts', import.meta.url);
+const cloudflareWorkerEntrypointUrl = new URL('../../apps/worker/src/cloudflareWorkerEntrypoint.ts', import.meta.url);
 
 test('wrangler config serves web build artifacts through the Worker deployment', async () => {
   const source = await readFile(wranglerUrl, 'utf8');
   const config = parseWranglerConfig(source);
 
-  assert.equal(config.main, 'apps/worker/src/workerEntrypoint.ts');
+  assert.equal(config.main, 'apps/worker/src/cloudflareWorkerEntrypoint.ts');
   assert.equal(config.compatibility_date, '2026-05-19');
   assert.equal(config.assets?.directory, './dist/web');
   assert.deepEqual(config.assets?.run_worker_first, [
@@ -42,10 +48,24 @@ test('wrangler config does not inline runtime secrets or tenant identity', async
   assert.doesNotMatch(source, /\[\[?(?:vars|secrets)\]?\]/i);
 });
 
-test('configured Worker main currently exposes a deployable default fetch export', async () => {
-  const source = await readFile(workerEntrypointUrl, 'utf8');
+test('wrangler config connects Agent descriptors to Durable Object bindings without runtime values', async () => {
+  const source = await readFile(wranglerUrl, 'utf8');
+
+  assert.deepEqual(
+    parseDurableObjectBindings(source),
+    createCloudflareDurableObjectBindingDescriptors(),
+  );
+  assert.deepEqual(
+    parseMigrationClasses(source),
+    [NOTE_AGENT_CLASS_NAME, WORKSPACE_BRAIN_AGENT_CLASS_NAME],
+  );
+});
+
+test('configured Worker main exposes default fetch and Agent class exports', async () => {
+  const source = await readFile(cloudflareWorkerEntrypointUrl, 'utf8');
 
   assert.match(source, /export\s+default\s*\{\s*fetch:\s*createWorkerFetchHandler\(\)\s*,?\s*\}/s);
+  assert.match(source, /export\s*\{[^}]*\bNoteAgent\b[^}]*\bWorkspaceBrainAgent\b[^}]*\}\s+from\s+['"]\.\/cloudflareDurableObjectAgents\.ts['"]/s);
 });
 
 function parseWranglerConfig(source) {
@@ -56,6 +76,12 @@ function parseWranglerConfig(source) {
   for (let index = 0; index < lines.length; index += 1) {
     const rawLine = stripComment(lines[index]).trim();
     if (rawLine.length === 0) {
+      continue;
+    }
+
+    const arraySectionMatch = rawLine.match(/^\[\[([A-Za-z0-9_.-]+)\]\]$/);
+    if (arraySectionMatch) {
+      currentSection = {};
       continue;
     }
 
@@ -99,9 +125,32 @@ function stripComment(line) {
 
 function parseTomlScalar(value) {
   const trimmed = value.trim();
+  const arrayMatch = trimmed.match(/^\[(.*)\]$/);
+  if (arrayMatch) {
+    return arrayMatch[1]
+      .split(',')
+      .map((entry) => parseTomlScalar(entry.trim()))
+      .filter((entry) => entry !== '');
+  }
+
   const stringMatch = trimmed.match(/^"([^"]*)"$/);
   if (stringMatch) {
     return stringMatch[1];
   }
   return trimmed;
+}
+
+function parseDurableObjectBindings(source) {
+  return [...source.matchAll(
+    /\[\[durable_objects\.bindings\]\]\s*name\s*=\s*"([^"]+)"\s*class_name\s*=\s*"([^"]+)"/g,
+  )].map((match) => ({
+    name: match[1],
+    class_name: match[2],
+  }));
+}
+
+function parseMigrationClasses(source) {
+  const match = /\[\[migrations\]\][\s\S]*?new_sqlite_classes\s*=\s*(\[[^\]]*\])/.exec(source);
+  assert.notEqual(match, null, 'wrangler.toml must declare Durable Object migration classes');
+  return parseTomlScalar(match[1]);
 }

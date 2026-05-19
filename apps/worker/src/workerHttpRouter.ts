@@ -115,17 +115,41 @@ export async function handleWorkerHttpRequest(
     case 'update_note':
       return saveNoteDocument(request, ports.noteDocument, 200);
     case 'create_block':
-      return delegateCommand(ports.noteBlocks?.createBlock, request, { noteId: route.params.noteId }, 201, 'note block create port is not configured');
+      return delegateCommand(
+        bindCommand(ports.noteBlocks, 'createBlock'),
+        request,
+        { noteId: route.params.noteId },
+        201,
+        'note block create port is not configured',
+      );
     case 'update_block':
-      return delegateCommand(ports.noteBlocks?.updateBlock, request, { blockId: route.params.blockId }, 200, 'note block update port is not configured');
+      return delegateCommand(
+        bindCommand(ports.noteBlocks, 'updateBlock'),
+        request,
+        { blockId: route.params.blockId },
+        200,
+        'note block update port is not configured',
+      );
     case 'delete_block':
-      return delegateCommand(ports.noteBlocks?.deleteBlock, request, { blockId: route.params.blockId }, 204, 'note block delete port is not configured');
+      return delegateCommand(
+        bindCommand(ports.noteBlocks, 'deleteBlock'),
+        request,
+        { blockId: route.params.blockId },
+        204,
+        'note block delete port is not configured',
+      );
     case 'leave_note':
       return runStructureRoute(request, ports.noteStructure, route.params.noteId, 'note_leave');
     case 'manual_organize_note':
       return runStructureRoute(request, ports.noteStructure, route.params.noteId, 'manual_organize');
     case 'get_digest':
-      return delegateCommand(ports.digestRead?.getDigest, request, { noteId: route.params.noteId }, 200, 'digest read port is not configured');
+      return delegateCommand(
+        bindCommand(ports.digestRead, 'getDigest'),
+        request,
+        { noteId: route.params.noteId },
+        200,
+        'digest read port is not configured',
+      );
     case 'lookup_provenance_source':
       return runProvenanceLookupRoute(request, ports.provenanceLookup);
     case 'accept_operation':
@@ -133,15 +157,45 @@ export async function handleWorkerHttpRequest(
     case 'dismiss_operation':
       return runOperationApprovalRoute(request, ports, route.params.operationId, 'dismiss');
     case 'accept_memory':
-      return delegateCommand(ports.memoryReview?.acceptMemory, request, { memoryId: route.params.memoryId }, 200, 'memory accept port is not configured');
+      return delegateCommand(
+        bindCommand(ports.memoryReview, 'acceptMemory'),
+        request,
+        { memoryId: route.params.memoryId },
+        200,
+        'memory accept port is not configured',
+      );
     case 'reject_memory':
-      return delegateCommand(ports.memoryReview?.rejectMemory, request, { memoryId: route.params.memoryId }, 200, 'memory reject port is not configured');
+      return delegateCommand(
+        bindCommand(ports.memoryReview, 'rejectMemory'),
+        request,
+        { memoryId: route.params.memoryId },
+        200,
+        'memory reject port is not configured',
+      );
     case 'edit_memory':
-      return delegateCommand(ports.memoryReview?.editMemory, request, { memoryId: route.params.memoryId }, 200, 'memory edit port is not configured');
+      return delegateCommand(
+        bindCommand(ports.memoryReview, 'editMemory'),
+        request,
+        { memoryId: route.params.memoryId },
+        200,
+        'memory edit port is not configured',
+      );
     case 'delete_memory':
-      return delegateCommand(ports.memoryReview?.deleteMemory, request, { memoryId: route.params.memoryId }, 200, 'memory delete port is not configured');
+      return delegateCommand(
+        bindCommand(ports.memoryReview, 'deleteMemory'),
+        request,
+        { memoryId: route.params.memoryId },
+        200,
+        'memory delete port is not configured',
+      );
     case 'hold_memory':
-      return delegateCommand(ports.memoryReview?.holdMemory, request, { memoryId: route.params.memoryId }, 200, 'memory hold port is not configured');
+      return delegateCommand(
+        bindCommand(ports.memoryReview, 'holdMemory'),
+        request,
+        { memoryId: route.params.memoryId },
+        200,
+        'memory hold port is not configured',
+      );
   }
 }
 
@@ -544,6 +598,23 @@ async function delegateCommand(
   });
 
   return mapPortResult(result, successStatus);
+}
+
+function bindCommand<
+  Port extends object,
+  MethodName extends keyof Port,
+>(
+  port: Port | undefined,
+  methodName: MethodName,
+): ((input: WorkerRouteCommandInput) => Promise<WorkerRouteCommandResult>) | undefined {
+  if (port === undefined) {
+    return undefined;
+  }
+
+  const method = port?.[methodName];
+  return typeof method === 'function'
+    ? (method as (this: Port, input: WorkerRouteCommandInput) => Promise<WorkerRouteCommandResult>).bind(port)
+    : undefined;
 }
 
 function readNoteLeaveCause(body: unknown): { cause?: NoteLeaveCause } {

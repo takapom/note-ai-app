@@ -1,5 +1,5 @@
 name = "ai-native-note"
-main = "apps/worker/src/workerEntrypoint.ts"
+main = "apps/worker/src/cloudflareWorkerEntrypoint.ts"
 compatibility_date = "2026-05-19"
 
 [assets]
@@ -12,3 +12,15 @@ run_worker_first = [
   "/memory/*",
   "/provenance/*",
 ]
+
+[[durable_objects.bindings]]
+name = "NOTE_AGENT"
+class_name = "NoteAgent"
+
+[[durable_objects.bindings]]
+name = "WORKSPACE_BRAIN_AGENT"
+class_name = "WorkspaceBrainAgent"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NoteAgent", "WorkspaceBrainAgent"]

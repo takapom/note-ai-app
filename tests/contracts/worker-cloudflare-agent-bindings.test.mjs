@@ -226,3 +226,27 @@ test('Cloudflare Agent binding source avoids SDK imports and direct persistence 
   assert.doesNotMatch(source, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from)\b/i);
   assert.doesNotMatch(source, /\b(notes|sections|blocks)\s+(set|values)\b/i);
 });
+
+test('Cloudflare Durable Object adapter is deployable and only delegates to framework-neutral agents', async () => {
+  const source = await readFile(new URL('apps/worker/src/cloudflareDurableObjectAgents.ts', root), 'utf8');
+
+  assert.match(source, /from\s+['"]cloudflare:workers['"]/);
+  assert.match(source, /class\s+NoteAgent\s+extends\s+DurableObject/);
+  assert.match(source, /class\s+WorkspaceBrainAgent\s+extends\s+DurableObject/);
+  assert.match(source, /new\s+NoteAgentRuntimeDelegate\(\)/);
+  assert.match(source, /new\s+WorkspaceBrainAgentRuntimeDelegate\(\)/);
+  assert.match(source, /scheduleNoteStructure\(\s*input:\s*NoteAgentScheduleStructureCommand/s);
+  assert.match(source, /processNextQueuedStructureJob\(\s*input:\s*WorkspaceBrainProcessNextStructureJobCommand/s);
+  assert.doesNotMatch(source, /handleNoteStructureRoute\(\s*input:\s*NoteStructureRouteHandlerInput/s);
+  assert.doesNotMatch(source, /handleStructureJob\(\s*input:\s*StructureJobAgentHandlerInput/s);
+  assert.doesNotMatch(source, /processNextStructureJob\(\s*input:\s*StructureJobProcessorFlowInput/s);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationAudit/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*noteDocument(SqlAdapter|PersistencePort)\.ts['"]/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*noteBlockCommandPort\.ts['"]/);
+  assert.doesNotMatch(source, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from)\b/i);
+  assert.doesNotMatch(source, /\b(notes|sections|blocks)\s+(set|values)\b/i);
+});

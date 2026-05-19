@@ -134,6 +134,85 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
   assert.equal(saved.document.sections[0].lastStructuredHash, initialDocument.sections[0].lastStructuredHash);
 });
 
+test('hosted note surface uses Worker env bindings for canonical and Agent-local runtime wiring', async () => {
+  buildWebArtifact();
+  const { startBrowserNoteSurfaceApp } = await import(
+    '../../dist/web/assets/apps/web/src/browserNoteSurfaceAppEntry.js'
+  );
+
+  const initialDocument = structuredClone(noteDocumentFixture);
+  const canonical = createCanonicalNoteSqlClient(initialDocument);
+  const agentLocal = createAgentLocalDigestSqlClient({
+    workspaceId,
+    noteId,
+    triggerReason: 'next_open',
+    preparedAt: 1_764_000_222_000,
+  });
+  const env = {
+    TURSO: canonical.client,
+    AGENT_LOCAL_SQL: agentLocal.client,
+  };
+  const workerRequests = [];
+  const workerFetch = createWorkerFetchHandler({
+    now: () => 1_764_000_123_000,
+  });
+  const fetchCalls = [];
+  const rootElement = createFakeRoot({
+    apiBaseUrl: hostedApiBaseUrl,
+    workspaceId,
+    userId,
+    noteId,
+  });
+
+  const mounted = await startBrowserNoteSurfaceApp(
+    {
+      documentReadyState: 'complete',
+      mount: undefined,
+    },
+    {
+      documentLike: createDocumentLike({
+        '[data-note-surface-root]': rootElement,
+      }),
+      fetchLike: createWorkerBackedFetchLike(workerFetch, fetchCalls, env, workerRequests),
+    },
+  );
+
+  assert.equal(mounted.ok, true);
+  assert.equal(mounted.status, 'mounted');
+  assert.match(rootElement.innerHTML, /The MVP should protect writing flow before adding integrations\./);
+  assert.equal(canonical.executed.some((statement) => /from notes/i.test(statement.sql)), true);
+  assert.equal(
+    agentLocal.executed.some((statement) => /agent_local_next_open_digest_preparation_intents/i.test(statement.sql)),
+    true,
+    JSON.stringify({
+      fetchCalls: fetchCalls.map((call) => [call.init.method, call.url]),
+      workerRequests,
+      agentLocalExecuted: agentLocal.executed,
+    }),
+  );
+
+  const savedText = 'Hosted env binding save reached canonical Turso wiring.';
+  rootElement.click(createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: paragraphBlockId,
+  }, savedText));
+
+  await waitFor(() => workerRequests.some((request) => (
+    request.method === 'PATCH' && request.path === `/blocks/${paragraphBlockId}` && request.status === 200
+  )));
+
+  assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes/note_001/digest'],
+    ['PATCH', 'https://worker.example.test/blocks/block_paragraph_001'],
+  ]);
+  assert.equal(canonical.executed.some((statement) => /^insert into blocks\b/i.test(statement.sql)), true);
+  assert.equal(canonical.document.blocks.find((block) => block.id === paragraphBlockId)?.plainText, savedText);
+  assert.notEqual(canonical.document.sections[0].contentHash, initialDocument.sections[0].contentHash);
+  assert.equal(canonical.document.sections[0].lastStructuredHash, initialDocument.sections[0].lastStructuredHash);
+});
+
 function buildWebArtifact() {
   const result = spawnSync(process.execPath, ['scripts/build-web.mjs'], {
     cwd: new URL('.', root),
@@ -151,17 +230,25 @@ function buildWebArtifact() {
   );
 }
 
-function createWorkerBackedFetchLike(workerFetch, calls) {
+function createWorkerBackedFetchLike(workerFetch, calls, env = {}, workerRequests = undefined) {
   return async (url, init) => {
     calls.push({ url, init });
+    const request = new Request(url, {
+      method: init.method,
+      headers: init.headers,
+      body: init.body,
+    });
+    const workerRequest = {
+      method: request.method,
+      path: new URL(request.url).pathname,
+    };
+    workerRequests?.push(workerRequest);
     const response = await workerFetch(
-      new Request(url, {
-        method: init.method,
-        headers: init.headers,
-        body: init.body,
-      }),
-      {},
+      request,
+      env,
     );
+    workerRequest.status = response.status;
+    workerRequest.responseBody = await response.clone().json().catch(() => undefined);
 
     return {
       ok: response.ok,
@@ -173,6 +260,203 @@ function createWorkerBackedFetchLike(workerFetch, calls) {
         return response.text();
       },
     };
+  };
+}
+
+function createCanonicalNoteSqlClient(initialDocument) {
+  let document = structuredClone(initialDocument);
+  const executed = [];
+
+  return {
+    get document() {
+      return structuredClone(document);
+    },
+    executed,
+    client: {
+      async execute(statement) {
+        executed.push(statement);
+        const sql = statement.sql.toLowerCase();
+
+        if (/^insert into notes\b/.test(sql)) {
+          document = {
+            ...document,
+            note: noteFromInsertArgs(statement.args),
+          };
+          return { rowsAffected: 1 };
+        }
+        if (/^delete from blocks\b/.test(sql)) {
+          document = {
+            ...document,
+            blocks: document.blocks.filter((block) => block.noteId !== statement.args[0]),
+          };
+          return { rowsAffected: 1 };
+        }
+        if (/^delete from sections\b/.test(sql)) {
+          document = {
+            ...document,
+            sections: document.sections.filter((section) => section.noteId !== statement.args[0]),
+          };
+          return { rowsAffected: 1 };
+        }
+        if (/^insert into sections\b/.test(sql)) {
+          document = {
+            ...document,
+            sections: [...document.sections, sectionFromInsertArgs(statement.args)],
+          };
+          return { rowsAffected: 1 };
+        }
+        if (/^insert into blocks\b/.test(sql)) {
+          document = {
+            ...document,
+            blocks: [...document.blocks, blockFromInsertArgs(statement.args)],
+          };
+          return { rowsAffected: 1 };
+        }
+        if (/from notes\b/.test(sql)) {
+          return { rows: [noteToRow(document.note)] };
+        }
+        if (/from sections\b/.test(sql)) {
+          return { rows: document.sections.map(sectionToRow) };
+        }
+        if (/from blocks\b/.test(sql)) {
+          return { rows: document.blocks.map(blockToRow) };
+        }
+
+        throw new Error(`unexpected canonical SQL: ${statement.sql}`);
+      },
+    },
+  };
+}
+
+function createAgentLocalDigestSqlClient(digest) {
+  const executed = [];
+  return {
+    executed,
+    client: {
+      async execute(statement) {
+        executed.push(statement);
+        if (!/agent_local_next_open_digest_preparation_intents/i.test(statement.sql)) {
+          throw new Error(`unexpected Agent-local SQL: ${statement.sql}`);
+        }
+
+        return {
+          rows: [{
+            workspace_id: digest.workspaceId,
+            note_id: digest.noteId,
+            trigger_reason: digest.triggerReason,
+            recovered_job_count: 1,
+            prepared: true,
+            prepared_at: digest.preparedAt,
+            payload_json: JSON.stringify({
+              workspaceId: digest.workspaceId,
+              noteId: digest.noteId,
+              prepared: true,
+              recoveredJobCount: 1,
+              triggerReason: digest.triggerReason,
+              preparedAt: digest.preparedAt,
+            }),
+          }],
+        };
+      },
+    },
+  };
+}
+
+function noteToRow(note) {
+  return {
+    id: note.id,
+    workspace_id: note.workspaceId,
+    title: note.title,
+    description_user: note.descriptionUser ?? null,
+    description_ai: note.descriptionAi ?? null,
+    description_ai_approved: note.descriptionAiApproved ?? null,
+    description_effective: note.descriptionEffective ?? null,
+    created_at: note.createdAt,
+    updated_at: note.updatedAt,
+  };
+}
+
+function sectionToRow(section) {
+  return {
+    id: section.id,
+    note_id: section.noteId,
+    parent_section_id: section.parentSectionId ?? null,
+    heading_block_id: section.headingBlockId ?? null,
+    heading_level: section.headingLevel ?? null,
+    title: section.title ?? null,
+    description_ai: section.descriptionAi ?? null,
+    content_hash: section.contentHash,
+    last_structured_hash: section.lastStructuredHash ?? null,
+    last_structured_at: section.lastStructuredAt ?? null,
+    position: section.position,
+    created_at: section.createdAt,
+    updated_at: section.updatedAt,
+  };
+}
+
+function blockToRow(block) {
+  return {
+    id: block.id,
+    note_id: block.noteId,
+    section_id: block.sectionId ?? null,
+    parent_block_id: block.parentBlockId ?? null,
+    type: block.type,
+    content_json: JSON.stringify(block.contentJson),
+    plain_text: block.plainText,
+    position: block.position,
+    origin: block.origin,
+    content_hash: block.contentHash,
+    created_at: block.createdAt,
+    updated_at: block.updatedAt,
+  };
+}
+
+function noteFromInsertArgs(args) {
+  return {
+    id: args[0],
+    workspaceId: args[1],
+    title: args[2],
+    ...(args[3] === null ? {} : { descriptionUser: args[3] }),
+    ...(args[4] === null ? {} : { descriptionAi: args[4] }),
+    ...(args[5] === null ? {} : { descriptionAiApproved: args[5] }),
+    ...(args[6] === null ? {} : { descriptionEffective: args[6] }),
+    createdAt: args[7],
+    updatedAt: args[8],
+  };
+}
+
+function sectionFromInsertArgs(args) {
+  return {
+    id: args[0],
+    noteId: args[1],
+    ...(args[2] === null ? {} : { parentSectionId: args[2] }),
+    ...(args[3] === null ? {} : { headingBlockId: args[3] }),
+    ...(args[4] === null ? {} : { headingLevel: args[4] }),
+    ...(args[5] === null ? {} : { title: args[5] }),
+    ...(args[6] === null ? {} : { descriptionAi: args[6] }),
+    contentHash: args[7],
+    ...(args[8] === null ? {} : { lastStructuredHash: args[8] }),
+    ...(args[9] === null ? {} : { lastStructuredAt: args[9] }),
+    position: args[10],
+    createdAt: args[11],
+    updatedAt: args[12],
+  };
+}
+
+function blockFromInsertArgs(args) {
+  return {
+    id: args[0],
+    noteId: args[1],
+    ...(args[2] === null ? {} : { sectionId: args[2] }),
+    ...(args[3] === null ? {} : { parentBlockId: args[3] }),
+    type: args[4],
+    contentJson: JSON.parse(args[5]),
+    plainText: args[6],
+    position: args[7],
+    origin: args[8],
+    contentHash: args[9],
+    createdAt: args[10],
+    updatedAt: args[11],
   };
 }
 
