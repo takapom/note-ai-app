@@ -36,7 +36,8 @@
 - `contract` documents は decisions、ownership、invariants に関する信頼できる唯一の情報源である。
 - `guide` documents は手順を説明し、decisions について contracts にリンクバックしなければならない。
 - `runbook` documents は operator recovery steps を記述する。
-- `record` documents は履歴を記録し、active policy を変更してはならない。
+- `record` documents は履歴と判断背景を記録し、active policy を変更してはならない。
+- `record` documents は関連する active contract を発見できる索引または参照を持たなければならない。
 - `generated` documents は machine-owned evidence または registers である。
 - `portal` documents は readers を誘導し、policy を再定義してはならない。
 - `alias` documents は一時的な compatibility paths であり、removal criteria を含めなければならない。
@@ -46,6 +47,7 @@
 
 
 `docs/README.md` -> contracts/guides/runbooks/records/generated.  
+`docs/records/README.md` -> records and their related active contracts.
 Guides は contracts を参照してよいが、それらを上書きしてはならない。  
 生成ファイルは contracts を参照してよいが、policy authority になってはならない。
 
@@ -61,3 +63,4 @@ contract ownership なしに policy を含む wiki-like pages を削除する。
 ## ガード / 検証
 
 docs 変更後に register generation を実行する。`docs/contracts/**` 外の policy statement は drift risk としてレビューする。
+record / ADR にしか存在しない判断を実装に使う場合は、先に該当する owner contract へ反映する。

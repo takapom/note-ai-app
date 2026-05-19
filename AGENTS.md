@@ -24,9 +24,16 @@ MVP の中心ループは `write -> leave note -> background structure -> next o
 
 `ai_native_note_requirements.md` は要件入力です。実装判断に使う前に、必要な内容を `docs/contracts/**` に反映してください。
 
+## ADR / Records の扱い
+
+`docs/records/**` は active policy ではありませんが、設計判断の履歴と背景です。architecture、bounded context、document model、scheduler、AI operation、runtime topology を変更する場合は、owner contract を確認した後、関連する ADR / record を確認してください。
+
+ADR / record と `docs/contracts/**` が矛盾する場合は `docs/contracts/**` を優先します。ADR / record にしか存在しない判断を実装に使う場合は、先に該当内容を `docs/contracts/**` に反映してください。
+
 ## リポジトリ構成
 
 - `docs/contracts/**`: 契約、権威グラフ、トポロジー、MVP 範囲、UI、データ、runtime、検証レーン。
+- `docs/records/**`: ADR、readiness review、gap review などの判断背景と履歴。policy ではありません。
 - `contexts/*/src/contract/*`: Note Model、Scheduler、Context Assembly、Memory、AI Operations、Topology の live contracts。
 - `apps/worker/src/**`: Worker / Agents / Turso / provider 境界の runtime flow、ports、adapters。
 - `apps/web/docs/**`: 統一ノートサーフェスの app-local UI contract。現時点で UI 実装本体の path ではありません。

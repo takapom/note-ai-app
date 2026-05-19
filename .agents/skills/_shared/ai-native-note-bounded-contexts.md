@@ -7,8 +7,11 @@
 1. AGENTS.md は作業の入口を示す。
 2. docs/contracts/** は policy、invariants、topology、scope を所有する。
 3. contexts/*/src/contract/* は live product semantics を所有する。
-4. docs/generated/**、Superset tasks、prompts、issues、PRs は projection または evidence である。
-5. ai_native_note_requirements.md は input であり、implementation SoT ではない。
+4. docs/records/** は ADR と判断背景であり、active policy authority ではない。
+5. docs/generated/**、Superset tasks、prompts、issues、PRs は projection または evidence である。
+6. ai_native_note_requirements.md は input であり、implementation SoT ではない。
+
+architecture、bounded context、document model、scheduler、AI operation、runtime topology を変更する場合は、owner contract を確認した後、関連する docs/records/** を背景として確認する。record と contract が矛盾する場合は contract を優先し、record にしか存在しない判断を使う場合は先に owner contract へ反映する。
 
 ## プロダクト不変条件
 

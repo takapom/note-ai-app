@@ -36,6 +36,8 @@ truth がどこに存在し、projections が authority をどのように参照
 - Live product semantics は `contexts/*/src/contract/*` に存在する。
 - オーナーローカルの UI/プロダクトポリシー は `apps/*/docs/*contract.md` に存在する。
 - Machine-owned evidence は `docs/generated/**` に存在する。
+- Records / ADR は historical context であり、active policy authority ではない。
+- 実装判断時に record / ADR と owner contract が矛盾する場合は owner contract を優先する。
 - Task traceability は GitHub issue/PR/Superset workspace に存在する。
 - Generated API contracts は `apps/workspace-api/generated/**` に存在する。
 - projection は自分の authority contract または live contract source を明示しなければならない。
