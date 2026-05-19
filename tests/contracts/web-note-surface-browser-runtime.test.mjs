@@ -117,15 +117,28 @@ test('browser runtime sends editor save actions through the block update boundar
   await runtime.mount();
   const editorEvents = host.events.filter((event) => event.target === 'block_editor');
 
-  for (const action of ['edit_block', 'cancel_edit']) {
-    const event = editorEvents.find((entry) => entry.action === action);
-    assert.ok(event);
-    const result = await host.handler(event);
-    assert.equal(result.ok, true);
-    assert.equal(result.controllerResult?.status, 'noop');
-  }
+  const editEvent = editorEvents.find((entry) => (
+    entry.action === 'edit_block' && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(editEvent);
+  const edit = await host.handler(editEvent);
+  assert.equal(edit.ok, true);
+  assert.equal(edit.controllerResult, undefined);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
 
-  const saveEvent = editorEvents.find((entry) => (
+  const cancelEvent = host.events.find((entry) => (
+    entry.target === 'block_editor'
+    && entry.action === 'cancel_edit'
+    && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(cancelEvent);
+  const cancel = await host.handler(cancelEvent);
+  assert.equal(cancel.ok, true);
+  assert.equal(cancel.controllerResult, undefined);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="idle"/);
+  assert.equal(calls.length, 0);
+
+  const saveEvent = host.events.find((entry) => (
     entry.action === 'save_block' && entry.blockId === 'block_paragraph_001'
   ));
   assert.ok(saveEvent);
@@ -142,6 +155,61 @@ test('browser runtime sends editor save actions through the block update boundar
       JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
     ],
   ]);
+});
+
+test('browser runtime applies digest and provenance UI-only actions as local projection state', async () => {
+  const calls = [];
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      expandedDigest: false,
+      nextOpenDigest: {
+        available: true,
+        unresolvedQuestions: [
+          { id: 'question_001', text: 'Follow up on editor projection state.' },
+        ],
+      },
+      provenancePopover: {
+        open: true,
+        sourceBlockId: 'block_paragraph_001',
+        excerpt: 'Bounded provenance excerpt.',
+      },
+    }),
+    eventController: createController(calls),
+    host,
+  });
+
+  const mounted = await runtime.mount();
+  assert.equal(mounted.ok, true);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="false"/);
+  assert.match(host.html, /data-component="provenance-popover" data-open="true"/);
+
+  const expandEvent = host.events.find((event) => event.target === 'next_open_digest');
+  assert.ok(expandEvent);
+  assert.equal(expandEvent.action, 'expand_digest');
+  const expand = await host.handler(expandEvent);
+  assert.equal(expand.ok, true);
+  assert.equal(expand.controllerResult, undefined);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="true"/);
+  assert.match(host.html, /Follow up on editor projection state\./);
+
+  const collapseEvent = host.events.find((event) => event.target === 'next_open_digest');
+  assert.ok(collapseEvent);
+  assert.equal(collapseEvent.action, 'collapse_digest');
+  const collapse = await host.handler(collapseEvent);
+  assert.equal(collapse.ok, true);
+  assert.equal(collapse.controllerResult, undefined);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="false"/);
+
+  const closeEvent = host.events.find((event) => event.target === 'provenance_popover');
+  assert.ok(closeEvent);
+  assert.equal(closeEvent.action, 'close_provenance');
+  const close = await host.handler(closeEvent);
+  assert.equal(close.ok, true);
+  assert.equal(close.controllerResult, undefined);
+  assert.match(host.html, /data-component="provenance-popover" data-open="false"/);
+  assert.equal(calls.length, 0);
+  assert.ok(host.renderCount >= 4);
 });
 
 test('browser runtime closes render and event controller failures into boundary results', async () => {
@@ -276,8 +344,10 @@ function createHost() {
     html: '',
     events: undefined,
     handler: undefined,
+    renderCount: 0,
     setHtml(html) {
       this.html = html;
+      this.renderCount += 1;
     },
     bindActionEvents(events, handler) {
       this.events = events;
