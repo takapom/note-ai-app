@@ -28,7 +28,10 @@ export type NoteSurfaceApiIntent =
   | 'POST /ai-operations/:operationId/accept'
   | 'POST /ai-operations/:operationId/dismiss'
   | 'POST /memory/:memoryId/accept'
-  | 'POST /memory/:memoryId/reject';
+  | 'POST /memory/:memoryId/reject'
+  | 'POST /memory/:memoryId/edit'
+  | 'POST /memory/:memoryId/delete'
+  | 'POST /memory/:memoryId/hold';
 export type ManualOrganizeAction =
   | 'organize_section'
   | 'organize_note'
@@ -347,7 +350,7 @@ const memoryCandidateActions: readonly MemoryCandidateBlockActionIntent[] = [
     id: 'edit',
     label: 'Edit',
     userIntent: 'edit_memory_candidate',
-    apiIntent: 'none',
+    apiIntent: 'POST /memory/:memoryId/edit',
     emitsAiProviderCall: false,
     hiddenProfiling: false,
     automaticActiveMemory: false,
@@ -366,7 +369,7 @@ const memoryCandidateActions: readonly MemoryCandidateBlockActionIntent[] = [
     id: 'delete',
     label: 'Delete',
     userIntent: 'dismiss_memory_candidate',
-    apiIntent: 'none',
+    apiIntent: 'POST /memory/:memoryId/delete',
     emitsAiProviderCall: false,
     hiddenProfiling: false,
     automaticActiveMemory: false,
@@ -375,7 +378,7 @@ const memoryCandidateActions: readonly MemoryCandidateBlockActionIntent[] = [
     id: 'snooze',
     label: 'Later',
     userIntent: 'defer_memory_candidate',
-    apiIntent: 'none',
+    apiIntent: 'POST /memory/:memoryId/hold',
     emitsAiProviderCall: false,
     hiddenProfiling: false,
     automaticActiveMemory: false,

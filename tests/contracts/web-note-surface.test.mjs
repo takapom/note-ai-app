@@ -105,10 +105,10 @@ test('memory candidate blocks expose review actions without hidden activation', 
   ]);
   assert.deepEqual(memoryBlock?.memoryCandidate?.actions.map((action) => action.apiIntent), [
     'POST /memory/:memoryId/accept',
-    'none',
+    'POST /memory/:memoryId/edit',
     'POST /memory/:memoryId/reject',
-    'none',
-    'none',
+    'POST /memory/:memoryId/delete',
+    'POST /memory/:memoryId/hold',
   ]);
 });
 
