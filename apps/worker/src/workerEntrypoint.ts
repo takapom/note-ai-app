@@ -24,6 +24,10 @@ import {
   TursoOperationProposalSqlAdapter,
 } from './operationProposalSqlAdapter.ts';
 import {
+  type ProvenanceLookupSqlStatement,
+  TursoProvenanceLookupSqlAdapter,
+} from './provenanceLookupPort.ts';
+import {
   handleWorkerHttpRequest,
   matchWorkerRoute,
   type WorkerHttpRequest,
@@ -36,6 +40,7 @@ type WorkerSqlStatement =
   | SchedulerAgentLocalSqlStatement
   | SchedulerNoteSnapshotSqlStatement
   | OperationProposalSqlStatement
+  | ProvenanceLookupSqlStatement
   | {
       sql: string;
       args: readonly unknown[];
@@ -171,6 +176,9 @@ export function createWorkerRuntimePorts(input: {
   const operationApproval = tursoExecutor === undefined
     ? undefined
     : new TursoOperationProposalSqlAdapter({ executor: tursoExecutor });
+  const provenanceLookup = tursoExecutor === undefined
+    ? undefined
+    : new TursoProvenanceLookupSqlAdapter({ executor: tursoExecutor });
   const noteStructure = tursoExecutor === undefined || agentLocalExecutor === undefined
     ? undefined
     : {
@@ -188,6 +196,7 @@ export function createWorkerRuntimePorts(input: {
     ...(digestRead === undefined ? {} : { digestRead }),
     ...(memoryReview === undefined ? {} : { memoryReview }),
     ...(operationApproval === undefined ? {} : { operationApproval }),
+    ...(provenanceLookup === undefined ? {} : { provenanceLookup }),
     ...(noteStructure === undefined ? {} : { noteStructure }),
   };
 }

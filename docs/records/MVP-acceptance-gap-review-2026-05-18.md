@@ -23,10 +23,10 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
-| 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model に inline AI Assist Block action intents は追加済み。実 DOM/editor rendering と API binding は未実装。 |
-| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model は追加済み。実 DOM rendering は未実装。 |
-| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring と Web Memory Candidate action model は追加済み。実 DOM rendering と edit/delete/hold backend は未実装。 |
-| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter と Web bounded popover view model は追加済み。real route wiring と DOM popover は未実装。 |
+| 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model に inline AI Assist Block action intents と Worker request descriptor mapping は追加済み。実 DOM/editor rendering と actual fetch binding は未実装。 |
+| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping は追加済み。実 DOM rendering は未実装。 |
+| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、Web Memory Candidate action model、accept/reject descriptor mapping は追加済み。実 DOM rendering と edit/delete/hold backend は未実装。 |
+| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping は追加済み。actual fetch binding と DOM popover は未実装。 |
 | 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard と web view model の failed AI status / editing action separation は covered。実 editor UX は未実装。 |
 | 14 | MVP 除外 UI / 連携が入っていない | partial | web view model に excluded-surface guard を追加済み。実 UI 実装時にも継続 guard が必要。 |
 | 15 | Codex task、Superset workspace、docs contract の traceability が維持される | partial | contracts/records は維持。GitHub issue close/create と push は sandbox で未実行。 |
@@ -223,7 +223,8 @@ MVP acceptance #12。source span data と read-only lookup boundary は存在す
 - `ProvenanceLookupPort`、in-memory port、Turso SQL read adapter、focused contract tests は追加済み。
 - lookup は workspaceId/sourceSpanId/sourceBlockId/offsets を検証し、不正 input では query しない。
 - Web NoteSurface view model に bounded Provenance Popover model は追加済み。
-- 残りは operation audit / memory / AI block annotation からの route wiring、DOM popover。
+- Web API intent mapping は `POST /provenance/source` request descriptor を作れる。
+- 残りは operation audit / memory / AI block annotation からの caller wiring、actual fetch binding、DOM popover。
 
 検証コマンド:
 - `node --test tests/contracts/worker-provenance-lookup-port.test.mjs`
@@ -293,11 +294,13 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 
 実装状況:
 - dependency-free NoteSurface view model に AI Assist Block action intents、Memory Candidate action intents、Next Open Digest compact/expandable model、bounded Provenance Popover model は追加済み。
+- dependency-free API intent mapping に AI assist accept/dismiss、memory remember/reject、digest read、provenance lookup の Worker request descriptor は追加済み。Memory edit/delete/snooze は backend route 未提供として unavailable を返す。
 - actions は provider call、hidden profiling、automatic active memory、user-authored block direct mutation を持たないことを contract test で検証済み。
-- 残りは実 DOM/editor rendering、actual API binding、Memory edit/delete/hold backend。
+- 残りは実 DOM/editor rendering、actual fetch binding、Memory edit/delete/hold backend。
 
 検証コマンド:
 - `node --test tests/contracts/web-note-surface.test.mjs`
+- `node --test tests/contracts/web-note-surface-api-intents.test.mjs tests/contracts/web-note-surface.test.mjs`
 - `node --test tests/**/*.test.mjs`
 - `tsc -p tsconfig.json --noEmit`
 

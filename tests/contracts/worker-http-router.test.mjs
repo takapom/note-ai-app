@@ -33,6 +33,7 @@ test('worker HTTP router matches the MVP API surface without reading generated O
   assert.deepEqual(matchWorkerRoute('POST', '/notes/note_001/leave'), { name: 'leave_note', params: { noteId: 'note_001' } });
   assert.deepEqual(matchWorkerRoute('POST', '/notes/note_001/structure/manual'), { name: 'manual_organize_note', params: { noteId: 'note_001' } });
   assert.deepEqual(matchWorkerRoute('GET', '/notes/note_001/digest'), { name: 'get_digest', params: { noteId: 'note_001' } });
+  assert.deepEqual(matchWorkerRoute('POST', '/provenance/source'), { name: 'lookup_provenance_source', params: {} });
   assert.deepEqual(matchWorkerRoute('POST', '/ai-operations/operation_001/accept'), { name: 'accept_operation', params: { operationId: 'operation_001' } });
   assert.deepEqual(matchWorkerRoute('POST', '/ai-operations/operation_001/dismiss'), { name: 'dismiss_operation', params: { operationId: 'operation_001' } });
   assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/accept'), { name: 'accept_memory', params: { memoryId: 'memory_001' } });
@@ -195,6 +196,86 @@ test('worker HTTP router delegates block digest and memory routes to explicit po
   ]);
 });
 
+test('worker HTTP router delegates provenance source lookup body to the configured port', async () => {
+  const calls = [];
+  const body = {
+    sourceSpanId: 'source_span_001',
+    sourceBlockId: 'block_001',
+    startOffset: 3,
+    endOffset: 12,
+  };
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/provenance/source',
+    body,
+  }, {
+    provenanceLookup: {
+      async lookupSource(input) {
+        calls.push(input);
+        return {
+          ok: true,
+          errors: [],
+          body: {
+            available: true,
+            sourceSpanId: input.sourceSpanId,
+            sourceBlockId: input.sourceBlockId,
+            excerpt: 'bounded source',
+          },
+        };
+      },
+    },
+  });
+
+  assert.deepEqual(calls, [{
+    workspaceId: noteFixture.workspaceId,
+    ...body,
+  }]);
+  assert.deepEqual(response, {
+    status: 200,
+    body: {
+      ok: true,
+      result: {
+        available: true,
+        sourceSpanId: 'source_span_001',
+        sourceBlockId: 'block_001',
+        excerpt: 'bounded source',
+      },
+    },
+  });
+});
+
+test('worker HTTP router rejects invalid provenance source lookup body before delegated ports', async () => {
+  let lookupCalls = 0;
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/provenance/source',
+    body: {
+      sourceSpanId: 'source_span_001',
+      sourceBlockId: 'block_001',
+      startOffset: 12,
+      endOffset: 3,
+    },
+  }, {
+    provenanceLookup: {
+      async lookupSource() {
+        lookupCalls += 1;
+        return { ok: true, errors: [], body: { available: false } };
+      },
+    },
+  });
+
+  assert.equal(lookupCalls, 0);
+  assert.deepEqual(response, {
+    status: 400,
+    body: {
+      ok: false,
+      errors: ['endOffset must be greater than or equal to startOffset'],
+    },
+  });
+});
+
 test('worker HTTP router delegates note leave cause preservation to note structure runtime handler', async () => {
   const queue = createQueuePort();
   const response = await handleWorkerHttpRequest({
@@ -282,6 +363,20 @@ test('worker HTTP router returns explicit not configured for unimplemented port-
   }, {}), {
     status: 501,
     body: { ok: false, errors: ['note list port is not configured'] },
+  });
+  assert.deepEqual(await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/provenance/source',
+    body: {
+      sourceSpanId: 'source_span_001',
+      sourceBlockId: 'block_001',
+      startOffset: 0,
+      endOffset: 4,
+    },
+  }, {}), {
+    status: 501,
+    body: { ok: false, errors: ['provenance lookup port is not configured'] },
   });
 });
 

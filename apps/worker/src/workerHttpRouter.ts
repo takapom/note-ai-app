@@ -24,6 +24,7 @@ import type {
 } from './noteDocumentPersistencePort.ts';
 import type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
 import type { DigestReadPort } from './nextOpenDigestReadPort.ts';
+import type { ProvenanceLookupInput, ProvenanceLookupPort, ProvenanceLookupResult } from './provenanceLookupPort.ts';
 import type { StructureTriggerSchedulerFlowInput } from './structureSchedulerRuntimeFlow.ts';
 
 export interface WorkerHttpRequest {
@@ -72,6 +73,7 @@ export interface WorkerHttpRouterPorts {
   operationApproval?: OperationApprovalRuntimeHandlerInput['proposalPersistence'];
   digestRead?: DigestReadPort;
   memoryReview?: MemoryReviewPort;
+  provenanceLookup?: ProvenanceLookupPort;
 }
 
 export async function handleWorkerHttpRequest(
@@ -114,6 +116,8 @@ export async function handleWorkerHttpRequest(
       return runStructureRoute(request, ports.noteStructure, route.params.noteId, 'manual_organize');
     case 'get_digest':
       return delegateCommand(ports.digestRead?.getDigest, request, { noteId: route.params.noteId }, 200, 'digest read port is not configured');
+    case 'lookup_provenance_source':
+      return runProvenanceLookupRoute(request, ports.provenanceLookup);
     case 'accept_operation':
       return runOperationApprovalRoute(request, ports.operationApproval, route.params.operationId, 'accept');
     case 'dismiss_operation':
@@ -136,6 +140,7 @@ export type WorkerRouteName =
   | 'leave_note'
   | 'manual_organize_note'
   | 'get_digest'
+  | 'lookup_provenance_source'
   | 'accept_operation'
   | 'dismiss_operation'
   | 'accept_memory'
@@ -185,6 +190,11 @@ export function matchWorkerRoute(method: string, path: string): MatchedWorkerRou
 
   if (segments.length === 3 && segments[0] === 'notes' && segments[2] === 'digest') {
     if (normalizedMethod === 'GET') return { name: 'get_digest', params: { noteId: segments[1] } };
+    return undefined;
+  }
+
+  if (segments.length === 2 && segments[0] === 'provenance' && segments[1] === 'source') {
+    if (normalizedMethod === 'POST') return { name: 'lookup_provenance_source', params: {} };
     return undefined;
   }
 
@@ -313,6 +323,85 @@ async function runOperationApprovalRoute(
   return mapOperationApprovalResult(result);
 }
 
+async function runProvenanceLookupRoute(
+  request: WorkerHttpRequest,
+  port: ProvenanceLookupPort | undefined,
+): Promise<WorkerHttpResponse> {
+  if (port === undefined) {
+    return notConfigured('provenance lookup port is not configured');
+  }
+
+  const parsedInput = parseProvenanceLookupRouteInput(request);
+  if (!parsedInput.ok) {
+    return badRequest(parsedInput.errors);
+  }
+
+  const result = await port.lookupSource(parsedInput.input);
+
+  return mapPortResult(result, 200);
+}
+
+function parseProvenanceLookupRouteInput(
+  request: WorkerHttpRequest,
+): { ok: true; input: ProvenanceLookupInput } | { ok: false; errors: string[] } {
+  if (!isRecord(request.body)) {
+    return { ok: false, errors: ['body must be an object'] };
+  }
+
+  const sourceSpanId = request.body.sourceSpanId;
+  const sourceBlockId = request.body.sourceBlockId;
+  const startOffset = request.body.startOffset;
+  const endOffset = request.body.endOffset;
+  const errors: string[] = [];
+  const sourceSpanIdIsValid = isStableRuntimeId(sourceSpanId);
+  const sourceBlockIdIsValid = isStableRuntimeId(sourceBlockId);
+  const startOffsetIsValid = isNonNegativeInteger(startOffset);
+  const endOffsetIsValid = isNonNegativeInteger(endOffset);
+
+  if (!sourceSpanIdIsValid) {
+    errors.push('sourceSpanId must be a stable non-sentinel runtime id');
+  }
+  if (!sourceBlockIdIsValid) {
+    errors.push('sourceBlockId must be a stable non-sentinel runtime id');
+  }
+  if (!startOffsetIsValid) {
+    errors.push('startOffset must be a non-negative finite integer');
+  }
+  if (!endOffsetIsValid) {
+    errors.push('endOffset must be a non-negative finite integer');
+  }
+  if (
+    typeof startOffset === 'number' &&
+    Number.isFinite(startOffset) &&
+    typeof endOffset === 'number' &&
+    Number.isFinite(endOffset) &&
+    endOffset < startOffset
+  ) {
+    errors.push('endOffset must be greater than or equal to startOffset');
+  }
+
+  if (
+    errors.length > 0 ||
+    !sourceSpanIdIsValid ||
+    !sourceBlockIdIsValid ||
+    !startOffsetIsValid ||
+    !endOffsetIsValid
+  ) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    input: {
+      workspaceId: request.workspaceId,
+      sourceSpanId,
+      sourceBlockId,
+      startOffset,
+      endOffset,
+    },
+  };
+}
+
 async function delegateCommand(
   command: ((input: WorkerRouteCommandInput) => Promise<WorkerRouteCommandResult>) | undefined,
   request: WorkerHttpRequest,
@@ -343,7 +432,10 @@ function readNoteLeaveCause(body: unknown): { cause?: NoteLeaveCause } {
   return { cause: body.cause as NoteLeaveCause };
 }
 
-function mapPortResult(result: NoteDocumentLoadResult | NoteDocumentSaveResult | WorkerRouteCommandResult, successStatus: number): WorkerHttpResponse {
+function mapPortResult(
+  result: NoteDocumentLoadResult | NoteDocumentSaveResult | WorkerRouteCommandResult | ProvenanceLookupResult,
+  successStatus: number,
+): WorkerHttpResponse {
   if (!result.ok) {
     return badRequest(result.errors);
   }
@@ -421,4 +513,8 @@ function isStableRuntimeId(value: unknown): value is string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
 }

@@ -233,6 +233,73 @@ test('worker entrypoint default wiring uses TURSO for operation proposal accept 
   assert.deepEqual((await dismissed.json()).proposal.state, 'dismissed');
 });
 
+test('worker entrypoint default wiring uses TURSO for provenance source lookup route', async () => {
+  const executed = [];
+  const sourceText = 'The quoted source block contains a bounded provenance excerpt for review.';
+  const excerptText = sourceText.slice(0, 65);
+  const response = await handleWorkerFetch(new Request('https://worker.test/provenance/source', {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+    body: JSON.stringify({
+      sourceSpanId: 'source_span_001',
+      sourceBlockId: 'block_001',
+      startOffset: 4,
+      endOffset: 17,
+    }),
+  }), {
+    TURSO: {
+      async execute(statement) {
+        executed.push(statement);
+        if (/from source_spans/i.test(statement.sql)) {
+          return {
+            rows: [{
+              workspace_id: noteFixture.workspaceId,
+              source_span_id: 'source_span_001',
+              source_block_id: 'block_001',
+              start_offset: 4,
+              end_offset: 17,
+              reason: 'summary_source',
+              note_id: noteFixture.id,
+              section_id: noteDocumentFixture.sections[0].id,
+              block_id: 'block_001',
+              plain_text: sourceText,
+              origin: 'user',
+            }],
+          };
+        }
+        throw new Error(`unexpected SQL: ${statement.sql}`);
+      },
+    },
+  }, { now });
+
+  assert.equal(response.status, 200);
+  assert.equal(executed.length, 1);
+  assert.match(executed[0].sql, /^select /i);
+  assert.doesNotMatch(executed[0].sql, /\b(?:insert\s+into|update|delete\s+from)\b/i);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    result: {
+      available: true,
+      sourceSpanId: 'source_span_001',
+      sourceBlockId: 'block_001',
+      excerpt: excerptText,
+      source: {
+        sourceSpanId: 'source_span_001',
+        sourceBlockId: 'block_001',
+        reason: 'summary_source',
+        noteId: noteFixture.id,
+        sectionId: noteDocumentFixture.sections[0].id,
+        startOffset: 4,
+        endOffset: 17,
+        excerptStartOffset: 0,
+        excerptEndOffset: excerptText.length,
+        truncatedBefore: false,
+        truncatedAfter: true,
+      },
+    },
+  });
+});
+
 test('worker Turso SQL executor exposes query rows and ordered writes without SQL interpretation', async () => {
   const executed = [];
   const executor = new WorkerTursoSqlExecutor({

@@ -25,6 +25,7 @@
 - NoteSurface view model は Note Model semantics を所有せず、`contexts/note-model` の document validation を消費してください。
 - AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングされます。
 - AI Assist / Memory candidate actions は user intent と API intent の model に留め、provider call や user-authored block の直接 mutation を持たせないでください。
+- API intent mapping は dependency-free request descriptor に留め、Worker 実装、generated OpenAPI、provider call、auth policy を import しないでください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
 - Provenance popover は bounded excerpt と source metadata だけを持ち、full note / full workspace dump を持たせないでください。
 - バックグラウンド構造化中も、執筆フローは応答性を保たなければなりません。
