@@ -82,6 +82,210 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
   ]);
 });
 
+test('browser note surface mount reads deployment metadata from the root dataset', async () => {
+  const root = createFakeRoot({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    workspaceId: 'workspace_from_dataset',
+    userId: 'user_from_dataset',
+    noteId: 'note_from_dataset',
+    workspaceName: 'Dataset Workspace',
+    expandedDigest: 'true',
+    viewStateJson: JSON.stringify({
+      aiStatus: 'saved',
+    }),
+    projectionMapsJson: JSON.stringify({
+      operationIdByBlockId: {
+        block_ai_question_001: 'operation_from_dataset',
+      },
+    }),
+  });
+  const calls = [];
+  const result = await mountBrowserNoteSurface({
+    documentLike: createDocumentLike({
+      '#note-surface': root,
+    }),
+    fetchLike: createFetchLike(calls, [
+      {
+        ok: true,
+        status: 200,
+        body: {
+          document: structuredClone(noteDocumentFixture),
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            available: true,
+            decisions: [
+              {
+                id: 'digest_decision_001',
+                text: 'Dataset digest is visible.',
+              },
+            ],
+          },
+        },
+      },
+    ]),
+    rootSelector: '#note-surface',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(root.innerHTML, result.html);
+  assert.match(root.innerHTML, /Dataset Workspace/);
+  assert.match(root.innerHTML, /Dataset digest is visible\./);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/api/notes/note_from_dataset'],
+    ['GET', 'https://worker.example.test/api/notes/note_from_dataset/digest'],
+  ]);
+
+  root.click(createActionElement({
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+  }));
+
+  await waitFor(() => calls.length === 3);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/api/notes/note_from_dataset'],
+    ['GET', 'https://worker.example.test/api/notes/note_from_dataset/digest'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_dataset/accept'],
+  ]);
+});
+
+test('browser note surface mount explicit options override root dataset metadata', async () => {
+  const root = createFakeRoot({
+    apiBaseUrl: 'https://dataset-worker.example.test/api/',
+    workspaceId: 'workspace_from_dataset',
+    userId: 'user_from_dataset',
+    noteId: 'note_from_dataset',
+    workspaceName: 'Dataset Workspace',
+    expandedDigest: 'true',
+    projectionMapsJson: JSON.stringify({
+      operationIdByBlockId: {
+        block_ai_question_001: 'operation_from_dataset',
+      },
+    }),
+  });
+  const calls = [];
+  const result = await mountBrowserNoteSurface({
+    documentLike: createDocumentLike({
+      '#note-surface': root,
+    }),
+    fetchLike: createFetchLike(calls, [
+      {
+        ok: true,
+        status: 200,
+        body: {
+          document: structuredClone(noteDocumentFixture),
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            available: true,
+            decisions: [
+              {
+                id: 'digest_decision_001',
+                text: 'Explicit digest is visible.',
+              },
+            ],
+          },
+        },
+      },
+    ]),
+    rootSelector: '#note-surface',
+    apiBaseUrl: 'https://worker.example.test/api/',
+    workspaceId: 'workspace_from_options',
+    userId: 'user_from_options',
+    noteId: 'note_from_options',
+    viewState: {
+      workspaceName: 'Explicit Workspace',
+    },
+    projectionMaps: {
+      operationIdByBlockId: {
+        block_ai_question_001: 'operation_from_options',
+      },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.match(root.innerHTML, /Explicit Workspace/);
+  assert.doesNotMatch(root.innerHTML, /Dataset Workspace/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/api/notes/note_from_options'],
+    ['GET', 'https://worker.example.test/api/notes/note_from_options/digest'],
+  ]);
+
+  root.click(createActionElement({
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+  }));
+
+  await waitFor(() => calls.length === 3);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/api/notes/note_from_options'],
+    ['GET', 'https://worker.example.test/api/notes/note_from_options/digest'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_options/accept'],
+  ]);
+});
+
+test('browser note surface mount rejects invalid dataset JSON before app mount or fetch', async () => {
+  const root = createFakeRoot({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    workspaceId: 'workspace_from_dataset',
+    noteId: 'note_from_dataset',
+    viewStateJson: '{',
+  });
+  const calls = [];
+  const result = await mountBrowserNoteSurface({
+    documentLike: createDocumentLike({
+      '#note-surface': root,
+    }),
+    fetchLike: createFetchLike(calls, []),
+    rootSelector: '#note-surface',
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'invalid_browser_mount');
+  assert.match(result.errors.join('\n'), /viewStateJson must be valid JSON/);
+  assert.equal(calls.length, 0);
+  assert.equal(root.innerHTML, '');
+  assert.equal(root.addedListeners, 0);
+});
+
+test('browser note surface mount rejects non-object dataset JSON before app mount or fetch', async () => {
+  const root = createFakeRoot({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    workspaceId: 'workspace_from_dataset',
+    noteId: 'note_from_dataset',
+    projectionMapsJson: '[]',
+  });
+  const calls = [];
+  const result = await mountBrowserNoteSurface({
+    documentLike: createDocumentLike({
+      '#note-surface': root,
+    }),
+    fetchLike: createFetchLike(calls, []),
+    rootSelector: '#note-surface',
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    status: 'invalid_browser_mount',
+    errors: ['projectionMapsJson must be a JSON object'],
+  });
+  assert.equal(calls.length, 0);
+  assert.equal(root.innerHTML, '');
+  assert.equal(root.addedListeners, 0);
+});
+
 test('browser note surface mount rejects a missing root before app mount or fetch', async () => {
   const calls = [];
   const result = await mountBrowserNoteSurface({
@@ -188,8 +392,9 @@ function createFetchLike(calls, responses) {
   };
 }
 
-function createFakeRoot() {
+function createFakeRoot(dataset = {}) {
   return {
+    dataset,
     innerHTML: '',
     listeners: [],
     addedListeners: 0,

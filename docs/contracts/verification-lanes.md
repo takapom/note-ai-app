@@ -127,6 +127,8 @@ Web NoteSurface foundation の重点コマンド:
 - app bootstrap guard: `node --test tests/contracts/web-note-surface-app-bootstrap.test.mjs tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-action-input-resolver.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs`
 - integration source guard: `node --test tests/contracts/web-note-surface-integration-guard.test.mjs tests/contracts/web-note-surface.test.mjs`
 - browser deployment embedding adapter guard: `node --test tests/contracts/web-browser-note-surface-mount.test.mjs tests/contracts/web-note-surface-integration-guard.test.mjs`
+  - verifies that `browserNoteSurfaceMount.ts` owns browser global access, mount target lookup, and deployment-supplied root dataset metadata (`data-api-base-url`, `data-workspace-id`, `data-note-id`, optional `data-user-id`, `data-workspace-name`, `data-expanded-digest`, `data-view-state-json`, `data-projection-maps-json`) as volatile adapter detail only.
+  - verifies that projection maps JSON is passed through as response/caller supplied IDs and Web does not generate, complete, or infer operation / memory / provenance / source span / note / block IDs.
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 
