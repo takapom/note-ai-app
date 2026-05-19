@@ -75,7 +75,9 @@ Note Model canonical persistence の重点コマンド:
 Worker HTTP routing boundary の重点コマンド:
 
 - route/delegation guard: `node --test tests/contracts/worker-entrypoint.test.mjs tests/contracts/worker-http-router.test.mjs`
+  - verifies the Worker fetch entrypoint stays a thin auth/parse/router delegation boundary and does not own SQL adapter imports.
 - auth/workspace boundary guard: `node --test tests/contracts/worker-auth-boundary.test.mjs tests/contracts/worker-entrypoint.test.mjs`
+  - verifies provider-neutral workspace/user normalization, injected deployment-owned auth verifier identity handling, invalid auth rejection before runtime port factory creation, and source guards against auth vendor SDK / JWT package imports in Worker auth entrypoint code.
 - Cloudflare Agent binding guard: `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-note-structure-runtime-handlers.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs`
 - Cloudflare deployment config guard: `node --test tests/contracts/cloudflare-deployment-config.test.mjs`
   - verifies that `wrangler.toml` points `main` at the Cloudflare deployment entrypoint, serves Web build artifacts from `./dist/web`, keeps MVP API route patterns Worker-first via `[assets].run_worker_first`, leaves ordinary static asset paths asset-first, connects Durable Object bindings/migrations to descriptor-derived NoteAgent / WorkspaceBrainAgent records, and does not inline Turso/auth/user/workspace secret values.

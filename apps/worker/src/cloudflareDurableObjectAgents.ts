@@ -14,8 +14,8 @@ import {
 } from './noteStructureRuntimeHandlers.ts';
 import {
   createWorkerRuntimePorts,
-  type WorkerEntrypointEnv,
-} from './workerEntrypoint.ts';
+} from './workerRuntimePorts.ts';
+import { type WorkerEntrypointEnv } from './workerEntrypoint.ts';
 
 export interface NoteAgentScheduleStructureCommand {
   workspaceId: string;

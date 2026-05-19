@@ -68,6 +68,33 @@ test('worker auth boundary can use entrypoint context as a framework-neutral ide
   });
 });
 
+test('worker auth boundary accepts deployment verified identity without trusting spoofable request identity', () => {
+  const result = normalizeWorkerAuthBoundary({
+    request: new Request('https://worker.test/notes', {
+      headers: {
+        'x-workspace-id': 'workspace_spoofed',
+        'x-user-id': 'user_spoofed',
+      },
+    }),
+    env: {
+      WORKSPACE_ID: 'workspace_from_env',
+      USER_ID: 'user_from_env',
+    },
+    verifiedIdentity: {
+      workspaceId: 'workspace_verified',
+      userId: 'user_verified',
+    },
+  });
+
+  assert.deepEqual(result, {
+    ok: true,
+    identity: {
+      workspaceId: 'workspace_verified',
+      userId: 'user_verified',
+    },
+  });
+});
+
 test('worker auth boundary rejects missing workspace and sentinel user identity', () => {
   const missingWorkspace = normalizeWorkerAuthBoundary({
     request: new Request('https://worker.test/notes'),
@@ -90,6 +117,22 @@ test('worker auth boundary rejects missing workspace and sentinel user identity'
     ok: false,
     status: 400,
     errors: ['userId must be a stable non-sentinel runtime id when provided'],
+  });
+});
+
+test('worker auth boundary rejects invalid deployment verified identity', () => {
+  const result = normalizeWorkerAuthBoundary({
+    request: new Request('https://worker.test/notes'),
+    verifiedIdentity: {
+      workspaceId: 'workspace_unknown',
+      userId: 'user_001',
+    },
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    status: 400,
+    errors: ['workspaceId must be a stable non-sentinel runtime id'],
   });
 });
 

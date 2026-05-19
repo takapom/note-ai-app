@@ -6,8 +6,8 @@ import {
   createWorkerFetchHandler,
   handleWorkerFetch,
   parseWorkerRequest,
-  WorkerTursoSqlExecutor,
 } from '../../apps/worker/src/workerEntrypoint.ts';
+import { WorkerTursoSqlExecutor } from '../../apps/worker/src/workerRuntimePorts.ts';
 import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const now = 1_764_001_000_000;
@@ -137,6 +137,233 @@ test('worker entrypoint rejects shared secret mismatch before creating ports', a
       };
     },
   });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
+test('worker entrypoint uses injected deployment auth verifier as the verified identity source', async () => {
+  const verifierCalls = [];
+  const portRequests = [];
+  const fetch = createWorkerFetchHandler({
+    now: () => now,
+    authenticateRequest(input) {
+      verifierCalls.push({
+        url: input.request.url,
+        envWorkspace: input.env.WORKSPACE_ID,
+      });
+      return {
+        ok: true,
+        identity: {
+          workspaceId: noteFixture.workspaceId,
+          userId: 'user_verified',
+        },
+      };
+    },
+    createPorts({ request }) {
+      portRequests.push(request);
+      return {
+        digestRead: {
+          async getDigest(input) {
+            return {
+              ok: true,
+              errors: [],
+              body: {
+                available: false,
+                noteId: input.noteId,
+              },
+            };
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': 'workspace_spoofed',
+      'x-user-id': 'user_spoofed',
+    },
+  }), { WORKSPACE_ID: 'workspace_from_env' });
+
+  assert.equal(response.status, 200);
+  assert.equal(verifierCalls.length, 1);
+  assert.equal(portRequests.length, 1);
+  assert.equal(portRequests[0].workspaceId, noteFixture.workspaceId);
+  assert.equal(portRequests[0].userId, 'user_verified');
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    result: {
+      available: false,
+      noteId: 'note_001',
+    },
+  });
+});
+
+test('worker entrypoint rejects invalid deployment auth verifier result before creating ports', async () => {
+  let createPortsCalls = 0;
+  const fetch = createWorkerFetchHandler({
+    authenticateRequest() {
+      return {
+        ok: false,
+        status: 401,
+        errors: ['worker auth credentials are invalid'],
+      };
+    },
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {});
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
+test('worker entrypoint rejects malformed deployment auth verifier success before creating ports', async () => {
+  let createPortsCalls = 0;
+  const fetch = createWorkerFetchHandler({
+    authenticateRequest() {
+      return { ok: true };
+    },
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': 'workspace_spoofed',
+      'x-user-id': 'user_spoofed',
+    },
+  }), {});
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
+test('worker entrypoint rejects missing deployment auth verifier result before creating ports', async () => {
+  let createPortsCalls = 0;
+  const fetch = createWorkerFetchHandler({
+    authenticateRequest() {
+      return undefined;
+    },
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {});
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
+test('worker entrypoint rejects malformed deployment auth verifier identity fields before creating ports', async () => {
+  let createPortsCalls = 0;
+  const fetch = createWorkerFetchHandler({
+    authenticateRequest() {
+      return {
+        ok: true,
+        identity: {
+          workspaceId: noteFixture.workspaceId,
+          userId: { spoofed: true },
+        },
+      };
+    },
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {});
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
+test('worker entrypoint rejects thrown deployment auth verifier failure before creating ports', async () => {
+  let createPortsCalls = 0;
+  const fetch = createWorkerFetchHandler({
+    authenticateRequest() {
+      throw new Error('provider verifier unavailable');
+    },
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {});
 
   assert.equal(createPortsCalls, 0);
   assert.equal(response.status, 401);
@@ -455,7 +682,9 @@ test('worker entrypoint source stays a thin fetch and port wiring boundary', asy
   assert.match(source, /handleWorkerHttpRequest/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
   assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(jsonwebtoken|jose|auth0|clerk|next-auth|passport)/i);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(SqlAdapter|sqlAdapter|Turso|turso|libsql|sqlite)/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouting/i);
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
   assert.doesNotMatch(source, /runOperationRoutingFlow|classifyOperationPolicy|validateStructureOperation/);

@@ -25,15 +25,29 @@ export type WorkerAuthBoundaryResult =
   | { ok: true; identity: WorkerAuthIdentity }
   | { ok: false; status: 400 | 401; errors: string[] };
 
+export interface WorkerAuthVerifierInput<Env extends WorkerAuthBoundaryEnv = WorkerAuthBoundaryEnv> {
+  request: Request;
+  env: Env;
+  context?: WorkerAuthBoundaryContext;
+}
+
+export type WorkerAuthVerifier<Env extends WorkerAuthBoundaryEnv = WorkerAuthBoundaryEnv> = (
+  input: WorkerAuthVerifierInput<Env>,
+) => WorkerAuthBoundaryResult | Promise<WorkerAuthBoundaryResult>;
+
 export function normalizeWorkerAuthBoundary(input: {
   request: Request;
   env?: WorkerAuthBoundaryEnv;
   context?: WorkerAuthBoundaryContext;
+  verifiedIdentity?: WorkerAuthIdentity;
 }): WorkerAuthBoundaryResult {
   const env = input.env ?? {};
   const context = input.context ?? {};
   const headers = input.request.headers;
-  const errors: string[] = [];
+
+  if (input.verifiedIdentity !== undefined) {
+    return normalizeWorkerAuthIdentity(input.verifiedIdentity);
+  }
 
   const configuredSharedSecret = readFirstString(
     context.authSharedSecret,
@@ -56,16 +70,27 @@ export function normalizeWorkerAuthBoundary(input: {
     env.WORKSPACE_ID,
     context.workspaceId,
   );
-  const normalizedWorkspaceId = isStableRuntimeId(workspaceId) ? workspaceId : undefined;
-  if (normalizedWorkspaceId === undefined) {
-    errors.push('workspaceId must be a stable non-sentinel runtime id');
-  }
-
   const userId = readFirstString(
     firstHeaderValue(headers, 'x-user-id'),
     env.USER_ID,
     context.userId,
   );
+
+  return normalizeWorkerAuthIdentity({
+    workspaceId: workspaceId ?? '',
+    ...(userId === undefined ? {} : { userId }),
+  });
+}
+
+function normalizeWorkerAuthIdentity(identity: WorkerAuthIdentity): WorkerAuthBoundaryResult {
+  const errors: string[] = [];
+  const workspaceId = readFirstString(identity.workspaceId);
+  const normalizedWorkspaceId = isStableRuntimeId(workspaceId) ? workspaceId : undefined;
+  if (normalizedWorkspaceId === undefined) {
+    errors.push('workspaceId must be a stable non-sentinel runtime id');
+  }
+
+  const userId = readFirstString(identity.userId);
   const normalizedUserId = userId !== undefined && isStableRuntimeId(userId) ? userId : undefined;
   if (userId !== undefined && normalizedUserId === undefined) {
     errors.push('userId must be a stable non-sentinel runtime id when provided');

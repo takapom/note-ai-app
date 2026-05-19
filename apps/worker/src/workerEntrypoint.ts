@@ -2,35 +2,10 @@
 // Authority: docs/contracts/backend-runtime.md
 // Companion: docs/contracts/api-events.md, docs/contracts/cloudflare-agents-turso.md
 
-import { AgentLocalNextOpenDigestReadAdapter } from './nextOpenDigestReadPort.ts';
-import { NoteDocumentBlockCommandPort } from './noteBlockCommandPort.ts';
 import {
-  type NoteDocumentSqlStatement,
-  TursoNoteDocumentPersistenceAdapter,
-} from './noteDocumentSqlAdapter.ts';
-import {
-  AgentLocalBlockChangedPersistenceAdapter,
-  AgentLocalNextOpenDigestPreparationAdapter,
-  AgentLocalStructureJobQueueAdapter,
-  type SchedulerAgentLocalSqlStatement,
-} from './schedulerAgentLocalSqlAdapter.ts';
-import {
-  type SchedulerNoteSnapshotSqlStatement,
-  TursoSchedulerNoteSnapshotAdapter,
-} from './schedulerNoteSnapshotSqlAdapter.ts';
-import { TursoMemoryReviewSqlAdapter } from './memoryReviewPort.ts';
-import {
-  type MemoryCandidateSqlStatement,
-  TursoMemoryCandidatePersistenceAdapter,
-} from './memoryCandidateProposalBoundary.ts';
-import {
-  type OperationProposalSqlStatement,
-  TursoOperationProposalSqlAdapter,
-} from './operationProposalSqlAdapter.ts';
-import {
-  type ProvenanceLookupSqlStatement,
-  TursoProvenanceLookupSqlAdapter,
-} from './provenanceLookupPort.ts';
+  createWorkerRuntimePorts,
+  type WorkerTursoClient,
+} from './workerRuntimePorts.ts';
 import {
   handleWorkerHttpRequest,
   matchWorkerRoute,
@@ -41,20 +16,10 @@ import {
 import {
   normalizeWorkerAuthBoundary,
   type WorkerAuthBoundaryContext,
+  type WorkerAuthBoundaryResult,
   type WorkerAuthBoundaryEnv,
+  type WorkerAuthVerifier,
 } from './workerAuthBoundary.ts';
-
-type WorkerSqlStatement =
-  | NoteDocumentSqlStatement
-  | SchedulerAgentLocalSqlStatement
-  | SchedulerNoteSnapshotSqlStatement
-  | MemoryCandidateSqlStatement
-  | OperationProposalSqlStatement
-  | ProvenanceLookupSqlStatement
-  | {
-      sql: string;
-      args: readonly unknown[];
-    };
 
 export interface WorkerEntrypointEnv extends WorkerAuthBoundaryEnv {
   WORKSPACE_ID?: string;
@@ -71,11 +36,8 @@ export interface WorkerEntrypointContext extends WorkerAuthBoundaryContext {
   now?: number;
 }
 
-export interface WorkerTursoClient {
-  execute(statement: { sql: string; args: readonly unknown[] }): Promise<unknown>;
-}
-
 export interface WorkerFetchHandlerOptions<Env extends WorkerEntrypointEnv = WorkerEntrypointEnv> {
+  authenticateRequest?: WorkerAuthVerifier<Env>;
   createPorts?: WorkerPortsFactory<Env>;
   now?: () => number;
 }
@@ -94,12 +56,15 @@ export function createWorkerFetchHandler<Env extends WorkerEntrypointEnv = Worke
   options: WorkerFetchHandlerOptions<Env> = {},
 ): (request: Request, env: Env, context?: WorkerEntrypointContext) => Promise<Response> {
   return async (request, env, context) => {
-    const entrypointContext: WorkerEntrypointContext & { createPorts?: WorkerPortsFactory<Env> } = {
+    const entrypointContext: WorkerRuntimeContext<Env> = {
       ...(context ?? {}),
     };
     const resolvedNow = context?.now ?? options.now?.();
     if (resolvedNow !== undefined) {
       entrypointContext.now = resolvedNow;
+    }
+    if (options.authenticateRequest !== undefined) {
+      entrypointContext.authenticateRequest = options.authenticateRequest;
     }
     if (options.createPorts !== undefined) {
       entrypointContext.createPorts = options.createPorts;
@@ -112,7 +77,7 @@ export function createWorkerFetchHandler<Env extends WorkerEntrypointEnv = Worke
 export async function handleWorkerFetch<Env extends WorkerEntrypointEnv = WorkerEntrypointEnv>(
   request: Request,
   env: Env,
-  context?: WorkerEntrypointContext & { createPorts?: WorkerPortsFactory<Env> },
+  context?: WorkerRuntimeContext<Env>,
 ): Promise<Response> {
   const parsed = await parseWorkerRequest(request, env, context);
   if (!parsed.ok) {
@@ -132,12 +97,12 @@ export async function handleWorkerFetch<Env extends WorkerEntrypointEnv = Worker
   return toFetchResponse(await handleWorkerHttpRequest(parsed.request, ports));
 }
 
-export async function parseWorkerRequest(
+export async function parseWorkerRequest<Env extends WorkerEntrypointEnv = WorkerEntrypointEnv>(
   request: Request,
-  env: WorkerEntrypointEnv = {},
-  context: WorkerEntrypointContext = {},
+  env: Env = {} as Env,
+  context: WorkerRuntimeContext<Env> = {},
 ): Promise<WorkerRequestParseResult> {
-  const authResult = normalizeWorkerAuthBoundary({ request, env, context });
+  const authResult = await authenticateWorkerRequest({ request, env, context });
   if (!authResult.ok) {
     return {
       ok: false,
@@ -172,97 +137,79 @@ export async function parseWorkerRequest(
   return { ok: true, request: workerRequest };
 }
 
-export function createWorkerRuntimePorts(input: {
-  env: WorkerEntrypointEnv;
-}): WorkerHttpRouterPorts {
-  const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
-  const agentLocalClient = readTursoClient(input.env.AGENT_LOCAL_SQL);
-  const tursoExecutor = tursoClient === undefined ? undefined : new WorkerTursoSqlExecutor(tursoClient);
-  const agentLocalExecutor = agentLocalClient === undefined ? undefined : new WorkerTursoSqlExecutor(agentLocalClient);
+export type WorkerRuntimeContext<Env extends WorkerEntrypointEnv = WorkerEntrypointEnv> =
+  WorkerEntrypointContext & {
+    authenticateRequest?: WorkerAuthVerifier<Env>;
+    createPorts?: WorkerPortsFactory<Env>;
+  };
 
-  const noteDocument = tursoExecutor === undefined
-    ? undefined
-    : new TursoNoteDocumentPersistenceAdapter(tursoExecutor);
-  const noteBlocks = noteDocument === undefined
-    ? undefined
-    : new NoteDocumentBlockCommandPort(noteDocument);
-  const digestRead = agentLocalExecutor === undefined
-    ? undefined
-    : new AgentLocalNextOpenDigestReadAdapter(agentLocalExecutor);
-  const memoryReview = tursoExecutor === undefined
-    ? undefined
-    : new TursoMemoryReviewSqlAdapter({ executor: tursoExecutor });
-  const memoryCandidatePersistence = tursoExecutor === undefined
-    ? undefined
-    : new TursoMemoryCandidatePersistenceAdapter({ executor: tursoExecutor });
-  const operationApproval = tursoExecutor === undefined
-    ? undefined
-    : new TursoOperationProposalSqlAdapter({ executor: tursoExecutor });
-  const provenanceLookup = tursoExecutor === undefined
-    ? undefined
-    : new TursoProvenanceLookupSqlAdapter({ executor: tursoExecutor });
-  const noteStructure = tursoExecutor === undefined || agentLocalExecutor === undefined
-    ? undefined
-    : {
-        noteSnapshot: new TursoSchedulerNoteSnapshotAdapter({
-          sectionExecutor: tursoExecutor,
-          dirtyMarkExecutor: agentLocalExecutor,
-        }),
-        structureJobQueue: new AgentLocalStructureJobQueueAdapter(agentLocalExecutor),
-        nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(agentLocalExecutor),
-      };
+async function authenticateWorkerRequest<Env extends WorkerEntrypointEnv>(input: {
+  request: Request;
+  env: Env;
+  context: WorkerRuntimeContext<Env>;
+}): Promise<WorkerAuthBoundaryResult> {
+  if (input.context.authenticateRequest === undefined) {
+    return normalizeWorkerAuthBoundary(input);
+  }
 
+  const verified = await callAuthVerifier(input.context.authenticateRequest, {
+    request: input.request,
+    env: input.env,
+    context: input.context,
+  });
+  if (!verified.ok) {
+    return verified;
+  }
+
+  return normalizeWorkerAuthBoundary({
+    request: input.request,
+    env: input.env,
+    context: input.context,
+    verifiedIdentity: verified.identity,
+  });
+}
+
+async function callAuthVerifier<Env extends WorkerEntrypointEnv>(
+  authenticateRequest: WorkerAuthVerifier<Env>,
+  input: Parameters<WorkerAuthVerifier<Env>>[0],
+): Promise<WorkerAuthBoundaryResult> {
+  try {
+    const result: unknown = await authenticateRequest(input);
+    return isWorkerAuthBoundaryResult(result)
+      ? result
+      : invalidAuthResult();
+  } catch {
+    return invalidAuthResult();
+  }
+}
+
+function invalidAuthResult(): WorkerAuthBoundaryResult {
   return {
-    ...(noteDocument === undefined ? {} : { noteDocument }),
-    ...(noteBlocks === undefined ? {} : { noteBlocks }),
-    ...(digestRead === undefined ? {} : { digestRead }),
-    ...(memoryReview === undefined ? {} : { memoryReview }),
-    ...(memoryCandidatePersistence === undefined ? {} : { memoryCandidatePersistence }),
-    ...(operationApproval === undefined ? {} : { operationApproval }),
-    ...(provenanceLookup === undefined ? {} : { provenanceLookup }),
-    ...(noteStructure === undefined ? {} : { noteStructure }),
+    ok: false,
+    status: 401,
+    errors: ['worker auth credentials are invalid'],
   };
 }
 
-export class WorkerTursoSqlExecutor {
-  private readonly client: WorkerTursoClient;
-
-  constructor(client: WorkerTursoClient) {
-    this.client = client;
+function isWorkerAuthBoundaryResult(value: unknown): value is WorkerAuthBoundaryResult {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') {
+    return false;
   }
-
-  async execute(statement: WorkerSqlStatement): Promise<unknown> {
-    return this.client.execute({
-      sql: statement.sql,
-      args: statement.args,
-    });
+  if (value.ok) {
+    return (
+      isRecord(value.identity) &&
+      typeof value.identity.workspaceId === 'string' &&
+      (
+        value.identity.userId === undefined ||
+        typeof value.identity.userId === 'string'
+      )
+    );
   }
-
-  async query(statement: WorkerSqlStatement): Promise<readonly Record<string, unknown>[]> {
-    const result = await this.execute(statement);
-    return readRows(result);
-  }
-
-  async write(statement: WorkerSqlStatement): Promise<void | { rowsAffected?: number; changes?: number }> {
-    const result = await this.execute(statement);
-    if (!isRecord(result)) {
-      return undefined;
-    }
-    return {
-      ...(typeof result.rowsAffected === 'number' ? { rowsAffected: result.rowsAffected } : {}),
-      ...(typeof result.changes === 'number' ? { changes: result.changes } : {}),
-    };
-  }
-
-  async writeNoteDocument(statements: readonly NoteDocumentSqlStatement[]): Promise<void> {
-    if (statements.length === 0) {
-      throw new Error('note document SQL statements must not be empty');
-    }
-
-    for (const statement of statements) {
-      await this.execute(statement);
-    }
-  }
+  return (
+    (value.status === 400 || value.status === 401) &&
+    Array.isArray(value.errors) &&
+    value.errors.every((error) => typeof error === 'string')
+  );
 }
 
 export default {
@@ -302,25 +249,6 @@ function toFetchResponse(response: WorkerHttpResponse): Response {
     status: response.status,
     headers,
   });
-}
-
-function readRows(result: unknown): readonly Record<string, unknown>[] {
-  if (Array.isArray(result)) {
-    return result.filter(isRecord);
-  }
-  if (isRecord(result) && Array.isArray(result.rows)) {
-    return result.rows.filter(isRecord);
-  }
-  if (isRecord(result) && Array.isArray(result.results)) {
-    return result.results.filter(isRecord);
-  }
-  return [];
-}
-
-function readTursoClient(value: unknown): WorkerTursoClient | undefined {
-  return isRecord(value) && typeof value.execute === 'function'
-    ? value as unknown as WorkerTursoClient
-    : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
