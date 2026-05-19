@@ -6,6 +6,7 @@ import {
   handleWorkerHttpRequest,
   matchWorkerRoute,
 } from '../../apps/worker/src/workerHttpRouter.ts';
+import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memoryCandidateProposalBoundary.ts';
 import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/operationProposalPort.ts';
 import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/noteDocumentPersistencePort.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
@@ -389,6 +390,121 @@ test('worker HTTP router delegates AI operation accept and dismiss to approval h
   assert.equal(dismiss.body.proposal.state, 'dismissed');
 });
 
+test('worker HTTP router connects accepted memory candidate proposals to the memory proposal boundary', async () => {
+  const proposalPersistence = new InMemoryOperationProposalPersistencePort();
+  const memoryCandidatePersistence = new InMemoryMemoryCandidatePersistencePort();
+  await proposalPersistence.saveProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_memory_candidate_001',
+    auditRecord: memoryProposalAuditRecord('operation_memory_candidate_001'),
+    now,
+  });
+
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    userId: 'user_001',
+    method: 'POST',
+    path: '/ai-operations/operation_memory_candidate_001/accept',
+  }, {
+    operationApproval: proposalPersistence,
+    memoryCandidatePersistence,
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.proposal.state, 'accepted');
+  assert.equal(response.body.memoryCandidate.ok, true);
+  assert.equal(response.body.memoryCandidate.memory.id, 'memory_operation_memory_candidate_001');
+  assert.equal(response.body.memoryCandidate.memory.workspaceId, noteFixture.workspaceId);
+  assert.equal(response.body.memoryCandidate.memory.userId, 'user_001');
+  assert.equal(memoryCandidatePersistence.listMemories().length, 1);
+});
+
+test('worker HTTP router preflights memory candidate proposal requirements before accepting proposals', async () => {
+  const proposalPersistence = new InMemoryOperationProposalPersistencePort();
+  const memoryCandidatePersistence = new InMemoryMemoryCandidatePersistencePort();
+  await proposalPersistence.saveProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_memory_candidate_missing_user_001',
+    auditRecord: memoryProposalAuditRecord('operation_memory_candidate_missing_user_001'),
+    now,
+  });
+  await proposalPersistence.saveProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_memory_candidate_source_less_001',
+    auditRecord: memoryProposalAuditRecord('operation_memory_candidate_source_less_001', {
+      noteId: undefined,
+      operation: {
+        ...validOperationFixtures[2],
+        sourceSpans: [{ blockId: 'block_001' }],
+      },
+    }),
+    now,
+  });
+
+  const missingUser = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/ai-operations/operation_memory_candidate_missing_user_001/accept',
+  }, {
+    operationApproval: proposalPersistence,
+    memoryCandidatePersistence,
+  });
+  const sourceLess = await handleWorkerHttpRequest({
+    ...baseRequest,
+    userId: 'user_001',
+    method: 'POST',
+    path: '/ai-operations/operation_memory_candidate_source_less_001/accept',
+  }, {
+    operationApproval: proposalPersistence,
+    memoryCandidatePersistence,
+  });
+
+  assert.equal(missingUser.status, 400);
+  assert.deepEqual(missingUser.body.errors, [
+    'userId must be a stable non-sentinel runtime id for memory candidate proposal persistence',
+  ]);
+  assert.equal(sourceLess.status, 400);
+  assert.deepEqual(sourceLess.body.errors, ['memory candidate: memory item must include source provenance']);
+  assert.equal((await proposalPersistence.findProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_memory_candidate_missing_user_001',
+  })).state, 'pending');
+  assert.equal((await proposalPersistence.findProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_memory_candidate_source_less_001',
+  })).state, 'pending');
+  assert.equal(memoryCandidatePersistence.listMemories().length, 0);
+});
+
+test('worker HTTP router does not call memory persistence for accepted insert_assist_block proposals', async () => {
+  const proposalPersistence = new InMemoryOperationProposalPersistencePort();
+  let memoryWrites = 0;
+  await proposalPersistence.saveProposal({
+    workspaceId: noteFixture.workspaceId,
+    operationId: 'operation_assist_001',
+    auditRecord: proposalAuditRecord('operation_assist_001'),
+    now,
+  });
+
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/ai-operations/operation_assist_001/accept',
+  }, {
+    operationApproval: proposalPersistence,
+    memoryCandidatePersistence: {
+      async saveMemoryCandidate() {
+        memoryWrites += 1;
+        return { ok: true, errors: [] };
+      },
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.memoryCandidate, { ok: true, errors: [] });
+  assert.equal(memoryWrites, 0);
+});
+
 test('worker HTTP router returns explicit not configured for unimplemented port-backed routes', async () => {
   assert.deepEqual(await handleWorkerHttpRequest({
     ...baseRequest,
@@ -471,6 +587,33 @@ function proposalAuditRecord(operationId) {
     confidence: 0.91,
     targetType: 'block',
     targetId: 'block_001',
+    generatedBy: 'worker_runtime',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function memoryProposalAuditRecord(operationId, overrides = {}) {
+  const operation = overrides.operation ?? {
+    ...validOperationFixtures[2],
+    sourceSpans: [{ blockId: 'block_001', startOffset: 0, endOffset: 42 }],
+  };
+  const noteId = Object.hasOwn(overrides, 'noteId') ? overrides.noteId : noteFixture.id;
+
+  return {
+    id: operationId,
+    workspaceId: noteFixture.workspaceId,
+    ...(noteId === undefined ? {} : { noteId }),
+    structureJobId: 'structure_job_001',
+    operationType: 'create_memory_candidate',
+    policy: 'review',
+    status: 'proposed',
+    operation,
+    errors: [],
+    sourceSpans: [],
+    confidence: operation.confidence,
+    targetType: 'memory_item',
+    targetId: `memory_${operationId}`,
     generatedBy: 'worker_runtime',
     createdAt: now,
     updatedAt: now,

@@ -40,6 +40,10 @@ export interface MemoryCandidateSqlStatement {
   args: readonly unknown[];
 }
 
+export interface MemoryCandidateSqlExecutor {
+  write(statement: MemoryCandidateSqlStatement): Promise<unknown>;
+}
+
 interface CreateMemoryCandidateSourceSpan {
   blockId: string;
   startOffset?: number;
@@ -79,6 +83,31 @@ export class InMemoryMemoryCandidatePersistencePort implements MemoryCandidatePe
 
   listMemories(): MemoryItemContract[] {
     return Array.from(this.memories.values(), cloneMemory);
+  }
+}
+
+export class TursoMemoryCandidatePersistenceAdapter implements MemoryCandidatePersistencePort {
+  private readonly executor: MemoryCandidateSqlExecutor;
+
+  constructor(input: { executor: MemoryCandidateSqlExecutor }) {
+    this.executor = input.executor;
+  }
+
+  async saveMemoryCandidate(writeIntent: MemoryCandidateWriteIntent): Promise<MemoryCandidatePersistenceResult> {
+    const errors = validateMemoryCandidateWriteIntent(writeIntent);
+    if (errors.length > 0) {
+      return { ok: false, errors };
+    }
+
+    try {
+      await this.executor.write(mapMemoryCandidateWriteIntentToSql(writeIntent));
+      return { ok: true, errors: [], memory: cloneMemory(writeIntent.memory) };
+    } catch (error) {
+      return {
+        ok: false,
+        errors: [toPersistenceErrorMessage('memory candidate save failed', error)],
+      };
+    }
   }
 }
 
@@ -466,4 +495,11 @@ function isNonNegativeFiniteNumber(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toPersistenceErrorMessage(prefix: string, error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return `${prefix}: ${error.message}`;
+  }
+  return prefix;
 }

@@ -20,6 +20,10 @@ import {
 } from './schedulerNoteSnapshotSqlAdapter.ts';
 import { TursoMemoryReviewSqlAdapter } from './memoryReviewPort.ts';
 import {
+  type MemoryCandidateSqlStatement,
+  TursoMemoryCandidatePersistenceAdapter,
+} from './memoryCandidateProposalBoundary.ts';
+import {
   type OperationProposalSqlStatement,
   TursoOperationProposalSqlAdapter,
 } from './operationProposalSqlAdapter.ts';
@@ -44,6 +48,7 @@ type WorkerSqlStatement =
   | NoteDocumentSqlStatement
   | SchedulerAgentLocalSqlStatement
   | SchedulerNoteSnapshotSqlStatement
+  | MemoryCandidateSqlStatement
   | OperationProposalSqlStatement
   | ProvenanceLookupSqlStatement
   | {
@@ -187,6 +192,9 @@ export function createWorkerRuntimePorts(input: {
   const memoryReview = tursoExecutor === undefined
     ? undefined
     : new TursoMemoryReviewSqlAdapter({ executor: tursoExecutor });
+  const memoryCandidatePersistence = tursoExecutor === undefined
+    ? undefined
+    : new TursoMemoryCandidatePersistenceAdapter({ executor: tursoExecutor });
   const operationApproval = tursoExecutor === undefined
     ? undefined
     : new TursoOperationProposalSqlAdapter({ executor: tursoExecutor });
@@ -209,6 +217,7 @@ export function createWorkerRuntimePorts(input: {
     ...(noteBlocks === undefined ? {} : { noteBlocks }),
     ...(digestRead === undefined ? {} : { digestRead }),
     ...(memoryReview === undefined ? {} : { memoryReview }),
+    ...(memoryCandidatePersistence === undefined ? {} : { memoryCandidatePersistence }),
     ...(operationApproval === undefined ? {} : { operationApproval }),
     ...(provenanceLookup === undefined ? {} : { provenanceLookup }),
     ...(noteStructure === undefined ? {} : { noteStructure }),

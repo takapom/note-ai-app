@@ -9,6 +9,12 @@ import {
   type OperationApprovalRuntimeHandlerResult,
 } from './operationApprovalRuntimeHandlers.ts';
 import {
+  prepareMemoryCandidateWriteIntent,
+  runMemoryCandidateProposalBoundary,
+  type MemoryCandidatePersistencePort,
+  type MemoryCandidateProposalBoundaryResult,
+} from './memoryCandidateProposalBoundary.ts';
+import {
   runNoteStructureRouteHandler,
   type NoteLeaveCause,
   type NoteStructureRouteHandlerResult,
@@ -74,6 +80,7 @@ export interface WorkerHttpRouterPorts {
   noteBlocks?: NoteBlockCommandPort;
   noteStructure?: StructureTriggerSchedulerFlowInput['ports'];
   operationApproval?: OperationApprovalRuntimeHandlerInput['proposalPersistence'];
+  memoryCandidatePersistence?: MemoryCandidatePersistencePort;
   digestRead?: DigestReadPort;
   memoryReview?: MemoryReviewPort;
   provenanceLookup?: ProvenanceLookupPort;
@@ -122,9 +129,9 @@ export async function handleWorkerHttpRequest(
     case 'lookup_provenance_source':
       return runProvenanceLookupRoute(request, ports.provenanceLookup);
     case 'accept_operation':
-      return runOperationApprovalRoute(request, ports.operationApproval, route.params.operationId, 'accept');
+      return runOperationApprovalRoute(request, ports, route.params.operationId, 'accept');
     case 'dismiss_operation':
-      return runOperationApprovalRoute(request, ports.operationApproval, route.params.operationId, 'dismiss');
+      return runOperationApprovalRoute(request, ports, route.params.operationId, 'dismiss');
     case 'accept_memory':
       return delegateCommand(ports.memoryReview?.acceptMemory, request, { memoryId: route.params.memoryId }, 200, 'memory accept port is not configured');
     case 'reject_memory':
@@ -323,12 +330,20 @@ async function runStructureRoute(
 
 async function runOperationApprovalRoute(
   request: WorkerHttpRequest,
-  proposalPersistence: OperationApprovalRuntimeHandlerInput['proposalPersistence'] | undefined,
+  ports: Pick<WorkerHttpRouterPorts, 'operationApproval' | 'memoryCandidatePersistence'>,
   operationId: string,
   action: 'accept' | 'dismiss',
 ): Promise<WorkerHttpResponse> {
+  const proposalPersistence = ports.operationApproval;
   if (proposalPersistence === undefined) {
     return notConfigured('operation proposal persistence port is not configured');
+  }
+
+  if (action === 'accept') {
+    const preflight = await preflightMemoryCandidateProposalAccept(request, ports, operationId);
+    if (preflight !== undefined) {
+      return preflight;
+    }
   }
 
   const input: OperationApprovalRuntimeHandlerInput = {
@@ -341,7 +356,93 @@ async function runOperationApprovalRoute(
     ? await runOperationAcceptHandler(input)
     : await runOperationDismissHandler(input);
 
-  return mapOperationApprovalResult(result);
+  if (!result.ok || action === 'dismiss') {
+    return mapOperationApprovalResult(result);
+  }
+
+  const memoryCandidate = await runAcceptedOperationMemoryCandidateBoundary(
+    request,
+    ports.memoryCandidatePersistence,
+    result,
+  );
+
+  return mapOperationApprovalResult(result, memoryCandidate);
+}
+
+async function preflightMemoryCandidateProposalAccept(
+  request: WorkerHttpRequest,
+  ports: Pick<WorkerHttpRouterPorts, 'operationApproval' | 'memoryCandidatePersistence'>,
+  operationId: string,
+): Promise<WorkerHttpResponse | undefined> {
+  const proposal = await ports.operationApproval?.findProposal({
+    workspaceId: request.workspaceId,
+    operationId,
+  });
+  if (
+    proposal === undefined ||
+    proposal.state !== 'pending' ||
+    proposal.auditRecord.operationType !== 'create_memory_candidate'
+  ) {
+    return undefined;
+  }
+
+  if (!isStableRuntimeId(request.userId)) {
+    return badRequest(['userId must be a stable non-sentinel runtime id for memory candidate proposal persistence']);
+  }
+  if (ports.memoryCandidatePersistence === undefined) {
+    return notConfigured('memory candidate proposal persistence port is not configured');
+  }
+
+  const prepared = prepareMemoryCandidateWriteIntent({
+    memoryCandidatePersistence: ports.memoryCandidatePersistence,
+    workspaceId: request.workspaceId,
+    userId: request.userId,
+    approvedIntent: {
+      type: 'operation_proposal_accepted',
+      workspaceId: request.workspaceId,
+      operationId,
+      auditRecord: proposal.auditRecord,
+      acceptedAt: request.now,
+    },
+    now: request.now,
+  });
+
+  return prepared.ok ? undefined : badRequest(prepared.errors);
+}
+
+async function runAcceptedOperationMemoryCandidateBoundary(
+  request: WorkerHttpRequest,
+  memoryCandidatePersistence: MemoryCandidatePersistencePort | undefined,
+  approval: OperationApprovalRuntimeHandlerResult,
+): Promise<MemoryCandidateProposalBoundaryResult> {
+  if (
+    approval.approvedIntent === undefined ||
+    approval.approvedIntent.auditRecord.operationType !== 'create_memory_candidate'
+  ) {
+    return { ok: true, errors: [] };
+  }
+
+  if (!isStableRuntimeId(request.userId)) {
+    return {
+      ok: false,
+      errors: ['userId must be a stable non-sentinel runtime id for memory candidate proposal persistence'],
+    };
+  }
+
+  if (memoryCandidatePersistence === undefined) {
+    return {
+      ok: false,
+      errors: ['memory candidate proposal persistence port is not configured'],
+    };
+  }
+
+  return runMemoryCandidateProposalBoundary({
+    memoryCandidatePersistence,
+    workspaceId: request.workspaceId,
+    userId: request.userId,
+    approvedIntent: approval.approvedIntent,
+    now: request.now,
+  });
 }
 
 async function runProvenanceLookupRoute(
@@ -488,9 +589,24 @@ function mapStructureResult(result: NoteStructureRouteHandlerResult): WorkerHttp
   };
 }
 
-function mapOperationApprovalResult(result: OperationApprovalRuntimeHandlerResult): WorkerHttpResponse {
+function mapOperationApprovalResult(
+  result: OperationApprovalRuntimeHandlerResult,
+  memoryCandidate?: MemoryCandidateProposalBoundaryResult,
+): WorkerHttpResponse {
   if (!result.ok) {
     return badRequest(result.errors);
+  }
+  if (memoryCandidate !== undefined && !memoryCandidate.ok) {
+    return {
+      status: 400,
+      body: {
+        ok: false,
+        proposal: result.proposal,
+        ...(result.approvedIntent === undefined ? {} : { approvedIntent: result.approvedIntent }),
+        memoryCandidate: mapMemoryCandidateRouteResult(memoryCandidate),
+        errors: memoryCandidate.errors,
+      },
+    };
   }
 
   return {
@@ -499,8 +615,19 @@ function mapOperationApprovalResult(result: OperationApprovalRuntimeHandlerResul
       ok: true,
       proposal: result.proposal,
       ...(result.approvedIntent === undefined ? {} : { approvedIntent: result.approvedIntent }),
+      ...(memoryCandidate === undefined ? {} : { memoryCandidate: mapMemoryCandidateRouteResult(memoryCandidate) }),
       errors: [],
     },
+  };
+}
+
+function mapMemoryCandidateRouteResult(
+  result: MemoryCandidateProposalBoundaryResult,
+): { ok: boolean; errors: string[]; memory?: unknown } {
+  return {
+    ok: result.ok,
+    errors: result.errors,
+    ...(result.memory === undefined ? {} : { memory: result.memory }),
   };
 }
 

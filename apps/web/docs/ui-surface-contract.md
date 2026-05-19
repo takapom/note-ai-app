@@ -7,6 +7,7 @@
 - 統一ノートサーフェスの Web コンポーネント配置。
 - framework-neutral な NoteSurface HTML renderer と render event descriptor。
 - framework-neutral な NoteSurface event controller。render event descriptor と caller supplied mapping から API intent input を組み立て、API transport に渡す接続境界。
+- framework-neutral な NoteSurface browser runtime。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、実 DOM API には依存しない mount / action dispatch 境界。
 - AI Assist Blocks のレンダリング。
 - 次回オープンダイジェストコンポーネントのふるまい。
 - Provenance popover の配置。
@@ -32,6 +33,8 @@
 - HTML renderer は dependency-free な文字列レンダリングと `data-action` / `data-block-id` などの event descriptor に留め、Worker 実装、generated OpenAPI、provider call、fetch、auth policy、user-authored block の直接 mutation を持たせないでください。
 - Event controller は renderer の event descriptor、API intent mapper、API transport だけを接続し、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
 - Event controller は `apiIntent: none`、`edit_block`、`save_block`、`cancel_edit` を transport に送らず、operation / memory / digest / provenance の具体 ID や content は caller supplied mapping から受け取ってください。
+- Browser runtime は renderer が返した escaped HTML を注入 host の `setHtml` に渡し、render event descriptor を `bindActionEvents` に渡してください。host から返る descriptor / dataset は event controller に委譲し、render / controller failure は boundary result として返してください。
+- Browser runtime は Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、実 DOM API、user-authored block の直接 mutation を import / 所有しないでください。
 - HTML renderer は note text、digest text、provenance excerpt を trusted HTML として扱わず、必ず escape してください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。

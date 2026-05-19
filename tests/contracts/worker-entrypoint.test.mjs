@@ -289,8 +289,70 @@ test('worker entrypoint default wiring uses TURSO for operation proposal accept 
   assert.equal(dismissed.status, 200);
   assert.equal(executed.some((statement) => /from operation_proposals/i.test(statement.sql)), true);
   assert.equal(executed.some((statement) => /^update operation_proposals/i.test(statement.sql)), true);
+  assert.equal(executed.some((statement) => /^insert into memory_items/i.test(statement.sql)), false);
   assert.deepEqual((await accepted.json()).proposal.state, 'accepted');
   assert.deepEqual((await dismissed.json()).proposal.state, 'dismissed');
+});
+
+test('worker entrypoint default wiring persists accepted create_memory_candidate proposals to memory_items', async () => {
+  const executed = [];
+  const auditRecord = makeMemoryCandidateProposalAuditRecord('operation_memory_candidate_001');
+  const proposalRow = {
+    operation_id: auditRecord.id,
+    workspace_id: noteFixture.workspaceId,
+    state: 'pending',
+    audit_record_json: JSON.stringify(auditRecord),
+    created_at: now - 100,
+    updated_at: now - 100,
+    accepted_at: null,
+    dismissed_at: null,
+  };
+  const response = await handleWorkerFetch(new Request('https://worker.test/ai-operations/operation_memory_candidate_001/accept', {
+    method: 'POST',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+  }), {
+    TURSO: {
+      async execute(statement) {
+        executed.push(statement);
+        if (/^select .* from operation_proposals/i.test(statement.sql)) {
+          return { rows: [proposalRow] };
+        }
+        if (/^update operation_proposals/i.test(statement.sql)) {
+          proposalRow.state = statement.args[0];
+          proposalRow.updated_at = statement.args[1];
+          proposalRow.accepted_at = statement.args[2];
+          proposalRow.dismissed_at = statement.args[3];
+          return { rowsAffected: 1 };
+        }
+        if (/^insert into memory_items/i.test(statement.sql)) {
+          return { rowsAffected: 1 };
+        }
+        throw new Error(`unexpected SQL: ${statement.sql}`);
+      },
+    },
+  }, { now });
+
+  const body = await response.json();
+  const memoryInsert = executed.find((statement) => /^insert into memory_items/i.test(statement.sql));
+
+  assert.equal(response.status, 200);
+  assert.equal(executed.some((statement) => /from operation_proposals/i.test(statement.sql)), true);
+  assert.equal(executed.some((statement) => /^update operation_proposals/i.test(statement.sql)), true);
+  assert.ok(memoryInsert);
+  assert.deepEqual(memoryInsert.args.slice(0, 6), [
+    'memory_operation_memory_candidate_001',
+    noteFixture.workspaceId,
+    'user_001',
+    'past_decision',
+    'The MVP keeps AI assistance inside the unified note surface.',
+    'candidate',
+  ]);
+  assert.equal(body.proposal.state, 'accepted');
+  assert.equal(body.memoryCandidate.ok, true);
+  assert.equal(body.memoryCandidate.memory.id, 'memory_operation_memory_candidate_001');
 });
 
 test('worker entrypoint default wiring uses TURSO for provenance source lookup route', async () => {
@@ -422,6 +484,36 @@ function makeOperationProposalAuditRecord(operationId) {
     confidence: 0.92,
     targetType: 'assist_block',
     targetId: 'assist_block_001',
+    generatedBy: 'worker_runtime',
+    createdAt: now - 100,
+    updatedAt: now - 100,
+  };
+}
+
+function makeMemoryCandidateProposalAuditRecord(operationId) {
+  const operation = {
+    type: 'create_memory_candidate',
+    targetSectionId: noteDocumentFixture.sections[0].id,
+    memoryType: 'past_decision',
+    content: 'The MVP keeps AI assistance inside the unified note surface.',
+    sourceSpans: [{ blockId: 'block_001', startOffset: 0, endOffset: 42 }],
+    confidence: 0.88,
+  };
+
+  return {
+    id: operationId,
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    structureJobId: 'structure_job_001',
+    operationType: 'create_memory_candidate',
+    policy: 'review',
+    status: 'proposed',
+    operation,
+    errors: [],
+    sourceSpans: [],
+    confidence: operation.confidence,
+    targetType: 'memory_item',
+    targetId: `memory_${operationId}`,
     generatedBy: 'worker_runtime',
     createdAt: now - 100,
     updatedAt: now - 100,
