@@ -5,6 +5,7 @@
 ## ローカルで所有するもの
 
 - 統一ノートサーフェスの Web コンポーネント配置。
+- framework-neutral な NoteSurface HTML renderer と render event descriptor。
 - AI Assist Blocks のレンダリング。
 - 次回オープンダイジェストコンポーネントのふるまい。
 - Provenance popover の配置。
@@ -26,6 +27,9 @@
 - AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングされます。
 - AI Assist / Memory candidate actions は user intent と API intent の model に留め、provider call や user-authored block の直接 mutation を持たせないでください。
 - API intent mapping は dependency-free request descriptor に留め、Worker 実装、generated OpenAPI、provider call、auth policy を import しないでください。
+- API transport は request descriptor を注入された fetch-like binding に渡すだけに留め、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
+- HTML renderer は dependency-free な文字列レンダリングと `data-action` / `data-block-id` などの event descriptor に留め、Worker 実装、generated OpenAPI、provider call、fetch、auth policy、user-authored block の直接 mutation を持たせないでください。
+- HTML renderer は note text、digest text、provenance excerpt を trusted HTML として扱わず、必ず escape してください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
 - Provenance popover は bounded excerpt と source metadata だけを持ち、full note / full workspace dump を持たせないでください。

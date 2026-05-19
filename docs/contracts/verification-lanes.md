@@ -103,7 +103,9 @@ Operation proposal SQL/runtime approval boundary の重点コマンド:
 Web NoteSurface foundation の重点コマンド:
 
 - note surface guard: `node --test tests/contracts/web-note-surface.test.mjs tests/contracts/note-model-runtime.test.mjs`
+- HTML renderer guard: `node --test tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface.test.mjs`
 - API intent mapping guard: `node --test tests/contracts/web-note-surface-api-intents.test.mjs tests/contracts/web-note-surface.test.mjs`
+- API transport guard: `node --test tests/contracts/web-note-surface-api-transport.test.mjs tests/contracts/web-note-surface-api-intents.test.mjs`
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 
