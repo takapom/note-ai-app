@@ -100,12 +100,18 @@ Operation proposal SQL/runtime approval boundary の重点コマンド:
 - proposal SQL guard: `node --test tests/contracts/worker-operation-proposal-sql-adapter.test.mjs tests/contracts/worker-operation-proposal-approval-flow.test.mjs`
 - Worker default wiring guard: `node --test tests/contracts/worker-entrypoint.test.mjs`
 
+Memory candidate proposal boundary の重点コマンド:
+
+- proposal-to-memory guard: `node --test tests/contracts/worker-memory-candidate-proposal-boundary.test.mjs tests/contracts/worker-operation-proposal-approval-flow.test.mjs tests/contracts/memory-runtime.test.mjs`
+- typecheck: `tsc -p tsconfig.json --noEmit`
+
 Web NoteSurface foundation の重点コマンド:
 
 - note surface guard: `node --test tests/contracts/web-note-surface.test.mjs tests/contracts/note-model-runtime.test.mjs`
 - HTML renderer guard: `node --test tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface.test.mjs`
 - API intent mapping guard: `node --test tests/contracts/web-note-surface-api-intents.test.mjs tests/contracts/web-note-surface.test.mjs`
 - API transport guard: `node --test tests/contracts/web-note-surface-api-transport.test.mjs tests/contracts/web-note-surface-api-intents.test.mjs`
+- event controller guard: `node --test tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 
