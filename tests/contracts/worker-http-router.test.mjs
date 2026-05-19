@@ -330,6 +330,57 @@ test('worker HTTP router delegates note leave cause preservation to note structu
   );
 });
 
+test('worker HTTP router delegates note structure routes through route port before scheduler ports', async () => {
+  const calls = [];
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: `/notes/${noteFixture.id}/leave`,
+    body: { cause: 'tab_switch' },
+  }, {
+    noteStructureRoute: {
+      async runNoteStructureRoute(input) {
+        calls.push(input);
+        return {
+          ok: true,
+          route: input.route,
+          triggerReason: 'tab_switched',
+          scheduledJobs: [{ id: 'structure_job_rpc_001' }],
+          providerCalls: [],
+          operationRoutingCalls: [],
+          auditWrites: [],
+          errors: [],
+        };
+      },
+    },
+    noteStructure: createSchedulerPorts({
+      noteSnapshot: {
+        async loadSections() {
+          throw new Error('direct scheduler ports must not be called when route port is configured');
+        },
+      },
+    }),
+  });
+
+  assert.deepEqual(calls, [{
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    route: 'note_leave',
+    cause: 'tab_switch',
+    now,
+  }]);
+  assert.deepEqual(response, {
+    status: 202,
+    body: {
+      ok: true,
+      route: 'note_leave',
+      triggerReason: 'tab_switched',
+      scheduledJobs: [{ id: 'structure_job_rpc_001' }],
+      errors: [],
+    },
+  });
+});
+
 test('worker HTTP router rejects invalid note leave cause before scheduler ports', async () => {
   let loadSections = 0;
   const response = await handleWorkerHttpRequest({

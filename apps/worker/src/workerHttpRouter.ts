@@ -18,6 +18,7 @@ import {
   runNoteStructureRouteHandler,
   type NoteLeaveCause,
   type NoteStructureRouteHandlerResult,
+  type NoteStructureRouteKind,
 } from './noteStructureRuntimeHandlers.ts';
 import type {
   NoteDocumentContract,
@@ -78,12 +79,26 @@ export interface WorkerRouteCommandResult {
 export interface WorkerHttpRouterPorts {
   noteDocument?: NoteDocumentPersistencePort;
   noteBlocks?: NoteBlockCommandPort;
+  noteStructureRoute?: NoteStructureRoutePort;
   noteStructure?: StructureTriggerSchedulerFlowInput['ports'];
   operationApproval?: OperationApprovalRuntimeHandlerInput['proposalPersistence'];
   memoryCandidatePersistence?: MemoryCandidatePersistencePort;
   digestRead?: DigestReadPort;
   memoryReview?: MemoryReviewPort;
   provenanceLookup?: ProvenanceLookupPort;
+}
+
+export interface NoteStructureRoutePort {
+  runNoteStructureRoute(input: {
+    workspaceId: string;
+    noteId: string;
+    route: NoteStructureRouteKind;
+    cause?: NoteLeaveCause;
+    now: number;
+  }): Promise<Pick<
+    NoteStructureRouteHandlerResult,
+    'ok' | 'route' | 'triggerReason' | 'scheduledJobs' | 'providerCalls' | 'operationRoutingCalls' | 'auditWrites' | 'errors'
+  >>;
 }
 
 export async function handleWorkerHttpRequest(
@@ -139,9 +154,9 @@ export async function handleWorkerHttpRequest(
         'note block delete port is not configured',
       );
     case 'leave_note':
-      return runStructureRoute(request, ports.noteStructure, route.params.noteId, 'note_leave');
+      return runStructureRoute(request, ports, route.params.noteId, 'note_leave');
     case 'manual_organize_note':
-      return runStructureRoute(request, ports.noteStructure, route.params.noteId, 'manual_organize');
+      return runStructureRoute(request, ports, route.params.noteId, 'manual_organize');
     case 'get_digest':
       return delegateCommand(
         bindCommand(ports.digestRead, 'getDigest'),
@@ -362,11 +377,23 @@ async function loadNoteDocument(
 
 async function runStructureRoute(
   request: WorkerHttpRequest,
-  ports: StructureTriggerSchedulerFlowInput['ports'] | undefined,
+  ports: Pick<WorkerHttpRouterPorts, 'noteStructure' | 'noteStructureRoute'>,
   noteId: string,
   route: 'note_leave' | 'manual_organize',
 ): Promise<WorkerHttpResponse> {
-  if (ports === undefined) {
+  const cause = route === 'note_leave' ? readNoteLeaveCause(request.body) : {};
+  if (ports.noteStructureRoute !== undefined) {
+    const result = await ports.noteStructureRoute.runNoteStructureRoute({
+      workspaceId: request.workspaceId,
+      noteId,
+      route,
+      ...cause,
+      now: request.now,
+    });
+    return mapStructureResult(result);
+  }
+
+  if (ports.noteStructure === undefined) {
     return notConfigured('note structure scheduler ports are not configured');
   }
 
@@ -374,9 +401,9 @@ async function runStructureRoute(
     workspaceId: request.workspaceId,
     noteId,
     route,
-    ...(route === 'note_leave' ? readNoteLeaveCause(request.body) : {}),
+    ...cause,
     now: request.now,
-    ports,
+    ports: ports.noteStructure,
   });
 
   return mapStructureResult(result);
@@ -643,7 +670,10 @@ function mapPortResult(
   };
 }
 
-function mapStructureResult(result: NoteStructureRouteHandlerResult): WorkerHttpResponse {
+function mapStructureResult(result: Pick<
+  NoteStructureRouteHandlerResult,
+  'ok' | 'route' | 'triggerReason' | 'scheduledJobs' | 'errors'
+>): WorkerHttpResponse {
   if (!result.ok) {
     return badRequest(result.errors);
   }

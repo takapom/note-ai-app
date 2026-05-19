@@ -37,10 +37,16 @@ import {
   type SchedulerNoteSnapshotSqlStatement,
   TursoSchedulerNoteSnapshotAdapter,
 } from './schedulerNoteSnapshotSqlAdapter.ts';
+import type { StructureTriggerReason } from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+import {
+  readNoteAgentNamespace,
+  scheduleNoteStructureThroughAgent,
+  type CloudflareDurableObjectNamespaceLike,
+} from './cloudflareAgentRpcBoundary.ts';
 import { AgentLocalStructureJobWorkQueueAdapter } from './structureJobWorkQueueAgentLocalSqlAdapter.ts';
 import type { StructureJobProcessorFlowInput } from './structureJobProcessorFlow.ts';
 import { TursoOperationAuditExecutor } from './tursoOperationAuditExecutor.ts';
-import { type WorkerHttpRouterPorts } from './workerHttpRouter.ts';
+import { type NoteStructureRoutePort, type WorkerHttpRouterPorts } from './workerHttpRouter.ts';
 
 type WorkerSqlStatement =
   | NoteDocumentSqlStatement
@@ -58,6 +64,7 @@ export interface WorkerRuntimePortEnv {
   TURSO?: WorkerTursoClient;
   TURSO_CLIENT?: WorkerTursoClient;
   AGENT_LOCAL_SQL?: WorkerTursoClient;
+  NOTE_AGENT?: CloudflareDurableObjectNamespaceLike;
   WORKSPACE_BRAIN_OPERATION_PROVIDER_REGISTRY?: OperationGenerationProviderRegistry;
   WORKSPACE_BRAIN_OPERATION_ROUTER_SNAPSHOT?: StructureJobProcessorFlowInput['operationFlow']['snapshot'];
   [key: string]: unknown;
@@ -69,9 +76,12 @@ export interface WorkerTursoClient {
 
 export function createWorkerRuntimePorts(input: {
   env: WorkerRuntimePortEnv;
+  agentLocalSql?: WorkerTursoClient;
 }): WorkerHttpRouterPorts {
   const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
-  const agentLocalClient = readTursoClient(input.env.AGENT_LOCAL_SQL);
+  const agentLocalClient = readTursoClient(input.agentLocalSql) ?? readTursoClient(input.env.AGENT_LOCAL_SQL);
+  const noteAgentResult = readNoteAgentNamespace(input.env);
+  const noteAgent = noteAgentResult.ok ? noteAgentResult.namespace : undefined;
   const tursoExecutor = tursoClient === undefined ? undefined : new WorkerTursoSqlExecutor(tursoClient);
   const agentLocalExecutor = agentLocalClient === undefined ? undefined : new WorkerTursoSqlExecutor(agentLocalClient);
 
@@ -106,6 +116,9 @@ export function createWorkerRuntimePorts(input: {
         structureJobQueue: new AgentLocalStructureJobQueueAdapter(agentLocalExecutor),
         nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(agentLocalExecutor),
       };
+  const noteStructureRoute = noteAgent === undefined
+    ? undefined
+    : createNoteAgentStructureRoutePort(noteAgent);
 
   return {
     ...(noteDocument === undefined ? {} : { noteDocument }),
@@ -115,6 +128,7 @@ export function createWorkerRuntimePorts(input: {
     ...(memoryCandidatePersistence === undefined ? {} : { memoryCandidatePersistence }),
     ...(operationApproval === undefined ? {} : { operationApproval }),
     ...(provenanceLookup === undefined ? {} : { provenanceLookup }),
+    ...(noteStructureRoute === undefined ? {} : { noteStructureRoute }),
     ...(noteStructure === undefined ? {} : { noteStructure }),
   };
 }
@@ -130,10 +144,11 @@ export type WorkerWorkspaceBrainProcessorOptionsResult =
 
 export function createWorkspaceBrainStructureJobProcessorOptions(input: {
   env: WorkerRuntimePortEnv;
+  agentLocalSql?: WorkerTursoClient;
   now: number;
 }): WorkerWorkspaceBrainProcessorOptionsResult {
   const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
-  const agentLocalClient = readTursoClient(input.env.AGENT_LOCAL_SQL);
+  const agentLocalClient = readTursoClient(input.agentLocalSql) ?? readTursoClient(input.env.AGENT_LOCAL_SQL);
   const providerRegistry = readProviderRegistry(input.env.WORKSPACE_BRAIN_OPERATION_PROVIDER_REGISTRY);
   const snapshot = readOperationRouterSnapshot(input.env.WORKSPACE_BRAIN_OPERATION_ROUTER_SNAPSHOT);
   const errors: string[] = [];
@@ -189,6 +204,82 @@ export function createWorkspaceBrainStructureJobProcessorOptions(input: {
     },
   };
 }
+
+function createNoteAgentStructureRoutePort(
+  namespace: CloudflareDurableObjectNamespaceLike,
+): NoteStructureRoutePort {
+  return {
+    async runNoteStructureRoute(input) {
+      const dispatched = await scheduleNoteStructureThroughAgent<NoteAgentStructureRpcResult>({
+        namespace,
+        command: {
+          workspaceId: input.workspaceId,
+          noteId: input.noteId,
+          route: input.route,
+          ...(input.cause === undefined ? {} : { cause: input.cause }),
+          now: input.now,
+        },
+      });
+      if (!dispatched.ok) {
+        return {
+          ok: false,
+          route: input.route,
+          scheduledJobs: [],
+          providerCalls: [],
+          operationRoutingCalls: [],
+          auditWrites: [],
+          errors: Array.from(dispatched.errors),
+        };
+      }
+
+      return {
+        ok: dispatched.result.ok,
+        route: input.route,
+        ...toTriggerReasonProperty(dispatched.result.reason),
+        scheduledJobs: dispatched.result.scheduledJobs ?? [],
+        providerCalls: dispatched.result.providerCalls,
+        operationRoutingCalls: dispatched.result.operationRoutingCalls,
+        auditWrites: dispatched.result.auditWrites,
+        errors: dispatched.result.errors,
+      };
+    },
+  };
+}
+
+function toTriggerReasonProperty(
+  reason: string,
+): { triggerReason: StructureTriggerReason } | {} {
+  return isStructureTriggerReason(reason)
+    ? { triggerReason: reason }
+    : {};
+}
+
+function isStructureTriggerReason(value: string): value is StructureTriggerReason {
+  return (
+    value === 'note_closed' ||
+    value === 'tab_switched' ||
+    value === 'app_left' ||
+    value === 'next_open' ||
+    value === 'manual_organize'
+  );
+}
+
+interface NoteAgentStructureRpcResult {
+  ok: boolean;
+  accepted: boolean;
+  reason: string;
+  scheduledJobIds: readonly string[];
+  scheduledJobs?: NoteStructureRoutePortResult['scheduledJobs'];
+  providerCalls: NoteStructureRoutePortResult['providerCalls'];
+  operationRoutingCalls: NoteStructureRoutePortResult['operationRoutingCalls'];
+  auditWrites: NoteStructureRoutePortResult['auditWrites'];
+  noteSotMutations: [];
+  errors: string[];
+}
+
+type NoteStructureRoutePortResult = Awaited<
+  ReturnType<NoteStructureRoutePort['runNoteStructureRoute']>
+>;
 
 export class WorkerTursoSqlExecutor {
   private readonly client: WorkerTursoClient;

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
+  LOCAL_WORKSPACE_BRAIN_PROCESS_PATH,
   createWorkerFetchHandler,
   handleWorkerFetch,
   parseWorkerRequest,
@@ -403,6 +404,199 @@ test('worker entrypoint returns invalid route responses before creating ports', 
   assert.deepEqual(await methodMismatch.json(), { ok: false, errors: ['route not found'] });
 });
 
+test('worker entrypoint keeps WorkspaceBrain process trigger local-only and gated', async () => {
+  let createPortsCalls = 0;
+  const disabled = await handleWorkerFetch(new Request(`https://worker.test${LOCAL_WORKSPACE_BRAIN_PROCESS_PATH}`, {
+    method: 'POST',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(disabled.status, 404);
+  assert.deepEqual(await disabled.json(), { ok: false, errors: ['route not found'] });
+
+  const missingUser = await handleWorkerFetch(new Request(`https://worker.test${LOCAL_WORKSPACE_BRAIN_PROCESS_PATH}`, {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), { LOCAL_AGENT_SMOKE_ENABLED: '1' }, { now });
+
+  assert.equal(missingUser.status, 400);
+  assert.deepEqual(await missingUser.json(), {
+    ok: false,
+    errors: ['userId is required for local WorkspaceBrain process trigger'],
+  });
+});
+
+test('worker entrypoint local WorkspaceBrain process trigger invokes Durable Object RPC without product router ports', async () => {
+  const rpcCalls = [];
+  let createPortsCalls = 0;
+  const namespace = {
+    idFromName(name) {
+      return { name };
+    },
+    get(id) {
+      assert.equal(id.name, noteFixture.workspaceId);
+      return {
+        async processNextQueuedStructureJob(command) {
+          rpcCalls.push(command);
+          return {
+            ok: true,
+            accepted: true,
+            reason: 'no_queued_job',
+            scheduledJobIds: [],
+            providerCalls: [],
+            operationRoutingCalls: [],
+            auditWrites: [],
+            noteSotMutations: [],
+            errors: [],
+          };
+        },
+      };
+    },
+  };
+
+  const response = await handleWorkerFetch(new Request(`https://worker.test${LOCAL_WORKSPACE_BRAIN_PROCESS_PATH}`, {
+    method: 'POST',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+  }), {
+    LOCAL_AGENT_SMOKE_ENABLED: '1',
+    WORKSPACE_BRAIN_AGENT: namespace,
+  }, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 202);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    reason: 'no_queued_job',
+    scheduledJobIds: [],
+    errors: [],
+  });
+  assert.deepEqual(rpcCalls, [{
+    workspaceId: noteFixture.workspaceId,
+    userId: 'user_001',
+    now,
+  }]);
+});
+
+test('worker entrypoint local smoke seed/reset initializes Agent-local DO state and canonical fixture port', async () => {
+  const noteAgentCalls = [];
+  const workspaceBrainCalls = [];
+  let createPortsCalls = 0;
+  const noteAgent = createNamespace({
+    async applyAgentLocalSchemaCommand(command) {
+      noteAgentCalls.push({ method: 'applyAgentLocalSchemaCommand', command });
+      return {
+        ok: true,
+        action: command.action,
+        initializedTables: ['agent_local_structure_jobs'],
+        droppedTables: ['agent_local_structure_jobs'],
+        errors: [],
+      };
+    },
+    async applyLocalSmokeSchedulerSnapshot(command) {
+      noteAgentCalls.push({ method: 'applyLocalSmokeSchedulerSnapshot', command });
+      return { ok: true, errors: [] };
+    },
+  });
+  const workspaceBrainAgent = createNamespace({
+    async applyAgentLocalSchemaCommand(command) {
+      workspaceBrainCalls.push({ method: 'applyAgentLocalSchemaCommand', command });
+      return {
+        ok: true,
+        action: command.action,
+        initializedTables: ['agent_local_structure_jobs'],
+        droppedTables: ['agent_local_structure_jobs'],
+        errors: [],
+      };
+    },
+  });
+
+  const seed = await handleWorkerFetch(new Request('https://worker.test/__local/smoke/seed', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+    body: JSON.stringify({
+      document: noteDocumentFixture,
+      nextOpenDigest: {
+        available: true,
+        noteId: noteFixture.id,
+        items: [],
+      },
+    }),
+  }), {
+    LOCAL_AGENT_SMOKE_ENABLED: '1',
+    NOTE_AGENT: noteAgent,
+    WORKSPACE_BRAIN_AGENT: workspaceBrainAgent,
+  }, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+  const getNote = await handleWorkerFetch(new Request(`https://worker.test/notes/${noteFixture.id}`, {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+  }), {
+    LOCAL_AGENT_SMOKE_ENABLED: '1',
+    NOTE_AGENT: noteAgent,
+    WORKSPACE_BRAIN_AGENT: workspaceBrainAgent,
+  }, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(seed.status, 200);
+  assert.equal(getNote.status, 200);
+  assert.equal(createPortsCalls, 1, 'product request still creates ports before local fixture override');
+  assert.deepEqual((await seed.json()).seeded, {
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    sections: noteDocumentFixture.sections.length,
+    blocks: noteDocumentFixture.blocks.length,
+  });
+  assert.deepEqual((await getNote.json()).document.note.id, noteFixture.id);
+  assert.deepEqual(noteAgentCalls.map((call) => call.method), [
+    'applyAgentLocalSchemaCommand',
+    'applyLocalSmokeSchedulerSnapshot',
+  ]);
+  assert.deepEqual(workspaceBrainCalls.map((call) => call.method), [
+    'applyAgentLocalSchemaCommand',
+  ]);
+  assert.deepEqual(noteAgentCalls[1].command, {
+    purpose: 'local_verification',
+    noteId: noteFixture.id,
+    sections: noteDocumentFixture.sections,
+  });
+});
+
 test('worker entrypoint delegates valid requests through injected ports and maps JSON Response', async () => {
   const calls = [];
   const fetch = createWorkerFetchHandler({
@@ -746,5 +940,17 @@ function makeMemoryCandidateProposalAuditRecord(operationId) {
     generatedBy: 'worker_runtime',
     createdAt: now - 100,
     updatedAt: now - 100,
+  };
+}
+
+function createNamespace(stub) {
+  return {
+    idFromName(name) {
+      return { name };
+    },
+    get(id) {
+      assert.equal(typeof id.name, 'string');
+      return stub;
+    },
   };
 }

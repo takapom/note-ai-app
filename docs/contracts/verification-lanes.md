@@ -99,6 +99,10 @@ Backend DDD hardening の重点コマンド:
   - verifies that audit persistence, recovery enqueue, projection/proposal persistence, and public HTTP response failures keep stable runtime meanings without rewriting routing decisions or leaking volatile SQL/Turso/provider/auth details.
 - backend runtime smoke / curl-like lane: `node --test tests/contracts/backend-runtime-smoke.test.mjs`
   - verifies Worker fetch boundary reachability for note, block, structure trigger, digest, provenance, memory review, and operation approval routes without UI/browser code; also verifies invalid JSON, invalid auth, invalid route/method, missing ports, and canonical-vs-Agent-local ledger separation.
+- local Cloudflare runtime HTTP smoke lane: `npm run worker:local:smoke`
+  - launches `wrangler dev` with local persistence under `.wrangler/state` unless `WORKER_LOCAL_URL` points at an already-running local Worker, sends real HTTP requests to Worker routes, validates status and JSON body, and prints bounded response bodies plus curl-equivalent commands.
+  - this lane is intentionally separate from `npm run verify`; unavailable `wrangler`, missing operator-supplied local values, missing local seed data, or missing local-only WorkspaceBrain trigger route must report setup/blocker failure instead of silently skipping.
+  - local smoke values are supplied by shell env, `.dev.vars`, runtime bindings, or the local harness; they must not be written into `wrangler.toml`, public HTML, generated docs, or committed fixtures.
 
 Note Block command / Next Open Digest read boundary の重点コマンド:
 

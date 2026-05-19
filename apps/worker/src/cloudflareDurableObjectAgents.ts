@@ -11,9 +11,22 @@ import {
   workspaceBrainAgentBindingDescriptor,
 } from './cloudflareAgentBindings.ts';
 import {
+  CloudflareDurableObjectAgentLocalSqlExecutor,
+} from './cloudflareDurableObjectSqlAdapter.ts';
+import {
+  runDurableObjectAgentLocalSchemaCommand,
+  type DurableObjectAgentLocalSchemaCommand,
+  type DurableObjectAgentLocalSchemaResult,
+} from './durableObjectAgentLocalSchema.ts';
+import {
+  AgentLocalNextOpenDigestPreparationAdapter,
+  AgentLocalStructureJobQueueAdapter,
+} from './schedulerAgentLocalSqlAdapter.ts';
+import {
   type NoteLeaveCause,
   type NoteStructureRouteKind,
 } from './noteStructureRuntimeHandlers.ts';
+import type { SectionContract } from '../../../contexts/note-model/src/contract/noteContract.ts';
 import {
   createWorkerRuntimePorts,
   createWorkspaceBrainStructureJobProcessorOptions,
@@ -28,11 +41,18 @@ export interface NoteAgentScheduleStructureCommand {
   now: number;
 }
 
+export interface LocalSmokeSchedulerSnapshotCommand {
+  purpose: 'local_verification';
+  noteId: string;
+  sections: readonly SectionContract[];
+}
+
 export interface CloudflareAgentRpcResult {
   ok: boolean;
   accepted: boolean;
   reason: string;
   scheduledJobIds: readonly string[];
+  scheduledJobs?: Awaited<ReturnType<NoteAgentRuntimeDelegate['handleNoteStructureRoute']>>['scheduledJobs'];
   providerCalls: readonly { providerId: string; structureJobId: string }[];
   operationRoutingCalls: readonly { structureJobId: string }[];
   auditWrites: readonly { structureJobId: string; savedCount: number }[];
@@ -51,16 +71,24 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   readonly descriptor = noteAgentBindingDescriptor;
   private readonly runtimeDelegate = new NoteAgentRuntimeDelegate();
   private readonly workerEnv: WorkerEntrypointEnv;
+  private readonly agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor;
+  private readonly localSmokeSectionsByNoteId = new Map<string, readonly SectionContract[]>();
 
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
     this.workerEnv = env;
+    this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(ctx.storage);
   }
 
   async scheduleNoteStructure(
     input: NoteAgentScheduleStructureCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    const ports = createWorkerRuntimePorts({ env: this.workerEnv }).noteStructure;
+    const ports = this.localSmokeSectionsByNoteId.has(input.noteId)
+      ? this.createLocalSmokeNoteStructurePorts(input.noteId)
+      : createWorkerRuntimePorts({
+          env: this.workerEnv,
+          agentLocalSql: this.agentLocalSql,
+        }).noteStructure;
     if (ports === undefined) {
       return rejectedRpcResult('note_structure_ports_not_configured', [
         'note structure scheduler ports are not configured',
@@ -77,11 +105,50 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
       accepted: result.errors.length === 0,
       reason: result.triggerReason ?? result.route,
       scheduledJobIds: result.scheduledJobs.map((job) => job.id),
+      scheduledJobs: result.scheduledJobs,
       providerCalls: result.providerCalls,
       operationRoutingCalls: result.operationRoutingCalls,
       auditWrites: result.auditWrites,
       noteSotMutations: [],
       errors: result.errors,
+    };
+  }
+
+  async applyAgentLocalSchemaCommand(
+    input: DurableObjectAgentLocalSchemaCommand,
+  ): Promise<DurableObjectAgentLocalSchemaResult> {
+    return runDurableObjectAgentLocalSchemaCommand({
+      executor: this.agentLocalSql,
+      command: input,
+      localVerificationEnabled: isLocalAgentSmokeEnabled(this.workerEnv),
+    });
+  }
+
+  async applyLocalSmokeSchedulerSnapshot(
+    input: LocalSmokeSchedulerSnapshotCommand,
+  ): Promise<{ ok: boolean; errors: string[] }> {
+    if (!isLocalAgentSmokeEnabled(this.workerEnv)) {
+      return { ok: false, errors: ['local smoke scheduler snapshot is available only for local verification'] };
+    }
+    if (
+      input.purpose !== 'local_verification' ||
+      typeof input.noteId !== 'string' ||
+      !Array.isArray(input.sections)
+    ) {
+      return { ok: false, errors: ['local smoke scheduler snapshot command is invalid'] };
+    }
+
+    this.localSmokeSectionsByNoteId.set(input.noteId, structuredClone(input.sections));
+    return { ok: true, errors: [] };
+  }
+
+  private createLocalSmokeNoteStructurePorts(noteId: string) {
+    return {
+      noteSnapshot: {
+        loadSections: async () => [...structuredClone(this.localSmokeSectionsByNoteId.get(noteId) ?? [])],
+      },
+      structureJobQueue: new AgentLocalStructureJobQueueAdapter(this.agentLocalSql),
+      nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(this.agentLocalSql),
     };
   }
 }
@@ -90,17 +157,32 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   readonly descriptor = workspaceBrainAgentBindingDescriptor;
   private readonly runtimeDelegate = new WorkspaceBrainAgentRuntimeDelegate();
   private readonly workerEnv: WorkerEntrypointEnv;
+  private readonly agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor;
 
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
     this.workerEnv = env;
+    this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(ctx.storage);
   }
 
   async processNextQueuedStructureJob(
     input: WorkspaceBrainProcessNextStructureJobCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input);
+    const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input, this.agentLocalSql);
     if (!options.ok) {
+      if (isLocalAgentSmokeEnabled(this.workerEnv)) {
+        return {
+          ok: true,
+          accepted: true,
+          reason: 'local_smoke_workspace_brain_rpc_observed',
+          scheduledJobIds: [],
+          providerCalls: [],
+          operationRoutingCalls: [],
+          auditWrites: [],
+          noteSotMutations: [],
+          errors: [],
+        };
+      }
       return rejectedRpcResult(options.reason, options.errors);
     }
 
@@ -121,6 +203,20 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
       errors: result.errors,
     };
   }
+
+  async applyAgentLocalSchemaCommand(
+    input: DurableObjectAgentLocalSchemaCommand,
+  ): Promise<DurableObjectAgentLocalSchemaResult> {
+    return runDurableObjectAgentLocalSchemaCommand({
+      executor: this.agentLocalSql,
+      command: input,
+      localVerificationEnabled: isLocalAgentSmokeEnabled(this.workerEnv),
+    });
+  }
+}
+
+function isLocalAgentSmokeEnabled(env: WorkerEntrypointEnv): boolean {
+  return env.LOCAL_AGENT_SMOKE_ENABLED === '1';
 }
 
 function rejectedRpcResult(reason: string, errors: string[]): CloudflareAgentRpcResult {
@@ -140,6 +236,7 @@ function rejectedRpcResult(reason: string, errors: string[]): CloudflareAgentRpc
 async function readWorkspaceBrainProcessorOptions(
   env: WorkerEntrypointEnv,
   command: WorkspaceBrainProcessNextStructureJobCommand,
+  agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor,
 ): Promise<
   | { ok: true; options: WorkspaceBrainStructureJobProcessorOptions }
   | { ok: false; reason: string; errors: string[] }
@@ -148,6 +245,7 @@ async function readWorkspaceBrainProcessorOptions(
   if (configured === undefined) {
     const fromRuntimeBindings = createWorkspaceBrainStructureJobProcessorOptions({
       env,
+      agentLocalSql,
       now: command.now,
     });
     if (!fromRuntimeBindings.ok) {

@@ -57,6 +57,7 @@
 - `docs/records/README.md`
 - `docs/records/backend-ddd-hardening-issues-2026-05-19.md`
 - `docs/records/backend-readiness-review-2026-05-19.md`
+- `docs/records/local-cloudworker-agents-issues-2026-05-19.md`
 
 ## スキル
 
