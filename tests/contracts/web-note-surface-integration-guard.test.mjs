@@ -9,6 +9,7 @@ const expectedBootstrapPath = 'apps/web/src/noteSurfaceAppBootstrap.ts';
 const expectedProductAppPath = 'apps/web/src/noteSurfaceProductApp.ts';
 const expectedProductStatePath = 'apps/web/src/noteSurfaceProductState.ts';
 const expectedResolverOptionsFromDocumentPath = 'apps/web/src/noteSurfaceResolverOptionsFromDocument.ts';
+const expectedHttpProductProviderPath = 'apps/web/src/noteSurfaceHttpProductProvider.ts';
 
 const guardedSourcePaths = [
   'apps/web/src/noteSurface.ts',
@@ -21,6 +22,7 @@ const guardedSourcePaths = [
   'apps/web/src/noteSurfaceHtmlRenderer.ts',
   expectedProductStatePath,
   expectedResolverOptionsFromDocumentPath,
+  expectedHttpProductProviderPath,
   expectedProductAppPath,
   expectedBootstrapPath,
 ];
@@ -110,7 +112,7 @@ const forbiddenExcludedSurfacePatterns = [
   },
 ];
 
-test('web note surface integration guard watches expected bootstrap product app resolver and product state composition paths', async () => {
+test('web note surface integration guard watches expected bootstrap product app provider resolver and product state composition paths', async () => {
   const discoveredPaths = await discoverNoteSurfaceSourcePaths();
   const unknownDiscoveredPaths = discoveredPaths.filter((path) => !guardedSourcePaths.includes(path));
   const existingGuardedPaths = await existingPaths(guardedSourcePaths);
@@ -119,6 +121,7 @@ test('web note surface integration guard watches expected bootstrap product app 
     expectedProductAppPath,
     expectedProductStatePath,
     expectedResolverOptionsFromDocumentPath,
+    expectedHttpProductProviderPath,
   ];
   const missingRequiredPaths = guardedSourcePaths
     .filter((path) => !expectedOptionalPaths.includes(path))
@@ -129,6 +132,9 @@ test('web note surface integration guard watches expected bootstrap product app 
   const missingResolverOptionsFromDocumentPaths = existingGuardedPaths.includes(expectedResolverOptionsFromDocumentPath)
     ? []
     : [expectedResolverOptionsFromDocumentPath];
+  const missingHttpProductProviderPaths = existingGuardedPaths.includes(expectedHttpProductProviderPath)
+    ? []
+    : [expectedHttpProductProviderPath];
 
   assert.deepEqual(missingRequiredPaths, []);
   assert.deepEqual(unknownDiscoveredPaths, []);
@@ -136,6 +142,7 @@ test('web note surface integration guard watches expected bootstrap product app 
   assert.equal(guardedSourcePaths.includes(expectedProductAppPath), true);
   assert.equal(guardedSourcePaths.includes(expectedProductStatePath), true);
   assert.equal(guardedSourcePaths.includes(expectedResolverOptionsFromDocumentPath), true);
+  assert.equal(guardedSourcePaths.includes(expectedHttpProductProviderPath), true);
   assert.deepEqual(
     missingBootstrapPaths,
     discoveredPaths.includes(expectedBootstrapPath) ? [] : [expectedBootstrapPath],
@@ -151,6 +158,10 @@ test('web note surface integration guard watches expected bootstrap product app 
   assert.deepEqual(
     missingResolverOptionsFromDocumentPaths,
     discoveredPaths.includes(expectedResolverOptionsFromDocumentPath) ? [] : [expectedResolverOptionsFromDocumentPath],
+  );
+  assert.deepEqual(
+    missingHttpProductProviderPaths,
+    discoveredPaths.includes(expectedHttpProductProviderPath) ? [] : [expectedHttpProductProviderPath],
   );
 });
 
