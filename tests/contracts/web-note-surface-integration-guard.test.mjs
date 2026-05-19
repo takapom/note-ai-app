@@ -6,6 +6,7 @@ const root = new URL('../../', import.meta.url);
 const webSourceRoot = new URL('apps/web/src/', root);
 
 const expectedBootstrapPath = 'apps/web/src/noteSurfaceAppBootstrap.ts';
+const expectedResolverOptionsFromDocumentPath = 'apps/web/src/noteSurfaceResolverOptionsFromDocument.ts';
 
 const guardedSourcePaths = [
   'apps/web/src/noteSurface.ts',
@@ -16,6 +17,7 @@ const guardedSourcePaths = [
   'apps/web/src/noteSurfaceDomHost.ts',
   'apps/web/src/noteSurfaceEventController.ts',
   'apps/web/src/noteSurfaceHtmlRenderer.ts',
+  expectedResolverOptionsFromDocumentPath,
   expectedBootstrapPath,
 ];
 
@@ -59,6 +61,18 @@ const forbiddenRuntimeBoundaryPatterns = [
     name: 'canonical document collection mutation',
     pattern: /\b(?:document|noteDocument)\.(?:blocks|sections)\.(?:push|pop|shift|unshift|splice|sort|reverse)\s*\(/,
   },
+  {
+    name: 'crypto UUID generation',
+    pattern: /\bcrypto\.randomUUID\s*\(/,
+  },
+  {
+    name: 'random number ID generation',
+    pattern: /\bMath\.random\s*\(/,
+  },
+  {
+    name: 'timestamp ID generation',
+    pattern: /\bDate\.now\s*\(/,
+  },
 ];
 
 const forbiddenDomPatterns = [
@@ -92,21 +106,30 @@ const forbiddenExcludedSurfacePatterns = [
   },
 ];
 
-test('web note surface integration guard watches the expected bootstrap path', async () => {
+test('web note surface integration guard watches expected bootstrap and resolver composition paths', async () => {
   const discoveredPaths = await discoverNoteSurfaceSourcePaths();
   const unknownDiscoveredPaths = discoveredPaths.filter((path) => !guardedSourcePaths.includes(path));
   const existingGuardedPaths = await existingPaths(guardedSourcePaths);
+  const expectedOptionalPaths = [expectedBootstrapPath, expectedResolverOptionsFromDocumentPath];
   const missingRequiredPaths = guardedSourcePaths
-    .filter((path) => path !== expectedBootstrapPath)
+    .filter((path) => !expectedOptionalPaths.includes(path))
     .filter((path) => !existingGuardedPaths.includes(path));
   const missingBootstrapPaths = existingGuardedPaths.includes(expectedBootstrapPath) ? [] : [expectedBootstrapPath];
+  const missingResolverOptionsFromDocumentPaths = existingGuardedPaths.includes(expectedResolverOptionsFromDocumentPath)
+    ? []
+    : [expectedResolverOptionsFromDocumentPath];
 
   assert.deepEqual(missingRequiredPaths, []);
   assert.deepEqual(unknownDiscoveredPaths, []);
   assert.equal(guardedSourcePaths.includes(expectedBootstrapPath), true);
+  assert.equal(guardedSourcePaths.includes(expectedResolverOptionsFromDocumentPath), true);
   assert.deepEqual(
     missingBootstrapPaths,
     discoveredPaths.includes(expectedBootstrapPath) ? [] : [expectedBootstrapPath],
+  );
+  assert.deepEqual(
+    missingResolverOptionsFromDocumentPaths,
+    discoveredPaths.includes(expectedResolverOptionsFromDocumentPath) ? [] : [expectedResolverOptionsFromDocumentPath],
   );
 });
 

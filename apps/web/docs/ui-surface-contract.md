@@ -8,6 +8,7 @@
 - framework-neutral な NoteSurface HTML renderer と render event descriptor。
 - framework-neutral な NoteSurface event controller。render event descriptor と caller supplied mapping から API intent input を組み立て、API transport に渡す接続境界。
 - framework-neutral な NoteSurface action input resolver。render event descriptor の target/action/API intent と caller supplied lookup から、operationId / memoryId / noteId / provenance / memory edit content だけを取り出して event controller に渡す境界。
+- framework-neutral な NoteSurface document-derived resolver options composition。Note document の AI blocks / memory candidate blocks / annotations と caller supplied projection ID maps を照合し、action input resolver options に渡す lookup を組み立てる境界。Web 側では新しい operation / memory / provenance / note ID を生成しない。
 - framework-neutral な NoteSurface browser runtime。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、実 DOM API には依存しない mount / action dispatch 境界。
 - framework-neutral な NoteSurface app bootstrap。caller supplied note document、DOM root、fetch-like binding、workspace/user metadata、resolver lookup から view model、API transport、action input resolver、event controller、DOM host、browser runtime を組み立てる composition 境界。
 - NoteSurface DOM host adapter。実 DOM API を所有する薄い adapter として、root HTML 差し替え、delegated action click binding、render event descriptor による dataset 補完だけを行う。
@@ -37,14 +38,17 @@
 - Event controller は renderer の event descriptor、API intent mapper、API transport だけを接続し、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
 - Event controller は `apiIntent: none`、`edit_block`、`save_block`、`cancel_edit` を transport に送らず、operation / memory / digest / provenance の具体 ID や content は caller supplied mapping から受け取ってください。
 - Action input resolver は Web 側で operation / memory / provenance ID や memory edit content を生成せず、caller supplied lookup から取得してください。Memory edit content は非文字列または空文字列なら `undefined` とし、trim などの backend validation policy は API intent mapper / runtime boundary に委譲してください。
+- Resolver options from document boundary は AI Assist block には caller supplied `operationIdByBlockId`、Memory candidate block には caller supplied `memoryIdByBlockId` を対応付けてください。`source_span` annotation は最初の complete な `sourceBlockId` / `startOffset` / `endOffset` と caller supplied `sourceSpanIdByBlockId` がそろう場合だけ `provenanceByBlockId` に入れ、不完全な annotation や missing sourceSpanId から lookup を作らないでください。
 - Action input resolver は digest read では renderer event descriptor の `noteId` を優先し、なければ caller supplied active note id / target mapping を使ってください。`apiIntent: none` と editor no-op actions は transport 用 input を返さないでください。
+- Resolver options from document boundary は note document に既に存在する operation / memory / provenance / note references だけを action input resolver options に写してください。`crypto.randomUUID`、`Math.random`、`Date.now` などで ID を生成せず、missing reference から fake content や fallback ID を作らないでください。
+- Resolver options from document boundary は App bootstrap が受け取れる caller supplied `resolverOptions` の一部として合成できることに留め、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、実 DOM API、user-authored block の直接 mutation を import / 所有しないでください。
 - Browser runtime は renderer が返した escaped HTML を注入 host の `setHtml` に渡し、render event descriptor を `bindActionEvents` に渡してください。host から返る descriptor / dataset は event controller に委譲し、render / controller failure は boundary result として返してください。
 - Browser runtime は Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、実 DOM API、user-authored block の直接 mutation を import / 所有しないでください。
 - App bootstrap は composition と boundary validation だけを所有し、MVP 除外 side surfaces、backend policy、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、user-authored block の直接 mutation を import / 所有しないでください。実 DOM root、fetch-like binding、workspace/user IDs、operation/memory/provenance mappings は caller supplied にしてください。
 - App bootstrap は invalid workspaceId / userId / apiBaseUrl / root / fetchLike / note document を、transport、DOM root action binding、runtime mount の前に boundary result として返してください。
 - DOM host adapter だけが `innerHTML`、`addEventListener`、`closest` などの実 DOM API を所有してよいです。adapter は event controller、transport、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、user-authored block の直接 mutation を import / 所有しないでください。
 - DOM host adapter は同じ root への再 bind 時に click listener を増殖させず、button dataset に `apiIntent` がない場合は renderer から渡された render event descriptor を action / target / blockId で照合して補完してください。
-- Web NoteSurface integration source guard は `apps/web/src/noteSurface*.ts` と想定 bootstrap path `apps/web/src/noteSurfaceAppBootstrap.ts` を監視し、未実装時も path guard として維持してください。
+- Web NoteSurface integration source guard は `apps/web/src/noteSurface*.ts`、想定 bootstrap path `apps/web/src/noteSurfaceAppBootstrap.ts`、想定 document-derived resolver options path `apps/web/src/noteSurfaceResolverOptionsFromDocument.ts` を監視し、未実装時も path guard として維持してください。
 - HTML renderer は note text、digest text、provenance excerpt を trusted HTML として扱わず、必ず escape してください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
