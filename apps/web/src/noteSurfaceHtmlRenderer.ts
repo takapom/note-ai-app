@@ -260,7 +260,7 @@ function renderUserBlockBody(block: NoteBlockViewModel): string {
     const level = block.sectionBoundary.level;
     const tag = `h${level}`;
     return [
-      `<${tag} class="ann-block-text ann-heading" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
+      `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
       escapeHtml(block.text),
       `</${tag}>`,
     ].join('');
@@ -380,7 +380,7 @@ function createRenderEvents(model: NoteSurfaceViewModel): readonly NoteSurfaceHt
         noteId: model.noteSurface.noteHeader.noteId,
         blockId: block.id,
         blockType: block.type,
-        apiIntent: action === 'save_block' && block.origin === 'user' && block.sectionBoundary === undefined
+        apiIntent: action === 'save_block' && block.origin === 'user'
           ? 'block.update'
           : 'none',
         emitsAiProviderCall: false,

@@ -16,7 +16,7 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | # | 条件 | 現状 | 根拠 / gap |
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | partial | dependency-free AppShell / NoteSurface / Block Editor view model、HTML rendering、browser runtime、DOM host、explicit save click -> Worker request wiring は追加済み。残りは hosted E2E と richer editor interaction。 |
-| 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model document validation と web NoteSurface view model / renderer で heading boundary は検証済み。heading edit/save の実 interaction は未実装。 |
+| 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model document validation、web NoteSurface view model / renderer、explicit heading save click -> `PATCH /blocks/:blockId`、Worker Note Model command boundary での heading block text + owning section title/contentHash 同時更新は追加済み。残りは hosted E2E と richer editor interaction。 |
 | 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring、auth/workspace boundary、Cloudflare Agent binding foundation、wrangler deployment config、Web explicit save click -> `PATCH /blocks/:blockId` wiring は追加済み。secret/env binding values と hosted E2E は未実装。Agent-local save intent は canonical SoT ではない。 |
 | 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint、framework-neutral NoteAgent binding foundation、wrangler deployment config は対応済み。concrete Cloudflare SDK Agent binding values と runtime env values は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
@@ -268,7 +268,8 @@ MVP acceptance #1/#2/#13/#14。`apps/web` は docs のみで AppShell / Sidebar 
 - AppShell / Sidebar / TopBar / NoteSurface / NoteHeader / BlockEditor の single surface model、H1/H2/H3 section boundary、failed AI status でも editing action が残る guard、MVP excluded surface guard は検証済み。
 - Note document validation は `contexts/note-model` の `validateNoteDocumentContract` が所有し、Web は validation result を消費する。
 - 実 DOM/editor rendering、browser runtime、DOM host delegated click、explicit user save action から Worker `PATCH /blocks/:blockId` request descriptor / fetch-like transport への wiring は追加済み。Web は canonical Note / Section / Block を直接 mutate せず、save 時は marked contenteditable element の `textContent` だけを `{ noteId, content }` body に渡す。
-- 残りは heading edit/save interaction、hosted E2E、deployment environment values、richer editor UX。
+- H1/H2/H3 heading save は既存 `block.update` intent を使う。Worker Note Model command boundary は既存 heading block を検出し、user-authored heading block text、owning section title、owning section contentHash を同じ loaded/saved NoteDocument で更新し、sectionId / headingBlockId / headingLevel mismatch を拒否する。non-heading text save でも owning section contentHash を更新し、lastStructuredHash は書き換えない。
+- 残りは hosted E2E、deployment environment values、richer editor UX。
 
 検証コマンド:
 - `node --test tests/contracts/web-note-surface.test.mjs`

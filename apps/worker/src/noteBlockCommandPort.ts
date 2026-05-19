@@ -5,6 +5,8 @@
 import {
   type BlockContract,
   type NoteDocumentContract,
+  type SectionContract,
+  isHeadingLevel,
   userAuthoredBlockOrigin,
   validateBlockContract,
 } from '../../../contexts/note-model/src/contract/noteContract.ts';
@@ -164,7 +166,18 @@ export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
 
     const block = applyTextUpdate(existingBlock, update.content, input.now);
     const blocks = loaded.document.blocks.map((candidate, index) => index === existingIndex ? block : candidate);
-    const document = withBlocks(loaded.document, blocks);
+    const sectionUpdate = updateOwningSectionAfterTextSave(
+      loaded.document,
+      blocks,
+      existingBlock,
+      update.content,
+      input.now,
+    );
+    if (!sectionUpdate.ok) {
+      return failure(sectionUpdate.errors);
+    }
+
+    const document = withDocumentParts(loaded.document, blocks, sectionUpdate.sections);
     const documentErrors = validateNoteDocumentForPersistence(document);
     if (documentErrors.length > 0) {
       return failure(documentErrors);
@@ -335,15 +348,100 @@ function validateUserAuthoredTextUpdate(block: BlockContract, noteId: string): s
   if (block.origin !== userAuthoredBlockOrigin) {
     errors.push('only user-authored blocks can be updated from editor text content');
   }
-  if (block.type === 'heading') {
-    errors.push('heading block text updates require the heading editor boundary');
-  }
   const content = asRecord(block.contentJson);
   if (!content || typeof content.text !== 'string') {
     errors.push('block contentJson.text must exist for editor text updates');
   }
+  if (
+    block.type === 'heading'
+    && (!content || typeof content.level !== 'number' || !isHeadingLevel(content.level))
+  ) {
+    errors.push('heading block content level must be H1, H2, or H3');
+  }
 
   return errors;
+}
+
+function updateOwningSectionAfterTextSave(
+  document: NoteDocumentContract,
+  blocks: readonly BlockContract[],
+  existingBlock: BlockContract,
+  title: string,
+  updatedAt: number,
+): { ok: true; sections: SectionContract[] } | { ok: false; errors: string[] } {
+  const content = asRecord(existingBlock.contentJson);
+  const headingLevel = typeof content?.level === 'number' ? content.level : undefined;
+  const errors: string[] = [];
+
+  if (existingBlock.sectionId === undefined) {
+    if (existingBlock.type === 'heading') {
+      errors.push('heading block sectionId must reference its owning section');
+      errors.push('heading block sectionId must reference a document section');
+      return { ok: false, errors };
+    }
+    return { ok: true, sections: document.sections.map((section) => ({ ...section })) };
+  }
+
+  const section = document.sections.find((candidate) => candidate.id === existingBlock.sectionId);
+  if (section === undefined) {
+    if (existingBlock.type === 'heading') {
+      errors.push('heading block sectionId must reference a document section');
+      return { ok: false, errors };
+    }
+    return { ok: true, sections: document.sections.map((candidate) => ({ ...candidate })) };
+  }
+
+  if (existingBlock.type === 'heading') {
+    errors.push(...validateHeadingSectionReference(section, existingBlock, headingLevel));
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    sections: document.sections.map((candidate) => {
+      if (candidate.id !== existingBlock.sectionId) {
+        return { ...candidate };
+      }
+
+      return {
+        ...candidate,
+        ...(existingBlock.type === 'heading' ? { title } : {}),
+        contentHash: createSectionContentHash(candidate.id, blocks),
+        updatedAt,
+      };
+    }),
+  };
+}
+
+function validateHeadingSectionReference(
+  section: SectionContract,
+  headingBlock: BlockContract,
+  headingLevel: number | undefined,
+): string[] {
+  const errors: string[] = [];
+  if (headingBlock.sectionId === undefined) {
+    errors.push('heading block sectionId must reference its owning section');
+  }
+  if (section.headingBlockId !== headingBlock.id) {
+    errors.push('section.headingBlockId must match heading block id');
+  }
+  if (section.headingLevel !== headingLevel) {
+    errors.push('section.headingLevel must match heading block level');
+  }
+  return errors;
+}
+
+function createSectionContentHash(sectionId: string, blocks: readonly BlockContract[]): string {
+  const joinedBlockHashes = blocks
+    .filter((block) => block.sectionId === sectionId)
+    .sort((left, right) => left.position - right.position)
+    .map((block) => `${block.id}:${block.contentHash}`)
+    .join('|');
+
+  return `hash_${sectionId}_${hashString(joinedBlockHashes).toString(16)}`;
 }
 
 function applyTextUpdate(block: BlockContract, content: string, updatedAt: number): BlockContract {
@@ -361,12 +459,16 @@ function applyTextUpdate(block: BlockContract, content: string, updatedAt: numbe
 }
 
 function createEditorTextContentHash(blockId: string, content: string): string {
+  return `hash_${blockId}_${hashString(content).toString(16)}`;
+}
+
+function hashString(value: string): number {
   let hash = 2166136261;
-  for (let index = 0; index < content.length; index += 1) {
-    hash ^= content.charCodeAt(index);
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619) >>> 0;
   }
-  return `hash_${blockId}_${hash.toString(16)}`;
+  return hash;
 }
 
 function readDeleteNoteId(input: NoteBlockCommandInput): { noteId?: string; errors: string[] } {
@@ -386,10 +488,18 @@ function readDeleteNoteId(input: NoteBlockCommandInput): { noteId?: string; erro
 }
 
 function withBlocks(document: NoteDocumentContract, blocks: BlockContract[]): NoteDocumentContract {
+  return withDocumentParts(document, blocks, document.sections);
+}
+
+function withDocumentParts(
+  document: NoteDocumentContract,
+  blocks: BlockContract[],
+  sections: readonly SectionContract[],
+): NoteDocumentContract {
   return {
     ...document,
     note: { ...document.note },
-    sections: document.sections.map((section) => ({ ...section })),
+    sections: sections.map((section) => ({ ...section })),
     blocks: blocks.map((block) => ({
       ...block,
       contentJson: structuredClone(block.contentJson),

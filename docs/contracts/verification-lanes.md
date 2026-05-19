@@ -84,6 +84,7 @@ Worker HTTP routing boundary の重点コマンド:
 Note Block command / Next Open Digest read boundary の重点コマンド:
 
 - block command guard: `node --test tests/contracts/worker-note-block-command-port.test.mjs`
+  - verifies that explicit user `{ noteId, content }` block saves update user-authored text blocks and owning section content hash through the Note Model command boundary, and that H1/H2/H3 heading saves update the heading block text, owning section title, and section content hash together while rejecting missing/mismatched section boundary references.
 - digest read guard: `node --test tests/contracts/worker-next-open-digest-read-port.test.mjs`
 - router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
 
@@ -125,7 +126,7 @@ Web NoteSurface foundation の重点コマンド:
 - HTTP product app composition guard: `node --test tests/contracts/web-note-surface-http-product-app.test.mjs tests/contracts/web-note-surface-http-product-provider.test.mjs tests/contracts/web-note-surface-product-app.test.mjs tests/contracts/web-note-surface-integration-guard.test.mjs`
 - HTTP digest product app composition guard: `node --test tests/contracts/web-note-surface-http-digest-product-app.test.mjs tests/contracts/web-note-surface-http-digest-product-provider.test.mjs tests/contracts/web-note-surface-product-app.test.mjs tests/contracts/web-note-surface-integration-guard.test.mjs`
 - DOM host adapter guard: `node --test tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs`
-  - verifies that explicit block editor save clicks read same-block `textContent` from the marked contenteditable element and send `block.update` as `PATCH /blocks/:blockId` with JSON `{ noteId, content }`, while edit/cancel remain local/no-op and Web does not directly mutate canonical Note / Section / Block.
+  - verifies that explicit block editor save clicks, including H1/H2/H3 heading block saves, read same-block `textContent` from the marked contenteditable element and send `block.update` as `PATCH /blocks/:blockId` with JSON `{ noteId, content }`, while edit/cancel remain local/no-op and Web does not directly mutate canonical Note / Section / Block.
 - browser runtime guard: `node --test tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`
 - app bootstrap guard: `node --test tests/contracts/web-note-surface-app-bootstrap.test.mjs tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-action-input-resolver.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs`
 - integration source guard: `node --test tests/contracts/web-note-surface-integration-guard.test.mjs tests/contracts/web-note-surface.test.mjs`

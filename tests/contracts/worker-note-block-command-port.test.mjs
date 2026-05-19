@@ -94,6 +94,48 @@ test('note block command port updates user-authored text from explicit editor co
   });
   assert.equal(result.body.block.updatedAt, now);
   assert.match(result.body.block.contentHash, /^hash_block_paragraph_001_[a-f0-9]+$/);
+
+  const savedSection = result.body.document.sections.find((candidate) => candidate.id === blockFixtures[1].sectionId);
+  assert.equal(savedSection.title, 'MVP scope');
+  assert.notEqual(savedSection.contentHash, noteDocumentFixture.sections[0].contentHash);
+  assert.equal(savedSection.lastStructuredHash, noteDocumentFixture.sections[0].lastStructuredHash);
+  assert.equal(savedSection.updatedAt, now);
+});
+
+test('note block command port updates heading text and owning section title from explicit save content', async () => {
+  const persistence = new TrackingPersistence([noteDocumentFixture]);
+  const port = new NoteDocumentBlockCommandPort(persistence);
+
+  const result = await port.updateBlock({
+    workspaceId: noteFixture.workspaceId,
+    blockId: blockFixtures[0].id,
+    now,
+    body: {
+      noteId: noteFixture.id,
+      content: 'Updated MVP scope',
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(persistence.loads, 1);
+  assert.equal(persistence.saves, 1);
+  assert.equal(result.body.block.id, blockFixtures[0].id);
+  assert.equal(result.body.block.type, 'heading');
+  assert.equal(result.body.block.origin, 'user');
+  assert.deepEqual(result.body.block.contentJson, {
+    ...blockFixtures[0].contentJson,
+    text: 'Updated MVP scope',
+  });
+  assert.equal(result.body.block.plainText, 'Updated MVP scope');
+  assert.equal(result.body.block.updatedAt, now);
+
+  const savedSection = result.body.document.sections.find((candidate) => candidate.id === blockFixtures[0].sectionId);
+  assert.equal(savedSection.title, 'Updated MVP scope');
+  assert.equal(savedSection.headingBlockId, blockFixtures[0].id);
+  assert.equal(savedSection.headingLevel, blockFixtures[0].contentJson.level);
+  assert.notEqual(savedSection.contentHash, noteDocumentFixture.sections[0].contentHash);
+  assert.equal(savedSection.lastStructuredHash, noteDocumentFixture.sections[0].lastStructuredHash);
+  assert.equal(savedSection.updatedAt, now);
 });
 
 test('note block command port deletes existing blocks from the canonical document only', async () => {
@@ -246,22 +288,9 @@ test('note block command port rejects missing blocks and noteId mismatches', asy
   assert.equal(persistence.saves, 0);
 });
 
-test('note block command port rejects editor text updates for non-user or structural blocks', async () => {
+test('note block command port rejects editor text updates for non-user blocks', async () => {
   const persistence = new TrackingPersistence([noteDocumentFixture]);
   const port = new NoteDocumentBlockCommandPort(persistence);
-
-  const heading = await port.updateBlock({
-    workspaceId: noteFixture.workspaceId,
-    blockId: blockFixtures[0].id,
-    now,
-    body: {
-      noteId: noteFixture.id,
-      content: 'Updated heading text.',
-    },
-  });
-
-  assert.equal(heading.ok, false);
-  assert.deepEqual(heading.errors, ['heading block text updates require the heading editor boundary']);
 
   const aiBlock = await port.updateBlock({
     workspaceId: noteFixture.workspaceId,
@@ -276,6 +305,75 @@ test('note block command port rejects editor text updates for non-user or struct
   assert.equal(aiBlock.ok, false);
   assert.deepEqual(aiBlock.errors, ['only user-authored blocks can be updated from editor text content']);
   assert.equal(persistence.saves, 0);
+});
+
+test('note block command port rejects heading text updates when the section boundary is inconsistent', async () => {
+  const cases = [
+    {
+      name: 'missing section id',
+      document: {
+        ...noteDocumentFixture,
+        blocks: noteDocumentFixture.blocks.map((block) => (
+          block.id === blockFixtures[0].id ? withoutKey(block, 'sectionId') : block
+        )),
+      },
+      errors: [
+        'heading block sectionId must reference its owning section',
+        'heading block sectionId must reference a document section',
+      ],
+    },
+    {
+      name: 'missing section',
+      document: {
+        ...noteDocumentFixture,
+        blocks: noteDocumentFixture.blocks.map((block) => (
+          block.id === blockFixtures[0].id ? { ...block, sectionId: 'section_missing' } : block
+        )),
+      },
+      errors: ['heading block sectionId must reference a document section'],
+    },
+    {
+      name: 'heading block mismatch',
+      document: {
+        ...noteDocumentFixture,
+        sections: noteDocumentFixture.sections.map((section) => ({
+          ...section,
+          headingBlockId: 'block_heading_other',
+        })),
+      },
+      errors: ['section.headingBlockId must match heading block id'],
+    },
+    {
+      name: 'heading level mismatch',
+      document: {
+        ...noteDocumentFixture,
+        sections: noteDocumentFixture.sections.map((section) => ({
+          ...section,
+          headingLevel: 3,
+        })),
+      },
+      errors: ['section.headingLevel must match heading block level'],
+    },
+  ];
+
+  for (const fixture of cases) {
+    const persistence = new LooseTrackingPersistence(fixture.document);
+    const port = new NoteDocumentBlockCommandPort(persistence);
+
+    const result = await port.updateBlock({
+      workspaceId: noteFixture.workspaceId,
+      blockId: blockFixtures[0].id,
+      now,
+      body: {
+        noteId: noteFixture.id,
+        content: 'Rejected heading update.',
+      },
+    });
+
+    assert.equal(result.ok, false, fixture.name);
+    assert.deepEqual(result.errors, fixture.errors, fixture.name);
+    assert.equal(persistence.saves, 0, fixture.name);
+  }
 });
 
 test('note block command port source stays inside Note Model and persistence boundaries', async () => {
@@ -308,6 +406,32 @@ class TrackingPersistence {
   }
 }
 
+class LooseTrackingPersistence {
+  loads = 0;
+  saves = 0;
+
+  constructor(document) {
+    this.document = structuredClone(document);
+  }
+
+  async loadDocument() {
+    this.loads += 1;
+    return {
+      ok: true,
+      errors: [],
+      document: structuredClone(this.document),
+    };
+  }
+
+  async saveDocument() {
+    this.saves += 1;
+    return {
+      ok: false,
+      errors: ['unexpected save for invalid boundary fixture'],
+    };
+  }
+}
+
 function paragraphBlock({ id, text, position, sectionId = blockFixtures[1].sectionId }) {
   return {
     id,
@@ -322,4 +446,10 @@ function paragraphBlock({ id, text, position, sectionId = blockFixtures[1].secti
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function withoutKey(object, key) {
+  const clone = { ...object };
+  delete clone[key];
+  return clone;
 }
