@@ -72,6 +72,11 @@ Note Model canonical persistence の重点コマンド:
 - port/adapter guard: `node --test tests/contracts/worker-note-document-persistence-port.test.mjs tests/contracts/worker-note-document-sql-adapter.test.mjs`
 - AI runtime separation guard: `node --test tests/contracts/worker-no-direct-sot-mutation-guard.test.mjs tests/contracts/topology-runtime.test.mjs`
 
+Worker HTTP routing boundary の重点コマンド:
+
+- route/delegation guard: `node --test tests/contracts/worker-http-router.test.mjs`
+- runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
+
 
 ## 許可されるトポロジー
 

@@ -17,8 +17,8 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | blocking gap | `apps/web` は docs のみで editable NoteSurface がない。 |
 | 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model contract/test は実装済み。editor rendering/editing は未実装。 |
-| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter は追加済み。HTTP route 接続と実 DB integration は未実装。Agent-local save intent は canonical SoT ではない。 |
-| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain と worker route handler cause preservation は対応済み。HTTP entrypoint は未実装。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter と HTTP router delegation は追加済み。実 Cloudflare/Turso wiring と block CRUD command port 実装は未実装。Agent-local save intent は canonical SoT ではない。 |
+| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation は対応済み。実 Cloudflare entrypoint は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
@@ -60,7 +60,7 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 
 実装状況:
 - `NoteDocumentPersistencePort`、in-memory port、Turso SQL adapter、focused contract tests は追加済み。
-- 残りは Worker HTTP route と実 Turso client wiring。
+- 残りは実 Cloudflare/Turso client wiring と block CRUD command port implementation。
 
 検証コマンド:
 - `node --test tests/contracts/note-model-runtime.test.mjs`
@@ -90,6 +90,10 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 - MVP route surface が Worker entrypoint で到達可能。
 - invalid route input は ports を呼ばずに拒否される。
 - route handlers が forbidden boundaries を import しない source guard がある。
+
+実装状況:
+- framework-neutral `workerHttpRouter` と route/delegation guard tests は追加済み。
+- 残りは real Worker `fetch` entrypoint、Cloudflare Agent class wiring、Turso client binding。
 
 検証コマンド:
 - `node --test tests/contracts/worker-*.test.mjs`
