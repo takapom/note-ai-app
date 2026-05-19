@@ -115,6 +115,8 @@ Web NoteSurface foundation の重点コマンド:
 - action input resolver guard: `node --test tests/contracts/web-note-surface-action-input-resolver.test.mjs tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs`
 - DOM host adapter guard: `node --test tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs`
 - browser runtime guard: `node --test tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`
+- app bootstrap guard: `node --test tests/contracts/web-note-surface-app-bootstrap.test.mjs tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-action-input-resolver.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs`
+- integration source guard: `node --test tests/contracts/web-note-surface-integration-guard.test.mjs tests/contracts/web-note-surface.test.mjs`
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 

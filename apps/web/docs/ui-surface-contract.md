@@ -9,6 +9,7 @@
 - framework-neutral な NoteSurface event controller。render event descriptor と caller supplied mapping から API intent input を組み立て、API transport に渡す接続境界。
 - framework-neutral な NoteSurface action input resolver。render event descriptor の target/action/API intent と caller supplied lookup から、operationId / memoryId / noteId / provenance / memory edit content だけを取り出して event controller に渡す境界。
 - framework-neutral な NoteSurface browser runtime。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、実 DOM API には依存しない mount / action dispatch 境界。
+- framework-neutral な NoteSurface app bootstrap。caller supplied note document、DOM root、fetch-like binding、workspace/user metadata、resolver lookup から view model、API transport、action input resolver、event controller、DOM host、browser runtime を組み立てる composition 境界。
 - NoteSurface DOM host adapter。実 DOM API を所有する薄い adapter として、root HTML 差し替え、delegated action click binding、render event descriptor による dataset 補完だけを行う。
 - AI Assist Blocks のレンダリング。
 - 次回オープンダイジェストコンポーネントのふるまい。
@@ -39,8 +40,11 @@
 - Action input resolver は digest read では renderer event descriptor の `noteId` を優先し、なければ caller supplied active note id / target mapping を使ってください。`apiIntent: none` と editor no-op actions は transport 用 input を返さないでください。
 - Browser runtime は renderer が返した escaped HTML を注入 host の `setHtml` に渡し、render event descriptor を `bindActionEvents` に渡してください。host から返る descriptor / dataset は event controller に委譲し、render / controller failure は boundary result として返してください。
 - Browser runtime は Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、実 DOM API、user-authored block の直接 mutation を import / 所有しないでください。
+- App bootstrap は composition と boundary validation だけを所有し、MVP 除外 side surfaces、backend policy、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、user-authored block の直接 mutation を import / 所有しないでください。実 DOM root、fetch-like binding、workspace/user IDs、operation/memory/provenance mappings は caller supplied にしてください。
+- App bootstrap は invalid workspaceId / userId / apiBaseUrl / root / fetchLike / note document を、transport、DOM root action binding、runtime mount の前に boundary result として返してください。
 - DOM host adapter だけが `innerHTML`、`addEventListener`、`closest` などの実 DOM API を所有してよいです。adapter は event controller、transport、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、user-authored block の直接 mutation を import / 所有しないでください。
 - DOM host adapter は同じ root への再 bind 時に click listener を増殖させず、button dataset に `apiIntent` がない場合は renderer から渡された render event descriptor を action / target / blockId で照合して補完してください。
+- Web NoteSurface integration source guard は `apps/web/src/noteSurface*.ts` と想定 bootstrap path `apps/web/src/noteSurfaceAppBootstrap.ts` を監視し、未実装時も path guard として維持してください。
 - HTML renderer は note text、digest text、provenance excerpt を trusted HTML として扱わず、必ず escape してください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
