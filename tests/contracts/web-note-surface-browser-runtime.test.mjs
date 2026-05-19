@@ -148,6 +148,8 @@ test('browser runtime sends editor save actions through the block update boundar
   });
 
   assert.deepEqual([save.ok, save.status, save.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="idle"/);
+  assert.match(host.html, /Updated user-authored block text\./);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
     [
       'PATCH',
@@ -155,6 +157,80 @@ test('browser runtime sends editor save actions through the block update boundar
       JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
     ],
   ]);
+});
+
+test('browser runtime updates heading projection after the canonical save boundary succeeds', async () => {
+  const calls = [];
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_heading_001'],
+    }),
+    eventController: createController(calls),
+    host,
+  });
+  await runtime.mount();
+
+  const headingSaveEvent = host.events.find((entry) => (
+    entry.target === 'block_editor'
+    && entry.action === 'save_block'
+    && entry.blockId === 'block_heading_001'
+  ));
+  assert.ok(headingSaveEvent);
+
+  const save = await host.handler({
+    ...headingSaveEvent,
+    content: 'Updated MVP scope',
+  });
+
+  assert.deepEqual([save.ok, save.status, save.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-block-id="block_heading_001"[^>]*data-editor-state="idle"/);
+  assert.match(host.html, /data-section-title="Updated MVP scope">Updated MVP scope<\/h2>/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    [
+      'PATCH',
+      'https://worker.example.test/api/blocks/block_heading_001',
+      JSON.stringify({ noteId: 'note_001', content: 'Updated MVP scope' }),
+    ],
+  ]);
+});
+
+test('browser runtime keeps editing projection when save transport fails', async () => {
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_paragraph_001'],
+    }),
+    eventController: {
+      async handleRenderEvent() {
+        return {
+          ok: false,
+          status: 'transport_error',
+          errors: ['request failed with status 503'],
+        };
+      },
+    },
+    host,
+  });
+  await runtime.mount();
+
+  const saveEvent = host.events.find((entry) => (
+    entry.target === 'block_editor'
+    && entry.action === 'save_block'
+    && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(saveEvent);
+
+  const save = await host.handler({
+    ...saveEvent,
+    content: 'Unsaved text should stay local to the DOM editor.',
+  });
+
+  assert.equal(save.ok, false);
+  assert.equal(save.status, 'controller_error');
+  assert.match(save.errors.join('\n'), /request failed with status 503/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
+  assert.doesNotMatch(host.html, /Unsaved text should stay local/);
 });
 
 test('browser runtime applies digest and provenance UI-only actions as local projection state', async () => {

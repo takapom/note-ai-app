@@ -91,6 +91,12 @@ export function createNoteSurfaceBrowserRuntime(
         };
       }
 
+      const successfulSaveAction = resolveSuccessfulSaveProjectionAction(eventDescriptor);
+      if (successfulSaveAction !== undefined) {
+        currentModel = applyLocalProjectionAction(currentModel, successfulSaveAction);
+        return renderCurrentModel(controllerResult);
+      }
+
       return {
         ok: true,
         status: 'handled',
@@ -106,7 +112,9 @@ export function createNoteSurfaceBrowserRuntime(
     }
   }
 
-  async function renderCurrentModel(): Promise<NoteSurfaceBrowserRuntimeActionResult> {
+  async function renderCurrentModel(
+    controllerResult?: NoteSurfaceEventControllerResult,
+  ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
     let rendered: NoteSurfaceHtmlRenderResult;
     try {
       rendered = render(currentModel);
@@ -132,6 +140,7 @@ export function createNoteSurfaceBrowserRuntime(
     return {
       ok: true,
       status: 'handled',
+      ...(controllerResult === undefined ? {} : { controllerResult }),
       errors: [],
     };
   }
@@ -175,6 +184,7 @@ export function createNoteSurfaceBrowserRuntime(
 type LocalProjectionAction =
   | { action: 'expand_digest' | 'collapse_digest'; target: 'next_open_digest' }
   | { action: 'edit_block' | 'cancel_edit'; target: 'block_editor'; blockId: string }
+  | { action: 'save_block'; target: 'block_editor'; blockId: string; content: string }
   | { action: 'close_provenance'; target: 'provenance_popover' };
 
 function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
@@ -216,6 +226,32 @@ function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjection
   return undefined;
 }
 
+function resolveSuccessfulSaveProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
+  if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
+    return undefined;
+  }
+
+  const source = eventDescriptor as Record<string, unknown>;
+  const dataset = source.dataset !== null && typeof source.dataset === 'object'
+    ? source.dataset as Record<string, unknown>
+    : undefined;
+  const action = readDescriptorString(source, dataset, 'action');
+  const target = readDescriptorString(source, dataset, 'target');
+  const apiIntent = readDescriptorString(source, dataset, 'apiIntent');
+
+  if (action !== 'save_block' || target !== 'block_editor' || apiIntent !== 'block.update') {
+    return undefined;
+  }
+
+  const blockId = readDescriptorString(source, dataset, 'blockId');
+  const content = readDescriptorRawString(source, dataset, 'content');
+  if (blockId === undefined || content === undefined) {
+    return undefined;
+  }
+
+  return { action, target, blockId, content };
+}
+
 function applyLocalProjectionAction(
   model: NoteSurfaceViewModel,
   action: LocalProjectionAction,
@@ -252,6 +288,40 @@ function applyLocalProjectionAction(
           )),
         },
       };
+    case 'save_block':
+      return {
+        ...model,
+        noteSurface: {
+          ...model.noteSurface,
+          blocks: model.noteSurface.blocks.map((block) => {
+            if (block.id !== action.blockId) {
+              return block;
+            }
+
+            return {
+              ...block,
+              text: action.content,
+              editor: {
+                ...block.editor,
+                state: 'idle',
+              },
+              ...(block.sectionBoundary === undefined
+                ? {}
+                : {
+                    sectionBoundary: {
+                      ...block.sectionBoundary,
+                      title: action.content,
+                    },
+                  }),
+            };
+          }),
+          sectionBoundaries: model.noteSurface.sectionBoundaries.map((boundary) => (
+            boundary.blockId === action.blockId
+              ? { ...boundary, title: action.content }
+              : boundary
+          )),
+        },
+      };
     case 'close_provenance':
       return {
         ...model,
@@ -273,6 +343,15 @@ function readDescriptorString(
 ): string | undefined {
   const value = source[field] ?? dataset?.[field];
   return typeof value === 'string' && value.trim() !== '' ? value : undefined;
+}
+
+function readDescriptorRawString(
+  source: Record<string, unknown>,
+  dataset: Record<string, unknown> | undefined,
+  field: string,
+): string | undefined {
+  const value = source[field] ?? dataset?.[field];
+  return typeof value === 'string' ? value : undefined;
 }
 
 function toBoundaryErrors(error: unknown): readonly string[] {

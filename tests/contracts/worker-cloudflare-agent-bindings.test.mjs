@@ -10,9 +10,11 @@ import {
   WORKSPACE_BRAIN_AGENT_DEPLOYMENT_BINDING,
   WorkspaceBrainAgent,
   cloudflareAgentBindingDescriptors,
+  createCloudflareDurableObjectBindingDescriptors,
   createCloudflareAgentBindings,
   getCloudflareAgentBindingDescriptor,
   noteAgentBindingDescriptor,
+  toCloudflareDurableObjectBindingDescriptor,
   workspaceBrainAgentBindingDescriptor,
 } from '../../apps/worker/src/cloudflareAgentBindings.ts';
 
@@ -23,6 +25,8 @@ test('Cloudflare Agent binding descriptors name deployment bindings and runtime 
     cloudflareAgentBindingDescriptors.map((descriptor) => [
       descriptor.className,
       descriptor.deploymentBinding,
+      descriptor.deploymentBindingKind,
+      descriptor.moduleExport,
       descriptor.ownsRuntimePolicy,
       descriptor.delegatesTo,
     ]),
@@ -30,12 +34,16 @@ test('Cloudflare Agent binding descriptors name deployment bindings and runtime 
       [
         NOTE_AGENT_CLASS_NAME,
         NOTE_AGENT_DEPLOYMENT_BINDING,
+        'durable_object_namespace',
+        NOTE_AGENT_CLASS_NAME,
         false,
         ['runNoteStructureRouteHandler'],
       ],
       [
         WORKSPACE_BRAIN_AGENT_CLASS_NAME,
         WORKSPACE_BRAIN_AGENT_DEPLOYMENT_BINDING,
+        'durable_object_namespace',
+        WORKSPACE_BRAIN_AGENT_CLASS_NAME,
         false,
         ['runStructureJobAgentHandler', 'runStructureJobProcessorFlow'],
       ],
@@ -60,6 +68,30 @@ test('Cloudflare Agent binding descriptors name deployment bindings and runtime 
   assert.equal(
     getCloudflareAgentBindingDescriptor(WORKSPACE_BRAIN_AGENT_CLASS_NAME),
     workspaceBrainAgentBindingDescriptor,
+  );
+});
+
+test('Cloudflare Agent descriptors generate SDK-neutral Durable Object binding records', () => {
+  assert.deepEqual(
+    createCloudflareDurableObjectBindingDescriptors(),
+    [
+      {
+        name: NOTE_AGENT_DEPLOYMENT_BINDING,
+        class_name: NOTE_AGENT_CLASS_NAME,
+      },
+      {
+        name: WORKSPACE_BRAIN_AGENT_DEPLOYMENT_BINDING,
+        class_name: WORKSPACE_BRAIN_AGENT_CLASS_NAME,
+      },
+    ],
+  );
+
+  assert.deepEqual(
+    toCloudflareDurableObjectBindingDescriptor(noteAgentBindingDescriptor),
+    {
+      name: NOTE_AGENT_DEPLOYMENT_BINDING,
+      class_name: NOTE_AGENT_CLASS_NAME,
+    },
   );
 });
 

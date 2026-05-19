@@ -32,14 +32,23 @@ export type CloudflareAgentDeploymentBinding =
 export interface CloudflareAgentBindingDescriptor {
   className: CloudflareAgentClassName;
   deploymentBinding: CloudflareAgentDeploymentBinding;
+  deploymentBindingKind: 'durable_object_namespace';
+  moduleExport: CloudflareAgentClassName;
   runtimeRole: readonly string[];
   delegatesTo: readonly string[];
   ownsRuntimePolicy: false;
 }
 
+export interface CloudflareDurableObjectBindingDescriptor {
+  name: CloudflareAgentDeploymentBinding;
+  class_name: CloudflareAgentClassName;
+}
+
 export const noteAgentBindingDescriptor: CloudflareAgentBindingDescriptor = Object.freeze({
   className: NOTE_AGENT_CLASS_NAME,
   deploymentBinding: NOTE_AGENT_DEPLOYMENT_BINDING,
+  deploymentBindingKind: 'durable_object_namespace',
+  moduleExport: NOTE_AGENT_CLASS_NAME,
   runtimeRole: Object.freeze([
     'edit event buffer',
     'dirty section tracking',
@@ -56,6 +65,8 @@ export const noteAgentBindingDescriptor: CloudflareAgentBindingDescriptor = Obje
 export const workspaceBrainAgentBindingDescriptor: CloudflareAgentBindingDescriptor = Object.freeze({
   className: WORKSPACE_BRAIN_AGENT_CLASS_NAME,
   deploymentBinding: WORKSPACE_BRAIN_AGENT_DEPLOYMENT_BINDING,
+  deploymentBindingKind: 'durable_object_namespace',
+  moduleExport: WORKSPACE_BRAIN_AGENT_CLASS_NAME,
   runtimeRole: Object.freeze([
     'related context retrieval coordination',
     'memory candidate management coordination',
@@ -155,4 +166,19 @@ export function getCloudflareAgentBindingDescriptor(
   className: CloudflareAgentClassName,
 ): CloudflareAgentBindingDescriptor | undefined {
   return cloudflareAgentBindingDescriptors.find((descriptor) => descriptor.className === className);
+}
+
+export function createCloudflareDurableObjectBindingDescriptors(
+  descriptors: readonly CloudflareAgentBindingDescriptor[] = cloudflareAgentBindingDescriptors,
+): readonly CloudflareDurableObjectBindingDescriptor[] {
+  return Object.freeze(descriptors.map(toCloudflareDurableObjectBindingDescriptor));
+}
+
+export function toCloudflareDurableObjectBindingDescriptor(
+  descriptor: CloudflareAgentBindingDescriptor,
+): CloudflareDurableObjectBindingDescriptor {
+  return Object.freeze({
+    name: descriptor.deploymentBinding,
+    class_name: descriptor.moduleExport,
+  });
 }
