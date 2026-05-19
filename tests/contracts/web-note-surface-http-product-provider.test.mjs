@@ -60,6 +60,151 @@ test('HTTP product provider loads the initial note snapshot through GET note doc
   });
 });
 
+test('HTTP product provider copies optional product snapshot fields from the note response', async () => {
+  const provider = createNoteSurfaceHttpProductProvider({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike([], {
+      ok: true,
+      status: 200,
+      body: {
+        document: structuredClone(noteDocumentFixture),
+        viewState: {
+          workspaceName: 'Worker Workspace',
+          aiStatus: 'saved',
+          expandedDigest: false,
+        },
+        projectionMaps: {
+          activeNoteId: 'note_001',
+          memoryIdByBlockId: {
+            block_memory_candidate_001: 'memory_001',
+          },
+          sourceSpanIdByBlockId: {
+            block_ai_question_001: 'source_span_001',
+          },
+        },
+      },
+    }),
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+  });
+
+  const snapshot = await provider.loadInitialState();
+
+  assert.deepEqual(snapshot, {
+    document: noteDocumentFixture,
+    viewState: {
+      workspaceName: 'Worker Workspace',
+      aiStatus: 'saved',
+      expandedDigest: false,
+    },
+    projectionMaps: {
+      activeNoteId: 'note_001',
+      memoryIdByBlockId: {
+        block_memory_candidate_001: 'memory_001',
+      },
+      sourceSpanIdByBlockId: {
+        block_ai_question_001: 'source_span_001',
+      },
+    },
+  });
+});
+
+test('HTTP product provider lets caller supplied product snapshot fields override response fields', async () => {
+  const provider = createNoteSurfaceHttpProductProvider({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike([], {
+      ok: true,
+      status: 200,
+      body: {
+        document: structuredClone(noteDocumentFixture),
+        viewState: {
+          workspaceName: 'Worker Workspace',
+          expandedDigest: false,
+        },
+        projectionMaps: {
+          activeNoteId: 'note_from_worker',
+          operationIdByBlockId: {
+            block_ai_question_001: 'operation_from_worker',
+          },
+        },
+      },
+    }),
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+    viewState: {
+      workspaceName: 'Embedded Workspace',
+      expandedDigest: true,
+    },
+    projectionMaps: {
+      activeNoteId: 'note_from_embedding',
+      operationIdByBlockId: {
+        block_ai_question_001: 'operation_from_embedding',
+      },
+    },
+  });
+
+  const snapshot = await provider.loadInitialState();
+
+  assert.deepEqual(snapshot.viewState, {
+    workspaceName: 'Embedded Workspace',
+    expandedDigest: true,
+  });
+  assert.deepEqual(snapshot.projectionMaps, {
+    activeNoteId: 'note_from_embedding',
+    operationIdByBlockId: {
+      block_ai_question_001: 'operation_from_embedding',
+    },
+  });
+});
+
+test('HTTP product provider rejects invalid optional product snapshot fields as structured errors', async () => {
+  const invalidResponses = [
+    {
+      body: {
+        document: structuredClone(noteDocumentFixture),
+        viewState: null,
+      },
+      expected: 'initial note snapshot response viewState must be a plain object',
+    },
+    {
+      body: {
+        document: structuredClone(noteDocumentFixture),
+        viewState: [],
+      },
+      expected: 'initial note snapshot response viewState must be a plain object',
+    },
+    {
+      body: {
+        document: structuredClone(noteDocumentFixture),
+        projectionMaps: 'operation_001',
+      },
+      expected: 'initial note snapshot response projectionMaps must be a plain object',
+    },
+  ];
+
+  for (const response of invalidResponses) {
+    const provider = createNoteSurfaceHttpProductProvider({
+      apiBaseUrl: 'https://worker.example.test/api/',
+      fetchLike: createFetchLike([], {
+        ok: true,
+        status: 200,
+        body: response.body,
+      }),
+      workspaceId: 'workspace_001',
+      noteId: 'note_001',
+    });
+
+    await assert.rejects(
+      () => provider.loadInitialState(),
+      (error) => {
+        assert.ok(error instanceof Error);
+        assert.deepEqual(error.errors, [response.expected]);
+        return true;
+      },
+    );
+  }
+});
+
 test('HTTP product provider rejects invalid runtime ids before calling fetch-like binding', async () => {
   const invalidOptions = [
     { workspaceId: 'workspace_unset', noteId: 'note_001' },
@@ -164,7 +309,7 @@ test('HTTP product provider source stays framework-neutral and limited to the in
   assert.doesNotMatch(source, /React|Next|Vite|createRoot|hydrateRoot/);
   assert.doesNotMatch(source, /document\.querySelector|globalThis\.fetch|fetch\(|XMLHttpRequest|new Request/i);
   assert.doesNotMatch(source, /authPolicy|providerAdapter|callProvider|externalAction/i);
-  assert.doesNotMatch(source, /method:\s*['"]POST['"]|\/digest|\/provenance|\/memory|\/ai-operations/);
+  assert.doesNotMatch(source, /method:\s*['"](POST|PUT|PATCH|DELETE)['"]|\/digest|\/provenance|\/memory|\/ai-operations/);
   assert.doesNotMatch(source, /user_block\.direct_mutate|directUserBlockMutation|mutateUserAuthoredBlock|direct.*mutat/i);
   assert.doesNotMatch(source, /crypto\.randomUUID|Date\.now|Math\.random/);
   assert.doesNotMatch(source, /encodeURIComponent/);

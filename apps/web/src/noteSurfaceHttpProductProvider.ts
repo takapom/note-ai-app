@@ -62,10 +62,24 @@ export function createNoteSurfaceHttpProductProvider(
         throw new NoteSurfaceHttpProductProviderError(['initial note snapshot response must include document']);
       }
 
+      const responseViewState = readOptionalSnapshotObject(result.body, 'viewState');
+      const responseProjectionMaps = readOptionalSnapshotObject(result.body, 'projectionMaps');
+      const snapshotErrors = [...responseViewState.errors, ...responseProjectionMaps.errors];
+      if (snapshotErrors.length > 0) {
+        throw new NoteSurfaceHttpProductProviderError(snapshotErrors);
+      }
+
       return {
         document,
-        ...(options.viewState === undefined ? {} : { viewState: options.viewState }),
-        ...(options.projectionMaps === undefined ? {} : { projectionMaps: options.projectionMaps }),
+        ...(options.viewState === undefined && responseViewState.value === undefined
+          ? {}
+          : { viewState: options.viewState ?? (responseViewState.value as NoteSurfaceProductViewState) }),
+        ...(options.projectionMaps === undefined && responseProjectionMaps.value === undefined
+          ? {}
+          : {
+              projectionMaps:
+                options.projectionMaps ?? (responseProjectionMaps.value as NoteSurfaceProductProjectionMaps),
+            }),
       };
     },
   };
@@ -134,4 +148,33 @@ function readDocument(body: unknown): unknown | undefined {
   }
 
   return (body as { document?: unknown }).document;
+}
+
+function readOptionalSnapshotObject(
+  body: unknown,
+  fieldName: 'viewState' | 'projectionMaps',
+): { value: unknown | undefined; errors: readonly string[] } {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return { value: undefined, errors: [] };
+  }
+
+  if (!Object.hasOwn(body, fieldName)) {
+    return { value: undefined, errors: [] };
+  }
+
+  const value = (body as Record<typeof fieldName, unknown>)[fieldName];
+  if (!isPlainObject(value)) {
+    return { value: undefined, errors: [`initial note snapshot response ${fieldName} must be a plain object`] };
+  }
+
+  return { value, errors: [] };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
