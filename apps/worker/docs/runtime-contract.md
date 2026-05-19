@@ -13,6 +13,8 @@
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
 - MVP API surface の method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping を行う framework-neutral worker HTTP router。
+- canonical Note document persistence port を通じた Note Block create/update/delete command boundary。
+- Next Open Digest preparation projection を読む read-only digest boundary。
 - note leave / manual organize / next open route input を scheduler runtime flow に接続する note structure route handler。
 - valid ContextEnvelopeBuilt から provider/orchestration boundary に接続する StructureJob Agent handler。
 - queued StructureJob claim と running/completed/failed transition を扱う StructureJob work queue port。
@@ -41,6 +43,8 @@
 - Agent-local SQL は一時的なものに限ります。
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
 - worker HTTP router は method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping だけを担当してください。scheduler policy、Note Model policy、memory policy、Operation Router policy、provider calls、SQL details を所有してはいけません。
+- note block command boundary は Note document persistence port の load/save と Note Model validation だけを扱ってください。scheduler、Context Assembly、provider、Operation Router、audit、memory、projection writes を呼び出してはいけません。
+- next open digest read boundary は prepared digest projection を read-only で返してください。missing digest で fake content を作らず、provider、Operation Router、audit、memory activation、Context Assembly を呼び出してはいけません。
 - note structure route handler は route/event normalization、auth/workspace context、runtime port wiring、scheduler runtime flow 呼び出し、response mapping だけを担当してください。provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
 - StructureJob Agent handler は context assembly runtime flow を先に呼び、valid ContextEnvelopeBuilt の場合だけ structure job operation orchestration flow に進んでください。invalid context assembly では provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
 - StructureJob work queue port は claimNextQueuedJob、markJobCompleted、markJobFailed だけを公開し、invalid primitive を valid result にしてはいけません。provider、Operation Router、audit persistence、canonical Note/Block write、SQL adapter details を含めないでください。

@@ -22,6 +22,8 @@ import type {
   NoteDocumentPersistencePort,
   NoteDocumentSaveResult,
 } from './noteDocumentPersistencePort.ts';
+import type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
+import type { DigestReadPort } from './nextOpenDigestReadPort.ts';
 import type { StructureTriggerSchedulerFlowInput } from './structureSchedulerRuntimeFlow.ts';
 
 export interface WorkerHttpRequest {
@@ -38,15 +40,8 @@ export interface WorkerHttpResponse {
   body: unknown;
 }
 
-export interface NoteBlockCommandPort {
-  createBlock(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
-  updateBlock(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
-  deleteBlock(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
-}
-
-export interface DigestReadPort {
-  getDigest(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
-}
+export type { DigestReadPort } from './nextOpenDigestReadPort.ts';
+export type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
 
 export interface MemoryReviewPort {
   acceptMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;

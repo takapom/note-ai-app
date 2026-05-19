@@ -77,6 +77,12 @@ Worker HTTP routing boundary の重点コマンド:
 - route/delegation guard: `node --test tests/contracts/worker-http-router.test.mjs`
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
+Note Block command / Next Open Digest read boundary の重点コマンド:
+
+- block command guard: `node --test tests/contracts/worker-note-block-command-port.test.mjs`
+- digest read guard: `node --test tests/contracts/worker-next-open-digest-read-port.test.mjs`
+- router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
+
 
 ## 許可されるトポロジー
 

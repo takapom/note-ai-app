@@ -17,14 +17,14 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | blocking gap | `apps/web` は docs のみで editable NoteSurface がない。 |
 | 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model contract/test は実装済み。editor rendering/editing は未実装。 |
-| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter と HTTP router delegation は追加済み。実 Cloudflare/Turso wiring と block CRUD command port 実装は未実装。Agent-local save intent は canonical SoT ではない。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation は追加済み。実 Cloudflare/Turso wiring は未実装。Agent-local save intent は canonical SoT ではない。 |
 | 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation は対応済み。実 Cloudflare entrypoint は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
 | 9 | AI Assist Block が同じノート内に表示される | blocking gap | in-note AI Assist Block renderer/actions がない。 |
-| 10 | Next Open Digest が表示できる | blocking gap | digest preparation はあるが read model、GET route、UI component がない。 |
+| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation は追加済み。実 Cloudflare/Turso wiring と UI component は未実装。 |
 | 11 | Memory candidate をノート内で承認または拒否できる | blocking gap | memory contract はあるが memory-specific runtime/API/UI boundary がない。 |
 | 12 | Provenance Popover で source を確認できる | blocking gap | source span data はあるが provenance lookup/runtime/UI behavior がない。 |
 | 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard は covered。frontend failure state と continued editing UX は未実装。 |
@@ -60,7 +60,7 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 
 実装状況:
 - `NoteDocumentPersistencePort`、in-memory port、Turso SQL adapter、focused contract tests は追加済み。
-- 残りは実 Cloudflare/Turso client wiring と block CRUD command port implementation。
+- 残りは実 Cloudflare/Turso client wiring。
 
 検証コマンド:
 - `node --test tests/contracts/note-model-runtime.test.mjs`
@@ -134,7 +134,7 @@ scheduler domain は各 trigger を持つが、current Worker route input は `n
 Next Open Digest を preparation intent だけでなく、read model と `GET /notes/:noteId/digest` で表示可能にする。
 
 コンテキスト:
-MVP acceptance #10。Agent-local digest preparation は存在するが、read persistence、route、UI integration がない。
+MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP router delegation は存在するが、real Worker/Turso wiring と UI integration がない。
 
 制約:
 - Digest は projection/read model であり canonical Note/Block SoT ではない。
@@ -149,6 +149,10 @@ MVP acceptance #10。Agent-local digest preparation は存在するが、read pe
 - `GET /notes/:noteId/digest` 相当の runtime flow が digest を返せる。
 - missing digest は empty/available=false として安全に返る。
 - provider/context failure が editing flow を止めない。
+
+実装状況:
+- `NextOpenDigestReadPort`、in-memory read port、Agent-local SQL read adapter、HTTP router delegation、focused contract tests は追加済み。
+- 残りは real Worker/Turso binding と compact/expandable UI。
 
 検証コマンド:
 - `node --test tests/contracts/worker-structure-scheduler-flow.test.mjs`
