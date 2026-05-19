@@ -62,8 +62,14 @@ test('browser runtime dispatches AI memory digest and provenance actions through
   assert.equal(mounted.ok, true);
 
   const aiEvent = host.events.find((event) => event.target === 'ai_assist_block' && event.action === 'adopt');
+  const provenanceEvent = host.events.find((event) => (
+    event.target === 'ai_assist_block'
+    && event.action === 'inspect_source'
+    && event.apiIntent === 'provenance.lookup'
+  ));
   const memoryEvent = host.events.find((event) => event.target === 'memory_candidate_block' && event.action === 'remember');
   assert.ok(aiEvent);
+  assert.ok(provenanceEvent);
   assert.ok(memoryEvent);
 
   const ai = await host.handler(aiEvent);
@@ -76,13 +82,7 @@ test('browser runtime dispatches AI memory digest and provenance actions through
       apiIntent: 'GET /notes/:noteId/digest',
     },
   });
-  const provenance = await host.handler({
-    dataset: {
-      action: 'inspect_source',
-      target: 'provenance_popover',
-      apiIntent: 'POST /provenance/source',
-    },
-  });
+  const provenance = await host.handler(provenanceEvent);
 
   assert.deepEqual(
     [ai, memory, digest, provenance].map((result) => [
@@ -556,12 +556,13 @@ test('browser runtime applies successful API response projections without owning
   assert.match(host.html, /Review the response projection reducer\./);
   assert.match(host.html, /data-digest-item-id="digest_question_001" data-source-block-id="block_paragraph_001"/);
 
-  const provenance = await host.handler({
-    action: 'inspect_source',
-    target: 'provenance_popover',
-    apiIntent: 'POST /provenance/source',
-    blockId: 'block_ai_memory_candidate_001',
-  });
+  const provenanceEvent = host.events.find((event) => (
+    event.target === 'ai_assist_block'
+    && event.action === 'inspect_source'
+    && event.apiIntent === 'provenance.lookup'
+  ));
+  assert.ok(provenanceEvent);
+  const provenance = await host.handler(provenanceEvent);
 
   assert.deepEqual([provenance.ok, provenance.status, provenance.controllerResult?.status], [true, 'handled', 'sent']);
   assert.match(host.html, /data-component="provenance-popover" data-open="true"/);
@@ -738,6 +739,20 @@ function createController(calls, beforeFetch) {
     ...metadata,
     transport,
     resolveActionInput(event) {
+      if (
+        event.action === 'inspect_source'
+        || event.apiIntent === 'provenance.lookup'
+        || event.apiIntent === 'POST /provenance/source'
+      ) {
+        return {
+          provenance: {
+            sourceSpanId: 'span_001',
+            sourceBlockId: 'block_source_001',
+            startOffset: 4,
+            endOffset: 42,
+          },
+        };
+      }
       if (event.target === 'ai_assist_block') {
         return { operationId: 'operation_001' };
       }
@@ -749,16 +764,6 @@ function createController(calls, beforeFetch) {
       }
       if (event.target === 'next_open_digest') {
         return { noteId: 'note_001' };
-      }
-      if (event.target === 'provenance_popover') {
-        return {
-          provenance: {
-            sourceSpanId: 'span_001',
-            sourceBlockId: 'block_source_001',
-            startOffset: 4,
-            endOffset: 42,
-          },
-        };
       }
       if (event.target === 'block_editor') {
         return {

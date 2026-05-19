@@ -27,6 +27,7 @@ export type NoteSurfaceApiIntent =
   | 'none'
   | 'POST /ai-operations/:operationId/accept'
   | 'POST /ai-operations/:operationId/dismiss'
+  | 'provenance.lookup'
   | 'POST /memory/:memoryId/accept'
   | 'POST /memory/:memoryId/reject'
   | 'POST /memory/:memoryId/edit'
@@ -334,7 +335,7 @@ const aiAssistActions: readonly AiAssistBlockActionIntent[] = [
     id: 'inspect_source',
     label: 'Why?',
     userIntent: 'inspect_source_provenance',
-    apiIntent: 'none',
+    apiIntent: 'provenance.lookup',
     emitsAiProviderCall: false,
     mutatesUserAuthoredBlock: false,
   },

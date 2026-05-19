@@ -331,13 +331,13 @@ function resolveSuccessfulApiProjectionAction(
 
   if (
     action === 'inspect_source'
-    && target === 'provenance_popover'
+    && (target === 'ai_assist_block' || target === 'provenance_popover')
     && (apiIntent === 'provenance.lookup' || apiIntent === 'POST /provenance/source')
   ) {
     const provenance = readProvenanceProjection(body);
     return provenance === undefined
       ? undefined
-      : { action: 'lookup_provenance', target, provenance };
+      : { action: 'lookup_provenance', target: 'provenance_popover', provenance };
   }
 
   if (

@@ -125,8 +125,9 @@ test('event controller sends digest read and provenance lookup actions from call
   });
   const provenance = await controller.handleRenderEvent({
     action: 'inspect_source',
-    target: 'provenance_popover',
-    apiIntent: 'POST /provenance/source',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+    apiIntent: 'provenance.lookup',
   });
 
   assert.equal(digest.ok, true);
@@ -197,6 +198,12 @@ test('event controller returns errors and does not call transport for invalid ma
     action: 'adopt',
     target: 'ai_assist_block',
   });
+  const missingProvenance = await controller.handleRenderEvent({
+    action: 'inspect_source',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+    apiIntent: 'provenance.lookup',
+  });
 
   assert.equal(missingOperation.ok, false);
   assert.equal(missingOperation.status, 'invalid_mapping');
@@ -208,6 +215,33 @@ test('event controller returns errors and does not call transport for invalid ma
   assert.equal(invalidEvent.ok, false);
   assert.equal(invalidEvent.status, 'invalid_event');
   assert.match(invalidEvent.errors.join('\n'), /apiIntent is required/);
+  assert.equal(missingProvenance.ok, false);
+  assert.equal(missingProvenance.status, 'invalid_mapping');
+  assert.match(missingProvenance.errors.join('\n'), /provenance is required/);
+  assert.equal(calls.length, 0);
+});
+
+test('event controller returns structured errors and does not send invalid provenance mapping', async () => {
+  const calls = [];
+  const controller = createController(calls, () => ({
+    provenance: {
+      sourceSpanId: 'span_001',
+      sourceBlockId: 'block_source_001',
+      startOffset: 42,
+      endOffset: 4,
+    },
+  }));
+
+  const result = await controller.handleRenderEvent({
+    action: 'inspect_source',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+    apiIntent: 'provenance.lookup',
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'invalid_mapping');
+  assert.match(result.errors.join('\n'), /endOffset must be greater than or equal to startOffset/);
   assert.equal(calls.length, 0);
 });
 

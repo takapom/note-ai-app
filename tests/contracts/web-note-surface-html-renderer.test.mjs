@@ -71,7 +71,11 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
     && event.blockType === 'heading'
     && event.apiIntent === 'block.update'
   )), true);
-  assert.equal(events.some((event) => event.target === 'ai_assist_block' && event.action === 'inspect_source'), true);
+  assert.equal(events.some((event) => (
+    event.target === 'ai_assist_block'
+    && event.action === 'inspect_source'
+    && event.apiIntent === 'provenance.lookup'
+  )), true);
   assert.equal(events.some((event) => event.target === 'memory_candidate_block' && event.action === 'remember'), true);
   assert.equal(events.some((event) => event.target === 'next_open_digest' && event.action === 'collapse_digest'), true);
   assert.equal(events.some((event) => event.target === 'provenance_popover' && event.action === 'close_provenance'), true);

@@ -155,9 +155,9 @@ test('action input resolver returns provenance lookup input from caller block ma
 
   assert.deepEqual(resolveActionInput({
     action: 'inspect_source',
-    target: 'provenance_popover',
+    target: 'ai_assist_block',
     blockId: 'block_ai_source_001',
-    apiIntent: 'POST /provenance/source',
+    apiIntent: 'provenance.lookup',
   }), { provenance });
 });
 
@@ -188,6 +188,12 @@ test('action input resolver returns undefined for no-op editor actions unsupport
     target: 'ai_assist_block',
     blockId: 'block_missing_001',
     apiIntent: 'POST /ai-operations/:operationId/accept',
+  }), undefined);
+  assert.equal(resolveActionInput({
+    action: 'inspect_source',
+    target: 'ai_assist_block',
+    blockId: 'block_missing_001',
+    apiIntent: 'provenance.lookup',
   }), undefined);
 });
 

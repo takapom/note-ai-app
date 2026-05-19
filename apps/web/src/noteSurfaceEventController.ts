@@ -173,7 +173,7 @@ export async function handleNoteSurfaceRenderEvent(
   if (!mapped.ok || mapped.request === undefined) {
     return {
       ok: false,
-      status: 'request_rejected',
+      status: mapped.errors.length > 0 ? 'invalid_mapping' : 'request_rejected',
       errors: mapped.errors.length > 0
         ? mapped.errors
         : [mapped.unavailableReason ?? `request rejected for apiIntent: ${normalized.event.apiIntent}`],

@@ -80,7 +80,7 @@ test('AI assist blocks expose inline action intents without direct user block mu
     'none',
     'POST /ai-operations/:operationId/accept',
     'POST /ai-operations/:operationId/dismiss',
-    'none',
+    'provenance.lookup',
   ]);
   assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.emitsAiProviderCall), [
     false,

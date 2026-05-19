@@ -98,7 +98,7 @@ test('resolver options mapper creates action lookup inputs from AI blocks memory
   }), { memoryId: 'memory_candidate_001' });
   assert.deepEqual(resolveActionInput({
     action: 'inspect_source',
-    target: 'provenance_popover',
+    target: 'ai_assist_block',
     blockId: 'block_ai_summary_001',
     apiIntent: 'provenance.lookup',
   }), {
