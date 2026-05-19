@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Native Note</title>
+  </head>
+  <body>
+    <!-- Deployment must provide data-api-base-url, data-workspace-id, and data-note-id. -->
+    <main data-note-surface-root></main>
+    <script type="module">
+      import { startBrowserNoteSurfaceApp } from '/assets/apps/web/src/browserNoteSurfaceAppEntry.js';
+
+      await startBrowserNoteSurfaceApp(
+        {
+          documentReadyState: () => document.readyState,
+          addEventListener: globalThis.addEventListener.bind(globalThis),
+        },
+        {},
+      );
+    </script>
+  </body>
+</html>

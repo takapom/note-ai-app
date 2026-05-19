@@ -77,6 +77,8 @@ Worker HTTP routing boundary の重点コマンド:
 - route/delegation guard: `node --test tests/contracts/worker-entrypoint.test.mjs tests/contracts/worker-http-router.test.mjs`
 - auth/workspace boundary guard: `node --test tests/contracts/worker-auth-boundary.test.mjs tests/contracts/worker-entrypoint.test.mjs`
 - Cloudflare Agent binding guard: `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-note-structure-runtime-handlers.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs`
+- Cloudflare deployment config guard: `node --test tests/contracts/cloudflare-deployment-config.test.mjs`
+  - verifies that `wrangler.toml` points `main` at the Worker fetch entrypoint, serves Web build artifacts from `./dist/web`, keeps MVP API route patterns Worker-first via `[assets].run_worker_first`, leaves ordinary static asset paths asset-first, and does not inline Turso/auth/user/workspace secret values.
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
 Note Block command / Next Open Digest read boundary の重点コマンド:
@@ -132,6 +134,10 @@ Web NoteSurface foundation の重点コマンド:
 - browser app entry deployment bootstrap guard: `node --test tests/contracts/web-browser-note-surface-app-entry.test.mjs tests/contracts/web-browser-note-surface-mount.test.mjs tests/contracts/web-note-surface-integration-guard.test.mjs`
   - verifies that `browserNoteSurfaceAppEntry.ts` has no import-time side effect and starts the mount adapter only through an injected runtime / deployment descriptor.
   - verifies that the browser app entry is deployment bootstrap, not NoteSurface application boundary or domain policy, and does not own framework / bundler package selection, deployment config, provider SDK, auth policy, ID generation, or canonical Note / Section / Block direct mutation.
+- browser static build artifact guard: `npm run build:web && node --test tests/contracts/web-browser-static-build.test.mjs`
+  - verifies that Web browser delivery copies `apps/web/public` into `dist/web`, emits browser ESM assets through the dedicated TypeScript browser build config, and does not change root `noEmit` typecheck semantics.
+  - verifies that `apps/web/public/index.html` is a deployment template that imports the compiled `browserNoteSurfaceAppEntry.js` and explicitly calls `startBrowserNoteSurfaceApp`, while required dataset metadata remains deployment supplied.
+  - verifies that browser build artifact paths, deployment metadata, and framework/package selection details do not leak into `apps/web/src/noteSurface*.ts` application files.
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 

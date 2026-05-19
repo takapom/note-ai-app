@@ -14,6 +14,7 @@
 - note leave / manual organize / next open API routing。
 - MVP API surface の method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping を行う framework-neutral worker HTTP router。
 - standard `Request` / `Response` を framework-neutral worker HTTP router に接続する Worker fetch entrypoint。
+- Cloudflare deployment config は `wrangler.toml` に閉じた volatile deployment detail です。Worker runtime は配信 path、static asset directory、route pattern の product policy を所有しません。
 - canonical Note document persistence port を通じた Note Block create/update/delete command boundary。
 - Next Open Digest preparation projection を読む read-only digest boundary。
 - Provenance Popover 用に canonical block source から bounded excerpt と source metadata だけを読む read-only provenance lookup boundary。
@@ -49,6 +50,7 @@
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
 - worker HTTP router は method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping だけを担当してください。scheduler policy、Note Model policy、memory policy、Operation Router policy、provider calls、SQL details を所有してはいけません。
 - Worker fetch entrypoint は request parsing、workspace/user context normalization、JSON body parsing、runtime port factory wiring、router delegation、Response mapping だけを担当してください。invalid JSON、missing workspaceId、invalid route / method mismatch では port factory を呼び出してはいけません。
+- `wrangler.toml` は Worker entrypoint と Web static build artifact path を接続するだけにしてください。Turso URL/token、auth shared secret、workspace/user id、Note Model、Operation Router、AI provider policy を deployment config に直書きしないでください。
 - worker auth/workspace boundary は request header、env、entrypoint context から workspaceId と任意の userId を stable non-sentinel runtime id として正規化するだけにしてください。configured shared secret がある場合は provider-neutral な request secret 照合だけを行い、auth provider、JWT package、workspace membership policy、SQL、Agent、provider、Operation Router を所有してはいけません。invalid workspaceId、invalid optional userId、shared secret mismatch では port factory を呼び出してはいけません。
 - Cloudflare Agent binding foundation は NoteAgent / WorkspaceBrainAgent の framework-neutral class と descriptor だけにしてください。binding class は runtime flow に input を委譲し、Cloudflare SDK、provider SDK、SQL、Operation Router、audit persistence、canonical Note/Section/Block write を所有してはいけません。
 - note block command boundary は Note document persistence port の load/save と Note Model validation だけを扱ってください。scheduler、Context Assembly、provider、Operation Router、audit、memory、projection writes を呼び出してはいけません。

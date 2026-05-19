@@ -1,0 +1,14 @@
+name = "ai-native-note"
+main = "apps/worker/src/workerEntrypoint.ts"
+compatibility_date = "2026-05-19"
+
+[assets]
+directory = "./dist/web"
+run_worker_first = [
+  "/api/*",
+  "/notes/*",
+  "/blocks/*",
+  "/ai-operations/*",
+  "/memory/*",
+  "/provenance/*",
+]
