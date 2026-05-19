@@ -93,6 +93,11 @@ Memory candidate review runtime boundary の重点コマンド:
 - memory review guard: `node --test tests/contracts/worker-memory-review-port.test.mjs tests/contracts/memory-runtime.test.mjs`
 - router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
 
+Operation proposal SQL/runtime approval boundary の重点コマンド:
+
+- proposal SQL guard: `node --test tests/contracts/worker-operation-proposal-sql-adapter.test.mjs tests/contracts/worker-operation-proposal-approval-flow.test.mjs`
+- Worker default wiring guard: `node --test tests/contracts/worker-entrypoint.test.mjs`
+
 Web NoteSurface foundation の重点コマンド:
 
 - note surface guard: `node --test tests/contracts/web-note-surface.test.mjs tests/contracts/note-model-runtime.test.mjs`

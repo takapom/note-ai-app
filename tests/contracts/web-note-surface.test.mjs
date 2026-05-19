@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   NoteSurfaceViewModelError,
   createNoteSurfaceViewModel,
+  provenanceExcerptMaxChars,
 } from '../../apps/web/src/noteSurface.ts';
 import { noteDocumentFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
@@ -60,6 +61,148 @@ test('block editing actions remain available when AI status is failed', () => {
   assert.deepEqual(editingBlock?.editor.actions, ['edit_block', 'save_block', 'cancel_edit']);
 });
 
+test('AI assist blocks expose inline action intents without direct user block mutation', () => {
+  const model = createNoteSurfaceViewModel(noteDocumentFixture);
+  const aiBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_question');
+
+  assert.equal(aiBlock?.aiAssist?.sourceInspectable, true);
+  assert.equal(aiBlock?.aiAssist?.emitsAiProviderCall, false);
+  assert.equal(aiBlock?.aiAssist?.mutatesUserAuthoredBlock, false);
+  assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.id), [
+    'edit',
+    'adopt',
+    'delete',
+    'inspect_source',
+  ]);
+  assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.apiIntent), [
+    'none',
+    'POST /ai-operations/:operationId/accept',
+    'POST /ai-operations/:operationId/dismiss',
+    'none',
+  ]);
+  assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.emitsAiProviderCall), [
+    false,
+    false,
+    false,
+    false,
+  ]);
+});
+
+test('memory candidate blocks expose review actions without hidden activation', () => {
+  const model = createNoteSurfaceViewModel(createMemoryCandidateDocument());
+  const memoryBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_memory_candidate');
+
+  assert.equal(memoryBlock?.memoryCandidate?.label, 'Memory candidate');
+  assert.equal(memoryBlock?.memoryCandidate?.hiddenProfiling, false);
+  assert.equal(memoryBlock?.memoryCandidate?.automaticActiveMemory, false);
+  assert.equal(memoryBlock?.memoryCandidate?.emitsAiProviderCall, false);
+  assert.deepEqual(memoryBlock?.memoryCandidate?.actions.map((action) => action.id), [
+    'remember',
+    'edit',
+    'reject',
+    'delete',
+    'snooze',
+  ]);
+  assert.deepEqual(memoryBlock?.memoryCandidate?.actions.map((action) => action.apiIntent), [
+    'POST /memory/:memoryId/accept',
+    'none',
+    'POST /memory/:memoryId/reject',
+    'none',
+    'none',
+  ]);
+});
+
+test('next open digest is compact, expandable, and does not invent unavailable content', () => {
+  const unavailable = createNoteSurfaceViewModel(noteDocumentFixture, {
+    nextOpenDigest: { available: false },
+    expandedDigest: true,
+  }).noteSurface.nextOpenDigest;
+
+  assert.equal(unavailable.available, false);
+  assert.equal(unavailable.compact, true);
+  assert.equal(unavailable.expandable, true);
+  assert.equal(unavailable.expanded, false);
+  assert.equal(unavailable.emptyState, 'unavailable');
+  assert.deepEqual(unavailable.sections, []);
+
+  const empty = createNoteSurfaceViewModel(noteDocumentFixture, {
+    nextOpenDigest: { available: true },
+  }).noteSurface.nextOpenDigest;
+
+  assert.equal(empty.available, true);
+  assert.equal(empty.emptyState, 'no_items');
+  assert.deepEqual(empty.sections, []);
+
+  const expanded = createNoteSurfaceViewModel(noteDocumentFixture, {
+    expandedDigest: true,
+    nextOpenDigest: {
+      available: true,
+      unresolvedQuestions: [{ id: 'question_001', text: 'Clarify launch criteria.', sourceBlockId: 'block_paragraph_001' }],
+      decisions: [{ id: 'decision_001', text: 'Keep writing flow uninterrupted.' }],
+      relatedNotes: [],
+      memoryCandidates: [{ id: 'memory_candidate_001', text: 'Interested in editor ergonomics.' }],
+    },
+  }).noteSurface.nextOpenDigest;
+
+  assert.equal(expanded.expanded, true);
+  assert.equal(expanded.emptyState, 'has_items');
+  assert.deepEqual(expanded.sections.map((section) => section.id), [
+    'unresolved_questions',
+    'decisions',
+    'memory_candidates',
+  ]);
+  assert.equal(expanded.emitsAiProviderCall, false);
+});
+
+test('provenance popover contains only bounded excerpt and source metadata', () => {
+  const fullNoteText = 'full-note-text-'.repeat(80);
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    provenancePopover: {
+      open: true,
+      sourceBlockId: 'block_paragraph_001',
+      sourceNoteId: noteDocumentFixture.note.id,
+      sourceTitle: noteDocumentFixture.note.title,
+      startOffset: 0,
+      endOffset: fullNoteText.length,
+      excerpt: fullNoteText,
+      reason: 'Question derived from the source block.',
+    },
+  });
+
+  const popover = model.noteSurface.provenancePopover;
+  assert.equal(popover.open, true);
+  assert.equal(popover.includesFullNote, false);
+  assert.equal(popover.includesFullWorkspace, false);
+  assert.equal(popover.emitsAiProviderCall, false);
+  assert.equal(popover.boundedExcerpt?.length, provenanceExcerptMaxChars);
+  assert.notEqual(popover.boundedExcerpt, fullNoteText);
+  assert.deepEqual(popover.source, {
+    blockId: 'block_paragraph_001',
+    noteId: noteDocumentFixture.note.id,
+    title: noteDocumentFixture.note.title,
+    startOffset: 0,
+    endOffset: fullNoteText.length,
+  });
+});
+
+test('AI failure digest and provenance state do not remove editing actions', () => {
+  const editingBlockId = 'block_paragraph_001';
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    aiStatus: 'failed',
+    editingBlockIds: [editingBlockId],
+    nextOpenDigest: { available: false },
+    provenancePopover: { open: false },
+  });
+
+  assert.equal(model.noteSurface.nextOpenDigest.available, false);
+  assert.equal(model.noteSurface.provenancePopover.open, false);
+  assert.deepEqual(model.noteSurface.availableActions.blockEditor, ['edit_block', 'save_block', 'cancel_edit']);
+
+  const editingBlock = model.noteSurface.blocks.find((block) => block.id === editingBlockId);
+  assert.equal(editingBlock?.editor.state, 'editing');
+  assert.deepEqual(editingBlock?.editor.actions, ['edit_block', 'save_block', 'cancel_edit']);
+});
+
 test('MVP-excluded surfaces are absent from the view model', () => {
   const model = createNoteSurfaceViewModel(noteDocumentFixture);
   const serialized = JSON.stringify(model);
@@ -73,6 +216,7 @@ test('MVP-excluded surfaces are absent from the view model', () => {
   assert.doesNotMatch(serialized, /aiModeSwitcher":true/);
   assert.doesNotMatch(serialized, /externalIntegrationsDashboard":true/);
   assert.doesNotMatch(serialized, /"chatPanel":|"modeSwitcher":|"integrationsDashboard":/i);
+  assert.doesNotMatch(serialized, /callProvider|providerAdapter|externalAction/i);
 });
 
 test('invalid note documents are rejected before view model creation', () => {
@@ -130,6 +274,41 @@ function createHeadingDocument() {
   ];
 
   return { note, sections, blocks };
+}
+
+function createMemoryCandidateDocument() {
+  const now = 1_764_000_000_000;
+  const document = structuredClone(noteDocumentFixture);
+
+  document.blocks = [
+    ...document.blocks,
+    {
+      id: 'block_ai_memory_candidate_001',
+      noteId: document.note.id,
+      sectionId: 'section_001',
+      type: 'ai_memory_candidate',
+      contentJson: {
+        text: 'Remember that the user is evaluating editor ergonomics.',
+        annotations: [
+          {
+            kind: 'source_span',
+            sourceBlockId: 'block_paragraph_001',
+            startOffset: 0,
+            endOffset: 20,
+            reason: 'Memory candidate is source-backed.',
+          },
+        ],
+      },
+      plainText: 'Remember that the user is evaluating editor ergonomics.',
+      position: 3,
+      origin: 'ai',
+      contentHash: 'hash_block_ai_memory_candidate_001',
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+
+  return document;
 }
 
 function createSection(id, noteId, headingBlockId, headingLevel, position, parentSectionId) {

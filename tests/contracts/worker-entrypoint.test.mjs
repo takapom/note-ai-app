@@ -184,6 +184,55 @@ test('worker entrypoint default wiring persists notes through generic Turso exec
   });
 });
 
+test('worker entrypoint default wiring uses TURSO for operation proposal accept and dismiss routes', async () => {
+  const executed = [];
+  const auditRecord = makeOperationProposalAuditRecord('operation_proposal_001');
+  const proposalRow = {
+    operation_id: auditRecord.id,
+    workspace_id: noteFixture.workspaceId,
+    state: 'pending',
+    audit_record_json: JSON.stringify(auditRecord),
+    created_at: now - 100,
+    updated_at: now - 100,
+    accepted_at: null,
+    dismissed_at: null,
+  };
+  const turso = {
+    async execute(statement) {
+      executed.push(statement);
+      if (/^select .* from operation_proposals/i.test(statement.sql)) {
+        return { rows: [proposalRow] };
+      }
+      if (/^update operation_proposals/i.test(statement.sql)) {
+        proposalRow.state = statement.args[0];
+        proposalRow.updated_at = statement.args[1];
+        proposalRow.accepted_at = statement.args[2];
+        proposalRow.dismissed_at = statement.args[3];
+        return { rowsAffected: 1 };
+      }
+      throw new Error(`unexpected SQL: ${statement.sql}`);
+    },
+  };
+
+  const accepted = await handleWorkerFetch(new Request('https://worker.test/ai-operations/operation_proposal_001/accept', {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), { TURSO: turso }, { now });
+  proposalRow.state = 'pending';
+  proposalRow.accepted_at = null;
+  const dismissed = await handleWorkerFetch(new Request('https://worker.test/ai-operations/operation_proposal_001/dismiss', {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), { TURSO: turso }, { now: now + 1 });
+
+  assert.equal(accepted.status, 200);
+  assert.equal(dismissed.status, 200);
+  assert.equal(executed.some((statement) => /from operation_proposals/i.test(statement.sql)), true);
+  assert.equal(executed.some((statement) => /^update operation_proposals/i.test(statement.sql)), true);
+  assert.deepEqual((await accepted.json()).proposal.state, 'accepted');
+  assert.deepEqual((await dismissed.json()).proposal.state, 'dismissed');
+});
+
 test('worker Turso SQL executor exposes query rows and ordered writes without SQL interpretation', async () => {
   const executed = [];
   const executor = new WorkerTursoSqlExecutor({
@@ -223,3 +272,31 @@ test('worker entrypoint source stays a thin fetch and port wiring boundary', asy
   assert.doesNotMatch(source, /runOperationRoutingFlow|classifyOperationPolicy|validateStructureOperation/);
   assert.doesNotMatch(source, /\b(?:insert\s+into|update|delete\s+from|select\s+\*)\b/i);
 });
+
+function makeOperationProposalAuditRecord(operationId) {
+  return {
+    id: operationId,
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    structureJobId: 'structure_job_001',
+    operationType: 'insert_assist_block',
+    policy: 'inline',
+    status: 'proposed',
+    operation: {
+      type: 'insert_assist_block',
+      target: {
+        noteId: noteFixture.id,
+        sectionId: noteDocumentFixture.sections[0].id,
+      },
+      content: 'Suggested assist block',
+    },
+    errors: [],
+    sourceSpans: [],
+    confidence: 0.92,
+    targetType: 'assist_block',
+    targetId: 'assist_block_001',
+    generatedBy: 'worker_runtime',
+    createdAt: now - 100,
+    updatedAt: now - 100,
+  };
+}

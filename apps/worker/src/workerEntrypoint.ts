@@ -20,6 +20,10 @@ import {
 } from './schedulerNoteSnapshotSqlAdapter.ts';
 import { TursoMemoryReviewSqlAdapter } from './memoryReviewPort.ts';
 import {
+  type OperationProposalSqlStatement,
+  TursoOperationProposalSqlAdapter,
+} from './operationProposalSqlAdapter.ts';
+import {
   handleWorkerHttpRequest,
   matchWorkerRoute,
   type WorkerHttpRequest,
@@ -31,6 +35,7 @@ type WorkerSqlStatement =
   | NoteDocumentSqlStatement
   | SchedulerAgentLocalSqlStatement
   | SchedulerNoteSnapshotSqlStatement
+  | OperationProposalSqlStatement
   | {
       sql: string;
       args: readonly unknown[];
@@ -163,6 +168,9 @@ export function createWorkerRuntimePorts(input: {
   const memoryReview = tursoExecutor === undefined
     ? undefined
     : new TursoMemoryReviewSqlAdapter({ executor: tursoExecutor });
+  const operationApproval = tursoExecutor === undefined
+    ? undefined
+    : new TursoOperationProposalSqlAdapter({ executor: tursoExecutor });
   const noteStructure = tursoExecutor === undefined || agentLocalExecutor === undefined
     ? undefined
     : {
@@ -179,6 +187,7 @@ export function createWorkerRuntimePorts(input: {
     ...(noteBlocks === undefined ? {} : { noteBlocks }),
     ...(digestRead === undefined ? {} : { digestRead }),
     ...(memoryReview === undefined ? {} : { memoryReview }),
+    ...(operationApproval === undefined ? {} : { operationApproval }),
     ...(noteStructure === undefined ? {} : { noteStructure }),
   };
 }
