@@ -136,6 +136,10 @@ export interface NoteBlockViewModel {
 export interface BlockEditorStateViewModel {
   state: 'idle' | 'editing';
   actions: readonly BlockEditorAction[];
+  saveStatus: 'saved' | 'dirty' | 'saving' | 'error';
+  statusMessage: string;
+  retryAction?: Extract<BlockEditorAction, 'save_block'>;
+  draftText?: string;
 }
 
 export interface AiAssistBlockViewModel {
@@ -505,6 +509,8 @@ function createBlockViewModel(block: BlockContract, editingBlockIds: ReadonlySet
     editor: {
       state: editingBlockIds.has(block.id) ? 'editing' : 'idle',
       actions: blockEditorActions,
+      saveStatus: editingBlockIds.has(block.id) ? 'dirty' : 'saved',
+      statusMessage: editingBlockIds.has(block.id) ? 'Unsaved changes' : 'Saved',
     },
     ...(sectionBoundary === undefined
       ? {}

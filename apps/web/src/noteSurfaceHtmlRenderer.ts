@@ -248,25 +248,28 @@ function renderBlock(block: NoteBlockViewModel): string {
   const controls = renderBlockEditorControls(block);
 
   return [
-    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}">`,
+    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}">`,
     body,
     controls,
+    renderBlockEditorStatus(block),
     '</article>',
   ].join('');
 }
 
 function renderUserBlockBody(block: NoteBlockViewModel): string {
+  const text = block.editor.draftText ?? block.text;
+
   if (block.sectionBoundary !== undefined) {
     const level = block.sectionBoundary.level;
     const tag = `h${level}`;
     return [
       `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
-      escapeHtml(block.text),
+      escapeHtml(text),
       `</${tag}>`,
     ].join('');
   }
 
-  return `<div class="ann-block-text" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(block.text)}</div>`;
+  return `<div class="ann-block-text" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(text)}</div>`;
 }
 
 function renderAiAssistBlock(block: NoteBlockViewModel): string {
@@ -309,10 +312,22 @@ function renderMemoryCandidateBlock(block: NoteBlockViewModel): string {
 
 function renderBlockEditorControls(block: NoteBlockViewModel): string {
   const buttons = block.editor.actions
-    .map((action) => renderInlineActionButton(action, renderBlockEditorActionLabel(action), block.id, 'block_editor'))
+    .map((action) => renderInlineActionButton(action, renderBlockEditorActionLabel(action, block), block.id, 'block_editor'))
     .join('');
 
   return `<div class="ann-block-controls" data-action-group="block_editor">${buttons}</div>`;
+}
+
+function renderBlockEditorStatus(block: NoteBlockViewModel): string {
+  const retryAttrs = block.editor.retryAction === undefined
+    ? ' data-retry-available="false"'
+    : ` data-retry-available="true" data-retry-action="${escapeAttribute(block.editor.retryAction)}"`;
+
+  return [
+    `<div class="ann-block-status" data-editor-status-region="fixed" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}"${retryAttrs} aria-live="polite" aria-atomic="true">`,
+    `<span data-editor-status-message="true">${escapeHtml(block.editor.statusMessage)}</span>`,
+    '</div>',
+  ].join('');
 }
 
 function renderInlineActionButton(
@@ -464,11 +479,14 @@ function createMemoryCandidateEvent(
   };
 }
 
-function renderBlockEditorActionLabel(action: BlockEditorAction): string {
+function renderBlockEditorActionLabel(action: BlockEditorAction, block?: NoteBlockViewModel): string {
   switch (action) {
     case 'edit_block':
       return 'Edit';
     case 'save_block':
+      if (block?.editor.retryAction === 'save_block') {
+        return 'Retry';
+      }
       return 'Save';
     case 'cancel_edit':
       return 'Cancel';

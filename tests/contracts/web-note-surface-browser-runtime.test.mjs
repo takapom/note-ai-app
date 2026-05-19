@@ -108,11 +108,15 @@ test('browser runtime dispatches AI memory digest and provenance actions through
 test('browser runtime sends editor save actions through the block update boundary', async () => {
   const calls = [];
   const host = createHost();
+  let observedSavingProjection = false;
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(noteDocumentFixture, {
       editingBlockIds: ['block_paragraph_001'],
     }),
-    eventController: createController(calls),
+    eventController: createController(calls, () => {
+      observedSavingProjection = /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="saving"/.test(host.html)
+        && /data-editor-status-region="fixed" data-editor-save-status="saving"/.test(host.html);
+    }),
     host,
   });
   await runtime.mount();
@@ -149,7 +153,9 @@ test('browser runtime sends editor save actions through the block update boundar
   });
 
   assert.deepEqual([save.ok, save.status, save.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.equal(observedSavingProjection, true);
   assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="idle"/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="saved"/);
   assert.match(host.html, /Updated user-authored block text\./);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
     [
@@ -231,7 +237,11 @@ test('browser runtime keeps editing projection when save transport fails', async
   assert.equal(save.status, 'controller_error');
   assert.match(save.errors.join('\n'), /request failed with status 503/);
   assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
-  assert.doesNotMatch(host.html, /Unsaved text should stay local/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="error"/);
+  assert.match(host.html, /data-editor-status-region="fixed" data-editor-save-status="error" data-retry-available="true" data-retry-action="save_block" aria-live="polite" aria-atomic="true"/);
+  assert.match(host.html, /request failed with status 503/);
+  assert.match(host.html, /Unsaved text should stay local to the DOM editor\./);
+  assert.match(host.html, /data-action="save_block" data-target="block_editor" data-block-id="block_paragraph_001">Retry<\/button>/);
 });
 
 test('browser runtime applies digest and provenance UI-only actions as local projection state', async () => {
@@ -565,10 +575,11 @@ test('browser runtime source stays framework-neutral and outside runtime interna
   assert.equal(rendered.events.every((event) => event.emitsAiProviderCall === false), true);
 });
 
-function createController(calls) {
+function createController(calls, beforeFetch) {
   const transport = createNoteSurfaceApiTransport({
     baseUrl: 'https://worker.example.test/api/',
     async fetchLike(url, init) {
+      beforeFetch?.();
       calls.push({ url, init });
       return {
         ok: true,

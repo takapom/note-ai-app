@@ -84,9 +84,32 @@ export function createNoteSurfaceBrowserRuntime(
       return renderCurrentModel();
     }
 
+    const pendingSaveAction = resolveBlockUpdateProjectionAction(eventDescriptor);
+    if (pendingSaveAction !== undefined) {
+      currentModel = applyEditorSaveStarted(currentModel, pendingSaveAction);
+      const pendingRender = await renderCurrentModel();
+      if (!pendingRender.ok) {
+        return pendingRender;
+      }
+    }
+
     try {
       const controllerResult = await options.eventController.handleRenderEvent(eventDescriptor);
       if (!controllerResult.ok) {
+        if (pendingSaveAction !== undefined) {
+          currentModel = applyEditorSaveFailed(
+            currentModel,
+            pendingSaveAction,
+            controllerResult.errors.length > 0
+              ? controllerResult.errors
+              : [`event controller returned ${controllerResult.status}`],
+          );
+          const failureRender = await renderCurrentModel(controllerResult);
+          if (!failureRender.ok) {
+            return failureRender;
+          }
+        }
+
         return {
           ok: false,
           status: 'controller_error',
@@ -113,6 +136,14 @@ export function createNoteSurfaceBrowserRuntime(
         errors: [],
       };
     } catch (error) {
+      if (pendingSaveAction !== undefined) {
+        currentModel = applyEditorSaveFailed(currentModel, pendingSaveAction, toBoundaryErrors(error));
+        const failureRender = await renderCurrentModel();
+        if (!failureRender.ok) {
+          return failureRender;
+        }
+      }
+
       return {
         ok: false,
         status: 'controller_error',
@@ -206,6 +237,13 @@ type SuccessfulApiProjectionAction =
       blockId: string;
     }
   | { action: 'edit'; target: 'memory_candidate_block'; blockId: string; content: string };
+
+type BlockUpdateProjectionAction = {
+  action: 'save_block';
+  target: 'block_editor';
+  blockId: string;
+  content: string;
+};
 
 function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
   if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
@@ -337,6 +375,30 @@ function resolveSuccessfulApiProjectionAction(
   return undefined;
 }
 
+function resolveBlockUpdateProjectionAction(eventDescriptor: unknown): BlockUpdateProjectionAction | undefined {
+  if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
+    return undefined;
+  }
+
+  const source = eventDescriptor as Record<string, unknown>;
+  const dataset = source.dataset !== null && typeof source.dataset === 'object'
+    ? source.dataset as Record<string, unknown>
+    : undefined;
+  const action = readDescriptorString(source, dataset, 'action');
+  const target = readDescriptorString(source, dataset, 'target');
+  const apiIntent = readDescriptorString(source, dataset, 'apiIntent');
+
+  if (action !== 'save_block' || target !== 'block_editor' || apiIntent !== 'block.update') {
+    return undefined;
+  }
+
+  const blockId = readDescriptorString(source, dataset, 'blockId');
+  const content = readDescriptorRawString(source, dataset, 'content');
+  return blockId === undefined || content === undefined
+    ? undefined
+    : { action, target, blockId, content };
+}
+
 function applyLocalProjectionAction(
   model: NoteSurfaceViewModel,
   action: LocalProjectionAction,
@@ -365,8 +427,10 @@ function applyLocalProjectionAction(
               ? {
                   ...block,
                   editor: {
-                    ...block.editor,
+                    actions: block.editor.actions,
                     state: action.action === 'edit_block' ? 'editing' : 'idle',
+                    saveStatus: action.action === 'edit_block' ? 'dirty' : 'saved',
+                    statusMessage: action.action === 'edit_block' ? 'Unsaved changes' : 'Saved',
                   },
                 }
               : block
@@ -387,8 +451,10 @@ function applyLocalProjectionAction(
               ...block,
               text: action.content,
               editor: {
-                ...block.editor,
+                actions: block.editor.actions,
                 state: 'idle',
+                saveStatus: 'saved',
+                statusMessage: 'Saved',
               },
               ...(block.sectionBoundary === undefined
                 ? {}
@@ -419,6 +485,60 @@ function applyLocalProjectionAction(
         },
       };
   }
+}
+
+function applyEditorSaveStarted(
+  model: NoteSurfaceViewModel,
+  action: BlockUpdateProjectionAction,
+): NoteSurfaceViewModel {
+  return {
+    ...model,
+    noteSurface: {
+      ...model.noteSurface,
+      blocks: model.noteSurface.blocks.map((block) => (
+        block.id === action.blockId
+          ? {
+              ...block,
+              editor: {
+                actions: block.editor.actions,
+                state: 'editing',
+                saveStatus: 'saving',
+                statusMessage: 'Saving',
+                draftText: action.content,
+              },
+            }
+          : block
+      )),
+    },
+  };
+}
+
+function applyEditorSaveFailed(
+  model: NoteSurfaceViewModel,
+  action: BlockUpdateProjectionAction,
+  errors: readonly string[],
+): NoteSurfaceViewModel {
+  return {
+    ...model,
+    noteSurface: {
+      ...model.noteSurface,
+      blocks: model.noteSurface.blocks.map((block) => (
+        block.id === action.blockId
+          ? {
+              ...block,
+              editor: {
+                ...block.editor,
+                state: 'editing',
+                saveStatus: 'error',
+                statusMessage: errors[0] ?? 'Save failed',
+                retryAction: 'save_block',
+                draftText: action.content,
+              },
+            }
+          : block
+      )),
+    },
+  };
 }
 
 function applySuccessfulApiProjectionAction(

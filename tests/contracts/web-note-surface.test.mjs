@@ -58,6 +58,8 @@ test('block editing actions remain available when AI status is failed', () => {
 
   const editingBlock = model.noteSurface.blocks.find((block) => block.id === editingBlockId);
   assert.equal(editingBlock?.editor.state, 'editing');
+  assert.equal(editingBlock?.editor.saveStatus, 'dirty');
+  assert.equal(editingBlock?.editor.statusMessage, 'Unsaved changes');
   assert.deepEqual(editingBlock?.editor.actions, ['edit_block', 'save_block', 'cancel_edit']);
 });
 
