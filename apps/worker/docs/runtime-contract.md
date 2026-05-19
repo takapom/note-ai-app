@@ -13,6 +13,7 @@
 - AI SDK プロバイダーレジストリアダプター。
 - note leave / manual organize / next open API routing。
 - MVP API surface の method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping を行う framework-neutral worker HTTP router。
+- standard `Request` / `Response` を framework-neutral worker HTTP router に接続する Worker fetch entrypoint。
 - canonical Note document persistence port を通じた Note Block create/update/delete command boundary。
 - Next Open Digest preparation projection を読む read-only digest boundary。
 - Provenance Popover 用に canonical block source から bounded excerpt と source metadata だけを読む read-only provenance lookup boundary。
@@ -45,6 +46,7 @@
 - Agent-local SQL は一時的なものに限ります。
 - UI event から AI provider または Turso へ直接ショートカットしないでください。
 - worker HTTP router は method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping だけを担当してください。scheduler policy、Note Model policy、memory policy、Operation Router policy、provider calls、SQL details を所有してはいけません。
+- Worker fetch entrypoint は request parsing、workspace/user context normalization、JSON body parsing、runtime port factory wiring、router delegation、Response mapping だけを担当してください。invalid JSON、missing workspaceId、invalid route / method mismatch では port factory を呼び出してはいけません。
 - note block command boundary は Note document persistence port の load/save と Note Model validation だけを扱ってください。scheduler、Context Assembly、provider、Operation Router、audit、memory、projection writes を呼び出してはいけません。
 - next open digest read boundary は prepared digest projection を read-only で返してください。missing digest で fake content を作らず、provider、Operation Router、audit、memory activation、Context Assembly を呼び出してはいけません。
 - provenance lookup boundary は workspaceId、sourceSpanId、sourceBlockId、finite offsets を検証してから source_spans / ai_operations の source reference と canonical block source を read-only で照合してください。不正な span では query せず、full note / full workspace dump、provider、Operation Router、audit write、memory activation、canonical Note/Section/Block write を呼び出してはいけません。

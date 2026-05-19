@@ -15,20 +15,20 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 
 | # | 条件 | 現状 | 根拠 / gap |
 | --- | --- | --- | --- |
-| 1 | ユーザーが一枚のノートに自然に書ける | blocking gap | `apps/web` は docs のみで editable NoteSurface がない。 |
-| 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model contract/test は実装済み。editor rendering/editing は未実装。 |
-| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation は追加済み。実 Cloudflare/Turso wiring は未実装。Agent-local save intent は canonical SoT ではない。 |
-| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation は対応済み。実 Cloudflare entrypoint は未実装。 |
+| 1 | ユーザーが一枚のノートに自然に書ける | partial | dependency-free AppShell / NoteSurface / Block Editor view model は追加済み。実 DOM/editor rendering は未実装。 |
+| 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model document validation と web NoteSurface view model で heading boundary は検証済み。実 editor rendering/editing は未実装。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring は追加済み。実 Cloudflare deployment config と end-to-end UI wiring は未実装。Agent-local save intent は canonical SoT ではない。 |
+| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint は対応済み。実 Cloudflare Agent deployment config は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
 | 9 | AI Assist Block が同じノート内に表示される | blocking gap | in-note AI Assist Block renderer/actions がない。 |
-| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation は追加済み。実 Cloudflare/Turso wiring と UI component は未実装。 |
-| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / in-memory implementation / SQL adapter / HTTP router delegation は追加済み。UI candidate block と real Worker/Turso wiring は未実装。 |
+| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring は追加済み。UI component は未実装。 |
+| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / in-memory implementation / SQL adapter / HTTP router delegation / Worker fetch Turso wiring は追加済み。UI candidate block は未実装。 |
 | 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / in-memory implementation / SQL read adapter は追加済み。UI popover と real Worker/Turso wiring は未実装。 |
-| 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard は covered。frontend failure state と continued editing UX は未実装。 |
-| 14 | MVP 除外 UI / 連携が入っていない | partial | 実 UI がないため混入もない。UI 実装時に contract #14 guard が必要。 |
+| 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard と web view model の failed AI status / editing action separation は covered。実 editor UX は未実装。 |
+| 14 | MVP 除外 UI / 連携が入っていない | partial | web view model に excluded-surface guard を追加済み。実 UI 実装時にも継続 guard が必要。 |
 | 15 | Codex task、Superset workspace、docs contract の traceability が維持される | partial | contracts/records は維持。GitHub issue close/create と push は sandbox で未実行。 |
 
 ## Issue Drafts
@@ -60,7 +60,8 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 
 実装状況:
 - `NoteDocumentPersistencePort`、in-memory port、Turso SQL adapter、focused contract tests は追加済み。
-- 残りは実 Cloudflare/Turso client wiring。
+- Worker fetch entrypoint と default Turso executor wiring は追加済み。
+- 残りは実 Cloudflare deployment config と Web UI からの end-to-end wiring。
 
 検証コマンド:
 - `node --test tests/contracts/note-model-runtime.test.mjs`
@@ -93,7 +94,8 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 
 実装状況:
 - framework-neutral `workerHttpRouter` と route/delegation guard tests は追加済み。
-- 残りは real Worker `fetch` entrypoint、Cloudflare Agent class wiring、Turso client binding。
+- standard `Request` / `Response` の Worker fetch entrypoint、header based workspace/user normalization、JSON response mapping、default Turso / Agent-local executor wiring は追加済み。
+- 残りは Cloudflare Agent class/deployment binding、operation proposal SQL persistence の default wiring、production auth binding。
 
 検証コマンド:
 - `node --test tests/contracts/worker-*.test.mjs`
@@ -251,7 +253,14 @@ MVP acceptance #1/#2/#13/#14。`apps/web` は docs のみで AppShell / Sidebar 
 - contract #14 excluded-surface guard がある。
 - AI failure status が editing をブロックしない。
 
+実装状況:
+- dependency-free `apps/web/src/noteSurface.ts` view model と focused contract tests は追加済み。
+- AppShell / Sidebar / TopBar / NoteSurface / NoteHeader / BlockEditor の single surface model、H1/H2/H3 section boundary、failed AI status でも editing action が残る guard、MVP excluded surface guard は検証済み。
+- Note document validation は `contexts/note-model` の `validateNoteDocumentContract` が所有し、Web は validation result を消費する。
+- 残りは実 DOM/editor rendering、browser interaction、Worker API integration。
+
 検証コマンド:
+- `node --test tests/contracts/web-note-surface.test.mjs`
 - `node --test tests/**/*.test.mjs`
 - `tsc -p tsconfig.json --noEmit`
 

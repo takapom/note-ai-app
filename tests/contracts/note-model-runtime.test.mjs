@@ -10,6 +10,7 @@ import {
   resolveDescriptionEffective,
   shouldUseImplicitSection,
   validateBlockContract,
+  validateNoteDocumentContract,
 } from '../../contexts/note-model/src/contract/noteContract.ts';
 import {
   implicitSectionDocumentFixture,
@@ -147,5 +148,38 @@ test('block validation rejects blank optional ids and invalid annotation spans',
       },
     }).errors,
     ['block content annotations[0].kind must be source_span, provenance, or comment'],
+  );
+});
+
+test('note document validation owns cross-section and block references', () => {
+  assert.equal(validateNoteDocumentContract(noteDocumentFixture).valid, true);
+
+  assert.deepEqual(
+    validateNoteDocumentContract({
+      ...noteDocumentFixture,
+      sections: [
+        {
+          ...noteDocumentFixture.sections[0],
+          headingBlockId: noteDocumentFixture.blocks[1].id,
+        },
+      ],
+    }).errors,
+    ['sections[0].headingBlockId must reference a heading block'],
+  );
+
+  assert.deepEqual(
+    validateNoteDocumentContract({
+      ...noteDocumentFixture,
+      blocks: [
+        {
+          ...noteDocumentFixture.blocks[1],
+          sectionId: 'section_missing',
+        },
+      ],
+    }).errors,
+    [
+      'sections[0].headingBlockId must reference a document block',
+      'blocks[0].block sectionId must reference a document section',
+    ],
   );
 });

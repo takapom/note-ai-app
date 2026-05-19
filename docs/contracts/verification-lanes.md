@@ -74,7 +74,7 @@ Note Model canonical persistence の重点コマンド:
 
 Worker HTTP routing boundary の重点コマンド:
 
-- route/delegation guard: `node --test tests/contracts/worker-http-router.test.mjs`
+- route/delegation guard: `node --test tests/contracts/worker-entrypoint.test.mjs tests/contracts/worker-http-router.test.mjs`
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
 Note Block command / Next Open Digest read boundary の重点コマンド:
@@ -92,6 +92,11 @@ Memory candidate review runtime boundary の重点コマンド:
 
 - memory review guard: `node --test tests/contracts/worker-memory-review-port.test.mjs tests/contracts/memory-runtime.test.mjs`
 - router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
+
+Web NoteSurface foundation の重点コマンド:
+
+- note surface guard: `node --test tests/contracts/web-note-surface.test.mjs tests/contracts/note-model-runtime.test.mjs`
+- full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 
 ## 許可されるトポロジー

@@ -1,0 +1,225 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+import {
+  createWorkerFetchHandler,
+  handleWorkerFetch,
+  parseWorkerRequest,
+  WorkerTursoSqlExecutor,
+} from '../../apps/worker/src/workerEntrypoint.ts';
+import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
+
+const now = 1_764_001_000_000;
+
+test('worker entrypoint parses Worker Request identity, path, now, and JSON body', async () => {
+  const parsed = await parseWorkerRequest(new Request('https://worker.test/notes/note_001?view=full', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+    body: JSON.stringify({ document: noteDocumentFixture }),
+  }), {}, { now });
+
+  assert.equal(parsed.ok, true);
+  assert.deepEqual(parsed.request, {
+    method: 'PATCH',
+    path: '/notes/note_001?view=full',
+    workspaceId: noteFixture.workspaceId,
+    userId: 'user_001',
+    now,
+    body: { document: noteDocumentFixture },
+  });
+});
+
+test('worker entrypoint rejects invalid JSON before creating ports', async () => {
+  let createPortsCalls = 0;
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes', {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+    body: '{',
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['request body must be valid JSON'],
+  });
+});
+
+test('worker entrypoint rejects missing workspaceId before creating ports', async () => {
+  let createPortsCalls = 0;
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes/note_001', {
+    method: 'GET',
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        noteDocument: {
+          async loadDocument() {
+            throw new Error('must not be called');
+          },
+          async saveDocument() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['workspaceId must be a stable non-sentinel runtime id'],
+  });
+});
+
+test('worker entrypoint returns invalid route responses before creating ports', async () => {
+  let createPortsCalls = 0;
+  const notFound = await handleWorkerFetch(new Request('https://worker.test/unknown', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+  const methodMismatch = await handleWorkerFetch(new Request('https://worker.test/notes/note_001/leave', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {};
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(notFound.status, 404);
+  assert.equal(methodMismatch.status, 405);
+  assert.deepEqual(await notFound.json(), { ok: false, errors: ['route not found'] });
+  assert.deepEqual(await methodMismatch.json(), { ok: false, errors: ['route not found'] });
+});
+
+test('worker entrypoint delegates valid requests through injected ports and maps JSON Response', async () => {
+  const calls = [];
+  const fetch = createWorkerFetchHandler({
+    now: () => now,
+    createPorts({ request }) {
+      calls.push(request);
+      return {
+        digestRead: {
+          async getDigest(input) {
+            return {
+              ok: true,
+              errors: [],
+              body: {
+                available: false,
+                noteId: input.noteId,
+              },
+            };
+          },
+        },
+      };
+    },
+  });
+
+  const response = await fetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_001',
+    },
+  }), {});
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].workspaceId, noteFixture.workspaceId);
+  assert.equal(calls[0].userId, 'user_001');
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    result: {
+      available: false,
+      noteId: 'note_001',
+    },
+  });
+});
+
+test('worker entrypoint default wiring persists notes through generic Turso executor', async () => {
+  const executed = [];
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes', {
+    method: 'POST',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+    body: JSON.stringify({ document: noteDocumentFixture }),
+  }), {
+    TURSO: {
+      async execute(statement) {
+        executed.push(statement);
+        return { rows: [], rowsAffected: 1 };
+      },
+    },
+  }, { now });
+
+  assert.equal(response.status, 201);
+  assert.equal(executed.length > 0, true);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    document: noteDocumentFixture,
+  });
+});
+
+test('worker Turso SQL executor exposes query rows and ordered writes without SQL interpretation', async () => {
+  const executed = [];
+  const executor = new WorkerTursoSqlExecutor({
+    async execute(statement) {
+      executed.push(statement);
+      return { rows: [{ id: 'row_001' }], rowsAffected: 1 };
+    },
+  });
+
+  assert.deepEqual(await executor.query({ sql: 'select id from rows', args: [] }), [{ id: 'row_001' }]);
+  await executor.writeNoteDocument([
+    { sql: 'insert one', args: ['one'] },
+    { sql: 'insert two', args: ['two'] },
+  ]);
+
+  assert.deepEqual(executed.map((statement) => statement.sql), [
+    'select id from rows',
+    'insert one',
+    'insert two',
+  ]);
+  await assert.rejects(
+    () => executor.writeNoteDocument([]),
+    /note document SQL statements must not be empty/,
+  );
+});
+
+test('worker entrypoint source stays a thin fetch and port wiring boundary', async () => {
+  const source = await readFile(new URL('../../apps/worker/src/workerEntrypoint.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /createWorkerFetchHandler/);
+  assert.match(source, /handleWorkerHttpRequest/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*workspace-api\/generated\//);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(provider|ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouting/i);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|classifyOperationPolicy|validateStructureOperation/);
+  assert.doesNotMatch(source, /\b(?:insert\s+into|update|delete\s+from|select\s+\*)\b/i);
+});

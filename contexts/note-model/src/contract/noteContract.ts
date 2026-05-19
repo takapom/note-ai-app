@@ -138,6 +138,11 @@ export interface BlockValidationResult {
   errors: string[];
 }
 
+export interface NoteDocumentValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
 export interface NoteCardInput {
   title: string;
   descriptionUser?: string;
@@ -272,6 +277,128 @@ export function validateBlockContract(block: unknown): BlockValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
+export function validateNoteDocumentContract(document: unknown): NoteDocumentValidationResult {
+  const errors: string[] = [];
+  const candidate = asRecord(document);
+
+  if (!candidate) {
+    return { valid: false, errors: ['note document must be an object'] };
+  }
+
+  errors.push(...validateNoteContract(candidate.note).map((error) => `note.${error}`));
+  const note = asRecord(candidate.note);
+  const noteId = typeof note?.id === 'string' ? note.id : undefined;
+
+  if (!Array.isArray(candidate.sections)) {
+    errors.push('sections must be an array');
+  } else {
+    for (const [index, section] of candidate.sections.entries()) {
+      errors.push(...validateSectionContract(section, noteId).map((error) => `sections[${index}].${error}`));
+    }
+    errors.push(...validateUniqueIds(candidate.sections, 'sections', 'section id'));
+  }
+
+  if (!Array.isArray(candidate.blocks)) {
+    errors.push('blocks must be an array');
+  } else {
+    for (const [index, block] of candidate.blocks.entries()) {
+      errors.push(...validateBlockContract(block).errors.map((error) => `blocks[${index}].${error}`));
+      const record = asRecord(block);
+      if (record && noteId && record.noteId !== noteId) {
+        errors.push(`blocks[${index}].block noteId must match document note.id`);
+      }
+    }
+    errors.push(...validateUniqueIds(candidate.blocks, 'blocks', 'block id'));
+  }
+
+  if (Array.isArray(candidate.sections) && Array.isArray(candidate.blocks)) {
+    errors.push(...validateDocumentReferences(candidate.sections, candidate.blocks));
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateNoteContract(note: unknown): string[] {
+  const errors: string[] = [];
+  const candidate = asRecord(note);
+
+  if (!candidate) {
+    return ['must be an object'];
+  }
+
+  for (const field of ['id', 'workspaceId', 'title'] as const) {
+    if (!isNonEmptyString(candidate[field])) {
+      errors.push(`${field} must be a non-empty string`);
+    }
+  }
+
+  for (const field of ['descriptionUser', 'descriptionAi', 'descriptionEffective'] as const) {
+    if (candidate[field] !== undefined && !isNonEmptyString(candidate[field])) {
+      errors.push(`${field} must be a non-empty string when provided`);
+    }
+  }
+
+  if (candidate.descriptionAiApproved !== undefined && typeof candidate.descriptionAiApproved !== 'boolean') {
+    errors.push('descriptionAiApproved must be a boolean when provided');
+  }
+
+  for (const field of ['createdAt', 'updatedAt'] as const) {
+    if (typeof candidate[field] !== 'number' || !Number.isFinite(candidate[field])) {
+      errors.push(`${field} must be a finite timestamp`);
+    }
+  }
+
+  return errors;
+}
+
+export function validateSectionContract(section: unknown, expectedNoteId?: string): string[] {
+  const errors: string[] = [];
+  const candidate = asRecord(section);
+
+  if (!candidate) {
+    return ['must be an object'];
+  }
+
+  for (const field of ['id', 'noteId', 'contentHash'] as const) {
+    if (!isNonEmptyString(candidate[field])) {
+      errors.push(`${field} must be a non-empty string`);
+    }
+  }
+
+  if (isNonEmptyString(expectedNoteId) && candidate.noteId !== expectedNoteId) {
+    errors.push('noteId must match document note.id');
+  }
+
+  for (const field of ['parentSectionId', 'headingBlockId', 'title', 'descriptionAi', 'lastStructuredHash'] as const) {
+    if (candidate[field] !== undefined && !isNonEmptyString(candidate[field])) {
+      errors.push(`${field} must be a non-empty string when provided`);
+    }
+  }
+
+  if (candidate.headingLevel !== undefined && (typeof candidate.headingLevel !== 'number' || !isHeadingLevel(candidate.headingLevel))) {
+    errors.push('headingLevel must be H1, H2, or H3 when provided');
+  }
+
+  if (candidate.lastStructuredAt !== undefined && (typeof candidate.lastStructuredAt !== 'number' || !Number.isFinite(candidate.lastStructuredAt))) {
+    errors.push('lastStructuredAt must be a finite timestamp when provided');
+  }
+
+  if (typeof candidate.isDirty !== 'boolean') {
+    errors.push('isDirty must be a boolean');
+  }
+  if (typeof candidate.position !== 'number' || !Number.isFinite(candidate.position)) {
+    errors.push('position must be a finite number');
+  }
+  if (typeof candidate.createdAt !== 'number' || !Number.isFinite(candidate.createdAt)) {
+    errors.push('createdAt must be a finite timestamp');
+  }
+  if (typeof candidate.updatedAt !== 'number' || !Number.isFinite(candidate.updatedAt)) {
+    errors.push('updatedAt must be a finite timestamp');
+  }
+
+  return errors;
+}
+
 export function resolveDescriptionEffective(input: NoteCardInput, outline: readonly OutlineItemContract[] = []): string {
   const user = normalizeOptionalText(input.descriptionUser);
   if (user) {
@@ -381,4 +508,74 @@ function isNonNegativeFiniteNumber(value: unknown): value is number {
 
 function isAnnotationKind(value: unknown): value is AnnotationKind {
   return value === 'source_span' || value === 'provenance' || value === 'comment';
+}
+
+function validateUniqueIds(items: readonly unknown[], prefix: string, label: string): string[] {
+  const errors: string[] = [];
+  const seen = new Set<string>();
+
+  for (const [index, item] of items.entries()) {
+    const id = asRecord(item)?.id;
+    if (!isNonEmptyString(id)) {
+      continue;
+    }
+    if (seen.has(id)) {
+      errors.push(`${prefix}[${index}].${label} must be unique`);
+    }
+    seen.add(id);
+  }
+
+  return errors;
+}
+
+function validateDocumentReferences(sections: readonly unknown[], blocks: readonly unknown[]): string[] {
+  const errors: string[] = [];
+  const sectionIds = new Set(
+    sections
+      .map((section) => asRecord(section)?.id)
+      .filter((id): id is string => isNonEmptyString(id)),
+  );
+  const blockById = new Map<string, Record<string, unknown>>();
+
+  for (const block of blocks) {
+    const record = asRecord(block);
+    if (record && isNonEmptyString(record.id)) {
+      blockById.set(record.id, record);
+    }
+  }
+
+  for (const [index, section] of sections.entries()) {
+    const record = asRecord(section);
+    if (!record) {
+      continue;
+    }
+    if (typeof record.parentSectionId === 'string' && !sectionIds.has(record.parentSectionId)) {
+      errors.push(`sections[${index}].parentSectionId must reference a document section`);
+    }
+    if (typeof record.headingBlockId === 'string') {
+      const headingBlock = blockById.get(record.headingBlockId);
+      if (!headingBlock) {
+        errors.push(`sections[${index}].headingBlockId must reference a document block`);
+      } else if (headingBlock.type !== 'heading') {
+        errors.push(`sections[${index}].headingBlockId must reference a heading block`);
+      } else if (isNonEmptyString(record.id) && headingBlock.sectionId !== record.id) {
+        errors.push(`sections[${index}].headingBlockId must reference a block in the same section`);
+      }
+    }
+  }
+
+  for (const [index, block] of blocks.entries()) {
+    const record = asRecord(block);
+    if (!record) {
+      continue;
+    }
+    if (typeof record.sectionId === 'string' && !sectionIds.has(record.sectionId)) {
+      errors.push(`blocks[${index}].block sectionId must reference a document section`);
+    }
+    if (typeof record.parentBlockId === 'string' && !blockById.has(record.parentBlockId)) {
+      errors.push(`blocks[${index}].parentBlockId must reference a document block`);
+    }
+  }
+
+  return errors;
 }

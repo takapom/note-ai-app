@@ -22,6 +22,7 @@
 
 - MVP に永続的な AI チャットパネルを追加しないでください。
 - MVP に AI モード切り替えを追加しないでください。
+- NoteSurface view model は Note Model semantics を所有せず、`contexts/note-model` の document validation を消費してください。
 - AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングされます。
 - バックグラウンド構造化中も、執筆フローは応答性を保たなければなりません。
 - AI Assist Block 挿入はカーソル位置を奪ってはなりません。
