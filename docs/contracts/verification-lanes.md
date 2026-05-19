@@ -83,6 +83,16 @@ Note Block command / Next Open Digest read boundary の重点コマンド:
 - digest read guard: `node --test tests/contracts/worker-next-open-digest-read-port.test.mjs`
 - router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
 
+Provenance Popover source lookup boundary の重点コマンド:
+
+- provenance lookup guard: `node --test tests/contracts/worker-provenance-lookup-port.test.mjs`
+- runtime topology guard: `node --test tests/contracts/topology-runtime.test.mjs`
+
+Memory candidate review runtime boundary の重点コマンド:
+
+- memory review guard: `node --test tests/contracts/worker-memory-review-port.test.mjs tests/contracts/memory-runtime.test.mjs`
+- router integration guard: `node --test tests/contracts/worker-http-router.test.mjs`
+
 
 ## 許可されるトポロジー
 

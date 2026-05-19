@@ -15,6 +15,8 @@
 - MVP API surface の method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping を行う framework-neutral worker HTTP router。
 - canonical Note document persistence port を通じた Note Block create/update/delete command boundary。
 - Next Open Digest preparation projection を読む read-only digest boundary。
+- Provenance Popover 用に canonical block source から bounded excerpt と source metadata だけを読む read-only provenance lookup boundary。
+- Memory candidate の accept/reject を canonical memory_items の status/review metadata update に限定する memory review boundary。
 - note leave / manual organize / next open route input を scheduler runtime flow に接続する note structure route handler。
 - valid ContextEnvelopeBuilt から provider/orchestration boundary に接続する StructureJob Agent handler。
 - queued StructureJob claim と running/completed/failed transition を扱う StructureJob work queue port。
@@ -45,6 +47,8 @@
 - worker HTTP router は method/path matching、path param extraction、workspace/user context passing、handler delegation、response mapping だけを担当してください。scheduler policy、Note Model policy、memory policy、Operation Router policy、provider calls、SQL details を所有してはいけません。
 - note block command boundary は Note document persistence port の load/save と Note Model validation だけを扱ってください。scheduler、Context Assembly、provider、Operation Router、audit、memory、projection writes を呼び出してはいけません。
 - next open digest read boundary は prepared digest projection を read-only で返してください。missing digest で fake content を作らず、provider、Operation Router、audit、memory activation、Context Assembly を呼び出してはいけません。
+- provenance lookup boundary は workspaceId、sourceSpanId、sourceBlockId、finite offsets を検証してから source_spans / ai_operations の source reference と canonical block source を read-only で照合してください。不正な span では query せず、full note / full workspace dump、provider、Operation Router、audit write、memory activation、canonical Note/Section/Block write を呼び出してはいけません。
+- memory review boundary は workspaceId、userId、memoryId、now を検証してから source-backed candidate/pending memory の status と review metadata だけを更新してください。不正な primitive では query/write せず、source provenance、memory content、canonical Note/Section/Block、provider、Operation Router、Context Assembly、audit persistence を変更または呼び出してはいけません。
 - note structure route handler は route/event normalization、auth/workspace context、runtime port wiring、scheduler runtime flow 呼び出し、response mapping だけを担当してください。provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
 - StructureJob Agent handler は context assembly runtime flow を先に呼び、valid ContextEnvelopeBuilt の場合だけ structure job operation orchestration flow に進んでください。invalid context assembly では provider、Operation Router、audit persistence、canonical Note/Block write を呼び出してはいけません。
 - StructureJob work queue port は claimNextQueuedJob、markJobCompleted、markJobFailed だけを公開し、invalid primitive を valid result にしてはいけません。provider、Operation Router、audit persistence、canonical Note/Block write、SQL adapter details を含めないでください。
