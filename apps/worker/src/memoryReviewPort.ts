@@ -11,7 +11,7 @@ import {
   validateMemoryItem,
 } from '../../../contexts/memory/src/contract/memoryContract.ts';
 
-export type MemoryReviewDecision = 'accepted' | 'rejected';
+export type MemoryReviewDecision = 'accepted' | 'rejected' | 'edited' | 'archived' | 'held';
 
 export interface MemoryReviewInput {
   workspaceId: string;
@@ -38,6 +38,9 @@ export interface MemoryReviewResult {
 export interface MemoryReviewPort {
   acceptMemory(input: MemoryReviewInput): Promise<MemoryReviewResult>;
   rejectMemory(input: MemoryReviewInput): Promise<MemoryReviewResult>;
+  editMemory(input: MemoryReviewInput): Promise<MemoryReviewResult>;
+  deleteMemory(input: MemoryReviewInput): Promise<MemoryReviewResult>;
+  holdMemory(input: MemoryReviewInput): Promise<MemoryReviewResult>;
 }
 
 export interface MemoryReviewSqlStatement {
@@ -76,6 +79,18 @@ export class InMemoryMemoryReviewPort implements MemoryReviewPort {
     return this.reviewMemory(input, 'different', 'rejected');
   }
 
+  async editMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'edit', 'edited');
+  }
+
+  async deleteMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'delete', 'archived');
+  }
+
+  async holdMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'hold', 'held');
+  }
+
   listMemories(): MemoryReviewRecord[] {
     return Array.from(this.memories.values(), cloneMemory);
   }
@@ -112,7 +127,19 @@ export class InMemoryMemoryReviewPort implements MemoryReviewPort {
       return { ok: false, errors: reviewErrors };
     }
 
-    const transitioned = transitionMemoryStatus(current, action, input.now);
+    let editedContent: string | undefined;
+    if (action === 'edit') {
+      const contentUpdate = readMemoryEditContent(input.body);
+      if (!contentUpdate.ok) {
+        return { ok: false, errors: contentUpdate.errors };
+      }
+      editedContent = contentUpdate.content;
+    }
+
+    const candidate = editedContent === undefined
+      ? current
+      : { ...current, content: editedContent };
+    const transitioned = transitionMemoryStatus(candidate, action, input.now);
     const reviewed: MemoryReviewRecord = {
       ...transitioned,
       reviewedAt: input.now,
@@ -146,6 +173,18 @@ export class TursoMemoryReviewSqlAdapter implements MemoryReviewPort {
     return this.reviewMemory(input, 'different', 'rejected');
   }
 
+  async editMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'edit', 'edited');
+  }
+
+  async deleteMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'delete', 'archived');
+  }
+
+  async holdMemory(input: MemoryReviewInput): Promise<MemoryReviewResult> {
+    return this.reviewMemory(input, 'hold', 'held');
+  }
+
   private async reviewMemory(
     input: MemoryReviewInput,
     action: MemoryUserAction,
@@ -154,6 +193,14 @@ export class TursoMemoryReviewSqlAdapter implements MemoryReviewPort {
     const inputErrors = validateMemoryReviewInput(input);
     if (inputErrors.length > 0) {
       return { ok: false, errors: inputErrors };
+    }
+    let editedContent: string | undefined;
+    if (action === 'edit') {
+      const contentUpdate = readMemoryEditContent(input.body);
+      if (!contentUpdate.ok) {
+        return { ok: false, errors: contentUpdate.errors };
+      }
+      editedContent = contentUpdate.content;
     }
 
     try {
@@ -168,14 +215,19 @@ export class TursoMemoryReviewSqlAdapter implements MemoryReviewPort {
         return { ok: false, errors: reviewErrors };
       }
 
-      const transitioned = transitionMemoryStatus(loaded.memory, action, input.now);
+      const candidate = editedContent === undefined
+        ? loaded.memory
+        : { ...loaded.memory, content: editedContent };
+      const transitioned = transitionMemoryStatus(candidate, action, input.now);
       const reviewed: MemoryReviewRecord = {
         ...transitioned,
         reviewedAt: input.now,
         reviewedByUserId: input.userId as string,
         reviewDecision: decision,
       };
-      const statement = mapMemoryReviewStatusUpdateToSql(reviewed);
+      const statement = action === 'edit'
+        ? mapMemoryReviewContentUpdateToSql(reviewed)
+        : mapMemoryReviewStatusUpdateToSql(reviewed);
       const writeResult = await this.executor.write(statement);
       if (readRowsAffected(writeResult) === 0) {
         return {
@@ -251,8 +303,8 @@ export function mapMemoryReviewStatusUpdateToSql(memory: MemoryReviewRecord): Me
   if (!isStableRuntimeId(memory.reviewedByUserId)) {
     throw new Error('reviewedByUserId must be a stable non-sentinel runtime id');
   }
-  if (memory.reviewDecision !== 'accepted' && memory.reviewDecision !== 'rejected') {
-    throw new Error('reviewDecision must be accepted or rejected');
+  if (!isStatusOnlyMemoryReviewDecision(memory.reviewDecision)) {
+    throw new Error('reviewDecision must be accepted, rejected, archived, or held');
   }
   if (!Number.isFinite(memory.reviewedAt)) {
     throw new Error('reviewedAt must be a finite number');
@@ -265,6 +317,44 @@ export function mapMemoryReviewStatusUpdateToSql(memory: MemoryReviewRecord): Me
       'where workspace_id = ? and user_id = ? and id = ? and status in (?, ?)',
     ].join(' '),
     args: [
+      memory.status,
+      memory.pinned,
+      memory.reviewedAt,
+      memory.reviewedByUserId,
+      memory.reviewDecision,
+      memory.updatedAt,
+      memory.workspaceId,
+      memory.userId,
+      memory.id,
+      'candidate',
+      'pending',
+    ],
+  };
+}
+
+export function mapMemoryReviewContentUpdateToSql(memory: MemoryReviewRecord): MemoryReviewSqlStatement {
+  const errors = validateMemoryItem(memory);
+  if (!errors.valid) {
+    throw new Error(errors.errors.join('; '));
+  }
+  if (!isStableRuntimeId(memory.reviewedByUserId)) {
+    throw new Error('reviewedByUserId must be a stable non-sentinel runtime id');
+  }
+  if (memory.reviewDecision !== 'edited') {
+    throw new Error('reviewDecision must be edited');
+  }
+  if (!Number.isFinite(memory.reviewedAt)) {
+    throw new Error('reviewedAt must be a finite number');
+  }
+
+  return {
+    sql: [
+      'update memory_items',
+      'set content = ?, status = ?, pinned = ?, reviewed_at = ?, reviewed_by_user_id = ?, review_decision = ?, updated_at = ?',
+      'where workspace_id = ? and user_id = ? and id = ? and status in (?, ?)',
+    ].join(' '),
+    args: [
+      memory.content,
       memory.status,
       memory.pinned,
       memory.reviewedAt,
@@ -438,6 +528,30 @@ function validateReviewableMemory(memory: MemoryItemContract): string[] {
     return [`memory ${memory.id} must be candidate or pending for review`];
   }
   return [];
+}
+
+function readMemoryEditContent(
+  body: unknown,
+): { ok: true; content: string } | { ok: false; errors: string[] } {
+  if (!isRecord(body)) {
+    return { ok: false, errors: ['body.content must be a non-empty string'] };
+  }
+  if (!isNonEmptyString(body.content)) {
+    return { ok: false, errors: ['body.content must be a non-empty string'] };
+  }
+  if (body.content !== body.content.trim()) {
+    return { ok: false, errors: ['body.content must not include leading or trailing whitespace'] };
+  }
+  return { ok: true, content: body.content };
+}
+
+function isStatusOnlyMemoryReviewDecision(
+  value: unknown,
+): value is Exclude<MemoryReviewDecision, 'edited'> {
+  return value === 'accepted' ||
+    value === 'rejected' ||
+    value === 'archived' ||
+    value === 'held';
 }
 
 function memoryKey(workspaceId: string, userId: string, memoryId: string): string {

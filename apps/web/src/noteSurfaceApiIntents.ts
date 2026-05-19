@@ -36,9 +36,15 @@ export interface AiAssistApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   operationId: string;
 }
 
-export interface MemoryApiIntentInput extends NoteSurfaceApiIntentBaseInput {
-  intent: 'memory.remember' | 'memory.reject' | 'memory.edit' | 'memory.delete' | 'memory.snooze';
+export interface MemoryReviewApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'memory.remember' | 'memory.reject' | 'memory.delete' | 'memory.snooze';
   memoryId: string;
+}
+
+export interface MemoryEditApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'memory.edit';
+  memoryId: string;
+  content: string;
 }
 
 export interface DigestApiIntentInput extends NoteSurfaceApiIntentBaseInput {
@@ -60,15 +66,10 @@ export interface ProvenanceApiIntentInput extends NoteSurfaceApiIntentBaseInput 
 
 export type NoteSurfaceApiIntentInput =
   | AiAssistApiIntentInput
-  | MemoryApiIntentInput
+  | MemoryReviewApiIntentInput
+  | MemoryEditApiIntentInput
   | DigestApiIntentInput
   | ProvenanceApiIntentInput;
-
-const unavailableMemoryIntents = new Set<NoteSurfaceApiIntentKind>([
-  'memory.edit',
-  'memory.delete',
-  'memory.snooze',
-]);
 
 const supportedIntents = new Set<NoteSurfaceApiIntentKind>([
   'ai_assist.accept',
@@ -98,11 +99,6 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
     return unavailable(`unsupported intent: ${String(intent)}`, errors);
   }
 
-  if (unavailableMemoryIntents.has(intent)) {
-    validatePathSegment('memoryId', getStringField(input, 'memoryId'), errors);
-    return unavailable(`${intent} has no Worker route in the current MVP API surface`, errors);
-  }
-
   switch (intent) {
     case 'ai_assist.accept':
       validatePathSegment('operationId', getStringField(input, 'operationId'), errors);
@@ -130,6 +126,34 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
       return requestResult(errors, {
         method: 'POST',
         path: `/memory/${getStringField(input, 'memoryId')}/reject`,
+        headers: createMetadataHeaders(input),
+      });
+    case 'memory.edit':
+      validatePathSegment('memoryId', getStringField(input, 'memoryId'), errors);
+      validateMemoryEditContent(getStringField(input, 'content'), errors);
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/memory/${getStringField(input, 'memoryId')}/edit`,
+        headers: {
+          ...createMetadataHeaders(input),
+          'Content-Type': 'application/json',
+        },
+        body: {
+          content: getStringField(input, 'content'),
+        },
+      });
+    case 'memory.delete':
+      validatePathSegment('memoryId', getStringField(input, 'memoryId'), errors);
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/memory/${getStringField(input, 'memoryId')}/delete`,
+        headers: createMetadataHeaders(input),
+      });
+    case 'memory.snooze':
+      validatePathSegment('memoryId', getStringField(input, 'memoryId'), errors);
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/memory/${getStringField(input, 'memoryId')}/hold`,
         headers: createMetadataHeaders(input),
       });
     case 'digest.read':
@@ -236,6 +260,17 @@ function validatePathSegment(fieldName: string, value: string | undefined, error
 
   if (!hasPathSegmentError && !isStableRuntimeId(value)) {
     errors.push(`${fieldName} must be a stable non-sentinel runtime id`);
+  }
+}
+
+function validateMemoryEditContent(value: string | undefined, errors: string[]): void {
+  if (typeof value !== 'string' || value.trim() === '') {
+    errors.push('content is required');
+    return;
+  }
+
+  if (value !== value.trim()) {
+    errors.push('content must not include leading or trailing whitespace');
   }
 }
 

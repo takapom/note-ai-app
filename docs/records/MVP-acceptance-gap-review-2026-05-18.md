@@ -25,7 +25,7 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
 | 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model に inline AI Assist Block action intents と Worker request descriptor mapping は追加済み。実 DOM/editor rendering と actual fetch binding は未実装。 |
 | 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping は追加済み。実 DOM rendering は未実装。 |
-| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、Web Memory Candidate action model、accept/reject descriptor mapping は追加済み。実 DOM rendering と edit/delete/hold backend は未実装。 |
+| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、Web Memory Candidate action model、remember/edit/different/delete/hold descriptor mapping は追加済み。実 DOM rendering と actual fetch binding は未実装。 |
 | 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping は追加済み。actual fetch binding と DOM popover は未実装。 |
 | 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard と web view model の failed AI status / editing action separation は covered。実 editor UX は未実装。 |
 | 14 | MVP 除外 UI / 連携が入っていない | partial | web view model に excluded-surface guard を追加済み。実 UI 実装時にも継続 guard が必要。 |
@@ -83,7 +83,7 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 - generated OpenAPI は projection であり SoT ではない。
 
 実装メモ:
-- MVP routes: note/block CRUD、note leave/manual/next_open/digest、operation accept/dismiss、memory accept/reject。
+- MVP routes: note/block CRUD、note leave/manual/next_open/digest、operation accept/dismiss、memory accept/reject/edit/delete/hold。
 - route-to-flow mapping tests を先に追加する。
 - Cloudflare/Turso specific helpers は runtime adapter boundary の背後に置く。
 
@@ -190,9 +190,10 @@ MVP acceptance #11。`contexts/memory` の status transition はあるが、Work
 - rejected/archived memory が Context Assembly に入らないことを runtime test で確認する。
 
 実装状況:
-- accept/reject backend slice として `MemoryReviewPort`、in-memory port、Turso-ish SQL adapter、worker route compatible input/result、focused contract tests は追加済み。
-- Web NoteSurface view model に Memory Candidate action model は追加済み。
-- この slice は `覚える/違う` の accept/reject backend boundary までを対象にし、編集/削除/保留 backend および `create_memory_candidate` proposal から memory item への変換 boundary は未実装。
+- `MemoryReviewPort`、in-memory port、Turso SQL adapter、worker route compatible input/result、focused contract tests は追加済み。
+- 覚える/違う/編集/削除/保留 は `memory_items` の status/content/review metadata update に限定され、source provenance は保持される。
+- Web NoteSurface view model と API intent mapping に Memory Candidate action model は追加済み。
+- 残りは実 DOM rendering、actual fetch binding、`create_memory_candidate` proposal から memory item への変換 boundary。
 
 検証コマンド:
 - `node --test tests/contracts/worker-memory-review-port.test.mjs`
@@ -298,9 +299,9 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 
 実装状況:
 - dependency-free NoteSurface view model に AI Assist Block action intents、Memory Candidate action intents、Next Open Digest compact/expandable model、bounded Provenance Popover model は追加済み。
-- dependency-free API intent mapping に AI assist accept/dismiss、memory remember/reject、digest read、provenance lookup の Worker request descriptor は追加済み。Memory edit/delete/snooze は backend route 未提供として unavailable を返す。
+- dependency-free API intent mapping に AI assist accept/dismiss、memory remember/reject/edit/delete/snooze、digest read、provenance lookup の Worker request descriptor は追加済み。memory.snooze は backend domain action の hold route に対応する。
 - actions は provider call、hidden profiling、automatic active memory、user-authored block direct mutation を持たないことを contract test で検証済み。
-- 残りは実 DOM/editor rendering、actual fetch binding、Memory edit/delete/hold backend。
+- 残りは実 DOM/editor rendering、actual fetch binding。
 
 検証コマンド:
 - `node --test tests/contracts/web-note-surface.test.mjs`

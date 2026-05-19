@@ -54,7 +54,7 @@ test('AI assist accept and dismiss map to operation review Worker requests', () 
   );
 });
 
-test('memory remember and reject map only to memory status Worker requests', () => {
+test('memory remember and reject map to memory status Worker requests', () => {
   assert.equal(
     createNoteSurfaceApiRequest({
       intent: 'memory.remember',
@@ -85,19 +85,95 @@ test('memory remember and reject map only to memory status Worker requests', () 
   );
 });
 
-test('memory edit delete and snooze are unavailable instead of reusing reject', () => {
-  for (const intent of ['memory.edit', 'memory.delete', 'memory.snooze']) {
-    const result = createNoteSurfaceApiRequest({
-      intent,
+test('memory edit delete and snooze map to dedicated memory Worker requests', () => {
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'memory.edit',
       ...metadata,
       memoryId: 'memory_001',
-    });
+      content: 'Prefer source-backed memory candidates.',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/memory/memory_001/edit',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          content: 'Prefer source-backed memory candidates.',
+        },
+      },
+      errors: [],
+    },
+  );
 
-    assert.equal(result.ok, false);
-    assert.equal(result.request, undefined);
-    assert.match(result.unavailableReason, /no Worker route/);
-    assert.doesNotMatch(JSON.stringify(result), /\/memory\/memory_001\/reject/);
-  }
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'memory.delete',
+      ...metadata,
+      memoryId: 'memory_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/memory/memory_001/delete',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+        },
+      },
+      errors: [],
+    },
+  );
+
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'memory.snooze',
+      ...metadata,
+      memoryId: 'memory_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/memory/memory_001/hold',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+        },
+      },
+      errors: [],
+    },
+  );
+});
+
+test('memory edit rejects invalid content before request descriptors are returned', () => {
+  const emptyContent = createNoteSurfaceApiRequest({
+    intent: 'memory.edit',
+    ...metadata,
+    memoryId: 'memory_001',
+    content: '',
+  });
+
+  assert.equal(emptyContent.ok, false);
+  assert.equal(emptyContent.request, undefined);
+  assert.deepEqual(emptyContent.errors, ['content is required']);
+
+  const trimMismatch = createNoteSurfaceApiRequest({
+    intent: 'memory.edit',
+    ...metadata,
+    memoryId: 'memory_001',
+    content: ' Updated content.',
+  });
+
+  assert.equal(trimMismatch.ok, false);
+  assert.equal(trimMismatch.request, undefined);
+  assert.deepEqual(trimMismatch.errors, ['content must not include leading or trailing whitespace']);
 });
 
 test('digest read maps to the next-open digest GET route', () => {

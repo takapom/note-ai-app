@@ -47,6 +47,9 @@ export type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
 export interface MemoryReviewPort {
   acceptMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
   rejectMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
+  editMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
+  deleteMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
+  holdMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
 }
 
 export interface WorkerRouteCommandInput {
@@ -126,6 +129,12 @@ export async function handleWorkerHttpRequest(
       return delegateCommand(ports.memoryReview?.acceptMemory, request, { memoryId: route.params.memoryId }, 200, 'memory accept port is not configured');
     case 'reject_memory':
       return delegateCommand(ports.memoryReview?.rejectMemory, request, { memoryId: route.params.memoryId }, 200, 'memory reject port is not configured');
+    case 'edit_memory':
+      return delegateCommand(ports.memoryReview?.editMemory, request, { memoryId: route.params.memoryId }, 200, 'memory edit port is not configured');
+    case 'delete_memory':
+      return delegateCommand(ports.memoryReview?.deleteMemory, request, { memoryId: route.params.memoryId }, 200, 'memory delete port is not configured');
+    case 'hold_memory':
+      return delegateCommand(ports.memoryReview?.holdMemory, request, { memoryId: route.params.memoryId }, 200, 'memory hold port is not configured');
   }
 }
 
@@ -144,7 +153,10 @@ export type WorkerRouteName =
   | 'accept_operation'
   | 'dismiss_operation'
   | 'accept_memory'
-  | 'reject_memory';
+  | 'reject_memory'
+  | 'edit_memory'
+  | 'delete_memory'
+  | 'hold_memory';
 
 export interface MatchedWorkerRoute {
   name: WorkerRouteName;
@@ -214,6 +226,15 @@ export function matchWorkerRoute(method: string, path: string): MatchedWorkerRou
     }
     if (normalizedMethod === 'POST' && segments[2] === 'reject') {
       return { name: 'reject_memory', params: { memoryId: segments[1] } };
+    }
+    if (normalizedMethod === 'POST' && segments[2] === 'edit') {
+      return { name: 'edit_memory', params: { memoryId: segments[1] } };
+    }
+    if (normalizedMethod === 'POST' && segments[2] === 'delete') {
+      return { name: 'delete_memory', params: { memoryId: segments[1] } };
+    }
+    if (normalizedMethod === 'POST' && segments[2] === 'hold') {
+      return { name: 'hold_memory', params: { memoryId: segments[1] } };
     }
   }
 

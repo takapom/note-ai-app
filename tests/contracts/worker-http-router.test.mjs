@@ -38,6 +38,9 @@ test('worker HTTP router matches the MVP API surface without reading generated O
   assert.deepEqual(matchWorkerRoute('POST', '/ai-operations/operation_001/dismiss'), { name: 'dismiss_operation', params: { operationId: 'operation_001' } });
   assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/accept'), { name: 'accept_memory', params: { memoryId: 'memory_001' } });
   assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/reject'), { name: 'reject_memory', params: { memoryId: 'memory_001' } });
+  assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/edit'), { name: 'edit_memory', params: { memoryId: 'memory_001' } });
+  assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/delete'), { name: 'delete_memory', params: { memoryId: 'memory_001' } });
+  assert.deepEqual(matchWorkerRoute('POST', '/memory/memory_001/hold'), { name: 'hold_memory', params: { memoryId: 'memory_001' } });
 });
 
 test('worker HTTP router returns 404 for unknown routes and 405 for known path method mismatch', async () => {
@@ -151,6 +154,18 @@ test('worker HTTP router delegates block digest and memory routes to explicit po
       calls.push(['rejectMemory', input.memoryId]);
       return { ok: true, errors: [], body: { state: 'rejected' } };
     },
+    async editMemory(input) {
+      calls.push(['editMemory', input.memoryId, input.body]);
+      return { ok: true, errors: [], body: { state: 'pending' } };
+    },
+    async deleteMemory(input) {
+      calls.push(['deleteMemory', input.memoryId]);
+      return { ok: true, errors: [], body: { state: 'archived' } };
+    },
+    async holdMemory(input) {
+      calls.push(['holdMemory', input.memoryId]);
+      return { ok: true, errors: [], body: { state: 'pending' } };
+    },
   };
 
   assert.equal((await handleWorkerHttpRequest({
@@ -185,6 +200,22 @@ test('worker HTTP router delegates block digest and memory routes to explicit po
     method: 'POST',
     path: '/memory/memory_001/reject',
   }, { memoryReview })).status, 200);
+  assert.equal((await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/memory/memory_001/edit',
+    body: { content: 'updated memory content' },
+  }, { memoryReview })).status, 200);
+  assert.equal((await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/memory/memory_001/delete',
+  }, { memoryReview })).status, 200);
+  assert.equal((await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: '/memory/memory_001/hold',
+  }, { memoryReview })).status, 200);
 
   assert.deepEqual(calls, [
     ['createBlock', 'note_001', { block: 'draft' }],
@@ -193,6 +224,9 @@ test('worker HTTP router delegates block digest and memory routes to explicit po
     ['getDigest', 'note_001'],
     ['acceptMemory', 'memory_001'],
     ['rejectMemory', 'memory_001'],
+    ['editMemory', 'memory_001', { content: 'updated memory content' }],
+    ['deleteMemory', 'memory_001'],
+    ['holdMemory', 'memory_001'],
   ]);
 });
 
