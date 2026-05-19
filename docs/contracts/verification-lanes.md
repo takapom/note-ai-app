@@ -79,6 +79,8 @@ Worker HTTP routing boundary の重点コマンド:
 - Cloudflare Agent binding guard: `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-note-structure-runtime-handlers.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs`
 - Cloudflare deployment config guard: `node --test tests/contracts/cloudflare-deployment-config.test.mjs`
   - verifies that `wrangler.toml` points `main` at the Worker fetch entrypoint, serves Web build artifacts from `./dist/web`, keeps MVP API route patterns Worker-first via `[assets].run_worker_first`, leaves ordinary static asset paths asset-first, and does not inline Turso/auth/user/workspace secret values.
+- deployment environment values guard: `node --test tests/contracts/deployment-environment-values.test.mjs`
+  - verifies that `wrangler.toml` remains a descriptor without `[vars]` / secrets or Turso/auth/workspace/user values, public HTML leaves required browser dataset metadata for hosted deployment injection, browser mount reads only the allowed deployment-owned dataset keys, and Worker env interfaces expose optional env/binding names without repo-tracked values.
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
 Note Block command / Next Open Digest read boundary の重点コマンド:
@@ -140,6 +142,11 @@ Web NoteSurface foundation の重点コマンド:
   - verifies that Web browser delivery copies `apps/web/public` into `dist/web`, emits browser ESM assets through the dedicated TypeScript browser build config, and does not change root `noEmit` typecheck semantics.
   - verifies that `apps/web/public/index.html` is a deployment template that imports the compiled `browserNoteSurfaceAppEntry.js` and explicitly calls `startBrowserNoteSurfaceApp`, while required dataset metadata remains deployment supplied.
   - verifies that browser build artifact paths, deployment metadata, and framework/package selection details do not leak into `apps/web/src/noteSurface*.ts` application files.
+- hosted NoteSurface contract E2E guard: `node --test tests/contracts/hosted-note-surface-e2e.test.mjs`
+  - runs `node scripts/build-web.mjs`, verifies `dist/web/index.html` imports the compiled browser app entry asset, mounts the browser NoteSurface with deployment-style root dataset metadata and an injected fetch-like binding backed by the Worker fetch handler, and confirms `GET /notes/:noteId` plus explicit editor save `PATCH /blocks/:blockId` reach Worker routes without real Cloudflare deploy.
+  - verifies the Worker route uses in-memory Note document persistence and the Note Block command port so saved user-authored block text updates canonical document `plainText` and owning section `contentHash`, while `lastStructuredHash` remains unchanged and AI/provider/Operation Router paths are not required.
+- deployment environment values guard: `node --test tests/contracts/deployment-environment-values.test.mjs`
+  - verifies local/hosted E2E values are supplied by deployment env/bindings, request headers, runtime context, or root dataset injection, not repo-tracked `wrangler.toml` vars or public HTML placeholder attributes.
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 
 
