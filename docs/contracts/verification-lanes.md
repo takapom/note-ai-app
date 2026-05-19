@@ -112,6 +112,8 @@ Web NoteSurface foundation の重点コマンド:
 - API intent mapping guard: `node --test tests/contracts/web-note-surface-api-intents.test.mjs tests/contracts/web-note-surface.test.mjs`
 - API transport guard: `node --test tests/contracts/web-note-surface-api-transport.test.mjs tests/contracts/web-note-surface-api-intents.test.mjs`
 - event controller guard: `node --test tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`
+- action input resolver guard: `node --test tests/contracts/web-note-surface-action-input-resolver.test.mjs tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs`
+- DOM host adapter guard: `node --test tests/contracts/web-note-surface-dom-host.test.mjs tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs`
 - browser runtime guard: `node --test tests/contracts/web-note-surface-browser-runtime.test.mjs tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
 

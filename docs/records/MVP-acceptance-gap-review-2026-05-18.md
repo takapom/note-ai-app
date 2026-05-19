@@ -23,10 +23,10 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
-| 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model、inline AI Assist action intents、Worker request descriptor mapping、fetch-like transport、framework-neutral HTML renderer、event controller、browser runtime は追加済み。full editor integration は未実装。 |
-| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime は追加済み。full editor integration は未実装。 |
-| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、`create_memory_candidate` proposal 変換 boundary、Worker accept route/default Turso wiring、Web Memory Candidate action model、remember/edit/different/delete/hold descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime は追加済み。full editor integration は未実装。 |
-| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime は追加済み。operation/memory/AI annotation からの caller wiring と full editor integration は未実装。 |
+| 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model、inline AI Assist action intents、Worker request descriptor mapping、fetch-like transport、framework-neutral HTML renderer、event controller、browser runtime、DOM host、action input resolver は追加済み。実 app bootstrap / state composition は未実装。 |
+| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver は追加済み。実 app bootstrap / state composition は未実装。 |
+| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、`create_memory_candidate` proposal 変換 boundary、Worker accept route/default Turso wiring、Web Memory Candidate action model、remember/edit/different/delete/hold descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver は追加済み。実 app bootstrap / state composition は未実装。 |
+| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver は追加済み。operation/memory/AI annotation からの product-level mapping と実 app bootstrap は未実装。 |
 | 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard と web view model の failed AI status / editing action separation は covered。実 editor UX は未実装。 |
 | 14 | MVP 除外 UI / 連携が入っていない | partial | web view model に excluded-surface guard を追加済み。実 UI 実装時にも継続 guard が必要。 |
 | 15 | Codex task、Superset workspace、docs contract の traceability が維持される | partial | contracts/records は維持。GitHub issue close/create と push は sandbox で未実行。 |
@@ -307,7 +307,9 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 - actions は provider call、hidden profiling、automatic active memory、user-authored block direct mutation を持たないことを contract test で検証済み。
 - framework-neutral event controller は追加済み。renderer の event descriptor と caller supplied mapping から API intent input を組み立て、transport に渡す。invalid metadata では caller resolver / transport を呼ばず、transport failure は controller result に閉じる。
 - framework-neutral browser runtime は追加済み。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、escaped HTML mount、event binding、action dispatch、render/controller failure result を contract test で検証済み。
-- 残りは full editor integration。
+- DOM host adapter は追加済み。実 DOM API はこの adapter に閉じ、root HTML 差し替え、delegated click binding、render event descriptor による dataset 補完、listener replacement を contract test で検証済み。
+- action input resolver は追加済み。operationId / memoryId / noteId / provenance / memory edit content は caller supplied lookup から取得し、ID 生成、backend policy validation、transport ownership を持たないことを contract test で検証済み。
+- 残りは実 app bootstrap / state composition と product-level mapping。
 
 検証コマンド:
 - `node --test tests/contracts/web-note-surface.test.mjs`

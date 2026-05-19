@@ -1,0 +1,203 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+import { createNoteSurfaceDomHost } from '../../apps/web/src/noteSurfaceDomHost.ts';
+
+test('DOM host replaces root HTML through the injected root boundary', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+
+  host.setHtml('<main data-surface="single-note">Rendered note surface</main>');
+
+  assert.equal(root.innerHTML, '<main data-surface="single-note">Rendered note surface</main>');
+});
+
+test('DOM host delegates click actions and enriches missing apiIntent from render events', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+    apiIntent: 'POST /ai-operations/:operationId/accept',
+  })], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  const button = createActionElement({
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+  });
+  const iconInsideButton = {
+    closest(selector) {
+      assert.equal(selector, '[data-action]');
+      return button;
+    },
+  };
+
+  root.click(iconInsideButton);
+
+  assert.equal(root.listeners.length, 1);
+  assert.equal(handled.length, 1);
+  assert.equal(handled[0].action, 'adopt');
+  assert.equal(handled[0].target, 'ai_assist_block');
+  assert.equal(handled[0].blockId, 'block_ai_question_001');
+  assert.equal(handled[0].apiIntent, 'POST /ai-operations/:operationId/accept');
+  assert.equal(handled[0].emitsAiProviderCall, false);
+  assert.deepEqual(handled[0].dataset, {
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+  });
+});
+
+test('DOM host preserves explicit dataset apiIntent without requiring a render event match', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  root.click(createActionElement({
+    action: 'read_digest',
+    target: 'next_open_digest',
+    apiIntent: 'GET /notes/:noteId/digest',
+  }));
+
+  assert.equal(handled.length, 1);
+  assert.deepEqual(handled[0], {
+    dataset: {
+      action: 'read_digest',
+      target: 'next_open_digest',
+      apiIntent: 'GET /notes/:noteId/digest',
+    },
+    action: 'read_digest',
+    dataAction: 'read_digest',
+    target: 'next_open_digest',
+    apiIntent: 'GET /notes/:noteId/digest',
+  });
+});
+
+test('DOM host replaces prior click listener on repeated bindActionEvents calls', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'adopt',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+    apiIntent: 'POST /ai-operations/:operationId/accept',
+  })], async () => {
+    handled.push('first');
+    return { ok: true, status: 'handled', errors: [] };
+  });
+  host.bindActionEvents([createRenderEvent({
+    action: 'remember',
+    target: 'memory_candidate_block',
+    blockId: 'block_ai_memory_candidate_001',
+    apiIntent: 'POST /memory/:memoryId/accept',
+  })], async (descriptor) => {
+    handled.push(descriptor.apiIntent);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  root.click(createActionElement({
+    action: 'remember',
+    target: 'memory_candidate_block',
+    blockId: 'block_ai_memory_candidate_001',
+  }));
+
+  assert.equal(root.addedListeners, 2);
+  assert.equal(root.removedListeners, 1);
+  assert.equal(root.listeners.length, 1);
+  assert.deepEqual(handled, ['POST /memory/:memoryId/accept']);
+});
+
+test('DOM host ignores clicks without a data-action element', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  root.click({ dataset: { target: 'block_editor' } });
+
+  assert.equal(handled.length, 0);
+});
+
+test('DOM host source owns only the thin DOM adapter boundary', async () => {
+  const source = await readFile(new URL('../../apps/web/src/noteSurfaceDomHost.ts', import.meta.url), 'utf8');
+
+  assert.match(source, /export function createNoteSurfaceDomHost/);
+  assert.match(source, /innerHTML/);
+  assert.match(source, /addEventListener/);
+  assert.match(source, /closest/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(source, /noteSurfaceEventController|noteSurfaceApiTransport/);
+  assert.doesNotMatch(source, /fetch\(|globalThis\.fetch|XMLHttpRequest|new Request/i);
+  assert.doesNotMatch(source, /providerAdapter|callProvider|externalAction/i);
+  assert.doesNotMatch(source, /user_block\.direct_mutate|directUserBlockMutation|mutateUserAuthoredBlock|direct.*mutat/i);
+});
+
+function createFakeRoot() {
+  return {
+    innerHTML: '',
+    listeners: [],
+    addedListeners: 0,
+    removedListeners: 0,
+    addEventListener(type, listener) {
+      assert.equal(type, 'click');
+      this.addedListeners += 1;
+      this.listeners.push(listener);
+    },
+    removeEventListener(type, listener) {
+      assert.equal(type, 'click');
+      this.removedListeners += 1;
+      this.listeners = this.listeners.filter((entry) => entry !== listener);
+    },
+    click(target) {
+      for (const listener of this.listeners) {
+        listener({ target });
+      }
+    },
+  };
+}
+
+function createActionElement(dataset) {
+  const element = {
+    dataset,
+    closest(selector) {
+      assert.equal(selector, '[data-action]');
+      return element;
+    },
+  };
+  return element;
+}
+
+function createRenderEvent(overrides) {
+  return {
+    label: overrides.action,
+    dataAction: overrides.action,
+    noteId: 'note_001',
+    blockType: 'paragraph',
+    emitsAiProviderCall: false,
+    mutatesUserAuthoredBlock: false,
+    hiddenProfiling: false,
+    automaticActiveMemory: false,
+    ...overrides,
+  };
+}
