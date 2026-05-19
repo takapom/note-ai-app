@@ -186,7 +186,7 @@ test('worker flow separates audit save failure from routing result', async () =>
     attempted: true,
     ok: false,
     savedCount: 0,
-    errors: ['audit operation_flow_audit_failure_0: audit persistence failed: database unavailable'],
+    errors: ['audit operation_flow_audit_failure_0: audit persistence unavailable'],
   });
   assert.deepEqual(result.auditRecovery, {
     attempted: true,
@@ -209,7 +209,7 @@ test('worker flow separates audit save failure from routing result', async () =>
         workspaceId: 'workspace_001',
         noteId: 'note_001',
         structureJobId: 'structure_job_001',
-        failureMessage: 'audit persistence failed: database unavailable',
+        failureMessage: 'audit persistence unavailable',
         failedAt: 1_700_000_000_000,
       },
     ],
@@ -237,13 +237,13 @@ test('worker flow reports recovery queue failure without changing route decision
   assert.equal(result.routing.ok, true);
   assert.deepEqual(result.routing.errors, []);
   assert.deepEqual(result.auditPersistence.errors, [
-    'audit operation_flow_recovery_failure_0: audit persistence failed: database unavailable',
+    'audit operation_flow_recovery_failure_0: audit persistence unavailable',
   ]);
   assert.deepEqual(result.auditRecovery, {
     attempted: true,
     ok: false,
     enqueuedCount: 0,
-    errors: ['audit operation_flow_recovery_failure_0 recovery: recovery queue unavailable'],
+    errors: ['audit operation_flow_recovery_failure_0 recovery: audit recovery enqueue unavailable'],
   });
   assert.deepEqual(result.directApplyResults, []);
 });

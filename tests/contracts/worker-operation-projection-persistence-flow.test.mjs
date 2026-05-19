@@ -217,7 +217,7 @@ test('projection persistence failure stays separate from routing and proposal de
     ok: false,
     savedCount: 0,
     errors: [
-      'projection operation_projection_failure_0: projection persistence failed: projection store unavailable',
+      'projection operation_projection_failure_0: projection persistence unavailable',
     ],
   });
   assert.equal(result.proposalPersistence.ok, true);
@@ -261,7 +261,7 @@ test('proposal persistence failure stays separate from active projection writes'
     errors: [],
   });
   assert.deepEqual(result.proposalPersistence.errors, [
-    'proposal operation_projection_proposal_failure_1: proposal store unavailable',
+    'proposal operation_projection_proposal_failure_1: proposal persistence unavailable',
   ]);
   assert.equal(result.proposalPersistence.ok, false);
   assert.deepEqual(projectionPersistence.list().map((intent) => intent.operationId), [

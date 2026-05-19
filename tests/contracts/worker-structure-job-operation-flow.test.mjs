@@ -102,7 +102,7 @@ test('structure job flow separates audit persistence failure from routing result
   assert.equal(result.routingFlow.routing.ok, true);
   assert.equal(result.routingFlow.auditPersistence.ok, false);
   assert.deepEqual(result.errors, [
-    'audit operation_structure_job_audit_failure_0: audit persistence failed: audit store unavailable',
+    'audit operation_structure_job_audit_failure_0: audit persistence unavailable',
   ]);
   assert.deepEqual(result.routingFlow.auditRecovery, {
     attempted: true,

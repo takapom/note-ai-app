@@ -278,6 +278,6 @@ test('runtime orchestration preserves audit persistence failure as downstream fa
   assert.equal(result.structureJobOperationFlow.routingFlow.routing.ok, true);
   assert.equal(result.structureJobOperationFlow.routingFlow.auditPersistence.ok, false);
   assert.deepEqual(result.errors, [
-    'audit operation_structure_job_orchestration_audit_failure_0: audit persistence failed: audit store unavailable',
+    'audit operation_structure_job_orchestration_audit_failure_0: audit persistence unavailable',
   ]);
 });

@@ -99,18 +99,74 @@ async function enqueueAuditRecovery(
   }
 
   result.ok = false;
-  result.errors.push(...enqueueResult.errors.map((error) => `audit ${record.id} recovery: ${error}`));
+  result.errors.push(...normalizeRecoveryErrors(enqueueResult.errors).map((error) => `audit ${record.id} recovery: ${error}`));
 }
 
 function toPersistenceErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return `audit persistence failed: ${error.message.trim()}`;
-  }
-
-  return 'audit persistence failed';
+  return normalizeInfrastructureFailure(error, 'audit persistence unavailable');
 }
 
 function normalizePersistenceErrors(errors: readonly string[]): string[] {
-  const normalized = errors.filter((error) => error.trim().length > 0);
+  const normalized = errors
+    .map((error) => normalizePersistenceError(error))
+    .filter((error) => error.trim().length > 0);
   return normalized.length > 0 ? normalized : ['audit persistence failed'];
+}
+
+function normalizeRecoveryErrors(errors: readonly string[]): string[] {
+  const normalized = errors
+    .map((error) => normalizeRecoveryError(error))
+    .filter((error) => error.trim().length > 0);
+  return normalized.length > 0 ? normalized : ['audit recovery enqueue failed'];
+}
+
+function normalizeRecoveryError(error: unknown): string {
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    if (trimmed.length === 0) {
+      return 'audit recovery enqueue unavailable';
+    }
+    if (isValidationFailureMessage(trimmed)) {
+      return trimmed;
+    }
+    return 'audit recovery enqueue unavailable';
+  }
+
+  return 'audit recovery enqueue unavailable';
+}
+
+function normalizePersistenceError(error: unknown): string {
+  if (typeof error === 'string' && isVolatileInfrastructureDetail(error)) {
+    return 'audit persistence unavailable';
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error.trim();
+  }
+
+  return normalizeInfrastructureFailure(error, 'audit persistence unavailable');
+}
+
+function normalizeInfrastructureFailure(error: unknown, stableMessage: string): string {
+  if (error instanceof Error) {
+    return stableMessage;
+  }
+
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    if (trimmed.length === 0 || isVolatileInfrastructureDetail(trimmed)) {
+      return stableMessage;
+    }
+    return trimmed;
+  }
+
+  return stableMessage;
+}
+
+function isVolatileInfrastructureDetail(message: string): boolean {
+  return /\b(sql|sqlite|libsql|turso|database|db|executor|connection|network|timeout|provider|auth0|clerk|token|secret)\b/i.test(message);
+}
+
+function isValidationFailureMessage(message: string): boolean {
+  return /\b(must|required|match|invalid|provided|finite|non-empty|trimmed)\b/i.test(message);
 }

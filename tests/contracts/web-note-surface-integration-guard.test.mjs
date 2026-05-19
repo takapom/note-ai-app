@@ -50,6 +50,14 @@ const forbiddenRuntimeBoundaryPatterns = [
     pattern: /from\s+['"][^'"]*(?:ai-sdk|openai|anthropic|google|mistral|cohere)[^'"]*['"]/i,
   },
   {
+    name: 'auth provider SDK import',
+    pattern: /from\s+['"][^'"]*(?:clerk|auth0|firebase|supabase|next-auth|lucia|jsonwebtoken|jose)[^'"]*['"]/i,
+  },
+  {
+    name: 'auth policy shortcut',
+    pattern: /\b(?:verifyJwt|verifyToken|decodeJwt|createAuthClient|authProvider|authPolicy|workspaceMembership)\b/i,
+  },
+  {
     name: 'provider adapter shortcut',
     pattern: /\b(?:providerAdapter|callProvider|createProvider|externalAction)\b/i,
   },
@@ -206,6 +214,40 @@ test('web note surface integration sources stay outside runtime provider generat
   }
 });
 
+test('all web source files stay outside backend generated auth and provider authority shortcuts', async () => {
+  const sources = await readAllWebSources();
+  const sourceBoundaryPatterns = [
+    {
+      name: 'Worker runtime import',
+      pattern: /from\s+['"][^'"]*(?:apps\/worker|\.\.\/worker|worker\/src)[^'"]*['"]/,
+    },
+    {
+      name: 'generated OpenAPI or projection import',
+      pattern: /from\s+['"][^'"]*(?:workspace-api\/generated|docs\/generated|generated\/openapi|openapi\.json)[^'"]*['"]/,
+    },
+    {
+      name: 'AI provider SDK import',
+      pattern: /from\s+['"][^'"]*(?:ai-sdk|openai|anthropic|google|mistral|cohere)[^'"]*['"]/i,
+    },
+    {
+      name: 'auth provider SDK import',
+      pattern: /from\s+['"][^'"]*(?:clerk|auth0|firebase|supabase|next-auth|lucia|jsonwebtoken|jose)[^'"]*['"]/i,
+    },
+    {
+      name: 'backend provider shortcut',
+      pattern: /\b(?:providerAdapter|callProvider|createProvider|externalAction)\b/i,
+    },
+    {
+      name: 'auth policy shortcut',
+      pattern: /\b(?:verifyJwt|verifyToken|decodeJwt|createAuthClient|authProvider|authPolicy|workspaceMembership)\b/i,
+    },
+  ];
+
+  for (const source of sources) {
+    assertNoForbiddenPatterns(source, sourceBoundaryPatterns);
+  }
+});
+
 test('only the DOM host adapter owns direct DOM APIs', async () => {
   const sources = await readExistingGuardedSources();
   const domHost = sources.find((source) => source.path === domOwnerPath);
@@ -252,6 +294,19 @@ async function discoverNoteSurfaceSourcePaths() {
 
 async function readExistingGuardedSources() {
   const paths = await existingPaths(guardedSourcePaths);
+  return Promise.all(paths.map(async (path) => ({
+    path,
+    text: await readFile(new URL(path, root), 'utf8'),
+  })));
+}
+
+async function readAllWebSources() {
+  const entries = await readdir(webSourceRoot);
+  const paths = entries
+    .filter((entry) => entry.endsWith('.ts'))
+    .map((entry) => `apps/web/src/${entry}`)
+    .sort();
+
   return Promise.all(paths.map(async (path) => ({
     path,
     text: await readFile(new URL(path, root), 'utf8'),

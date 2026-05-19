@@ -14,12 +14,14 @@ import type {
   StructureJobFailedResult,
   StructureJobWorkQueuePort,
 } from './structureJobWorkQueuePort.ts';
+import { validateStructureJobWorkQueueRecord } from './structureJobWorkQueuePort.ts';
 import type {
   StructureJobOperationOrchestrationFlowResult,
 } from './structureJobOperationOrchestrationFlow.ts';
 
 export type StructureJobProcessorFlowReason =
   | 'claim_failed'
+  | 'invalid_claimed_job'
   | 'no_queued_job'
   | 'agent_failed'
   | 'completed'
@@ -81,6 +83,17 @@ export async function runStructureJobProcessorFlow(
     });
   }
 
+  const claimedJobErrors = validateClaimedRunningJob(claim.job);
+  if (claimedJobErrors.length > 0) {
+    return emptyProcessorResult({
+      ok: false,
+      attempted: false,
+      reason: 'invalid_claimed_job',
+      claim,
+      errors: claimedJobErrors,
+    });
+  }
+
   const agent = await runStructureJobAgentHandler({
     userId: input.userId,
     structureJob: claim.job,
@@ -124,6 +137,18 @@ export async function runStructureJobProcessorFlow(
     completion,
     errors: completion.ok ? [] : completion.errors,
   });
+}
+
+function validateClaimedRunningJob(job: StructureJobClaimResult['job']): string[] {
+  const errors = validateStructureJobWorkQueueRecord(job);
+  if (job?.status !== 'running') {
+    errors.push('claimed structure job must be running');
+  }
+  if (typeof job?.startedAt !== 'number' || !Number.isFinite(job.startedAt)) {
+    errors.push('claimed structure job must include finite startedAt');
+  }
+
+  return errors;
 }
 
 function isCompletedAgentResult(

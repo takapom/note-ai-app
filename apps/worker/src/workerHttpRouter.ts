@@ -675,7 +675,7 @@ function mapOperationApprovalResult(
         proposal: result.proposal,
         ...(result.approvedIntent === undefined ? {} : { approvedIntent: result.approvedIntent }),
         memoryCandidate: mapMemoryCandidateRouteResult(memoryCandidate),
-        errors: memoryCandidate.errors,
+        errors: sanitizePublicRouteErrors(memoryCandidate.errors),
       },
     };
   }
@@ -697,7 +697,7 @@ function mapMemoryCandidateRouteResult(
 ): { ok: boolean; errors: string[]; memory?: unknown } {
   return {
     ok: result.ok,
-    errors: result.errors,
+    errors: sanitizePublicRouteErrors(result.errors),
     ...(result.memory === undefined ? {} : { memory: result.memory }),
   };
 }
@@ -705,7 +705,7 @@ function mapMemoryCandidateRouteResult(
 function badRequest(errors: readonly string[]): WorkerHttpResponse {
   return {
     status: 400,
-    body: { ok: false, errors: [...errors] },
+    body: { ok: false, errors: sanitizePublicRouteErrors(errors) },
   };
 }
 
@@ -736,4 +736,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+}
+
+function sanitizePublicRouteErrors(errors: readonly string[]): string[] {
+  return errors.map((error) => {
+    if (containsVolatileRuntimeDetail(error)) {
+      return 'runtime dependency unavailable';
+    }
+    return error;
+  });
+}
+
+function containsVolatileRuntimeDetail(message: string): boolean {
+  return /\b(sql|sqlite|libsql|turso|database|db|executor|connection|network|timeout|provider sdk|auth0|clerk|token|secret)\b/i.test(message);
 }

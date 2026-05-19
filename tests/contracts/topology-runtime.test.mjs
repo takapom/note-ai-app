@@ -9,6 +9,14 @@ import {
 } from '../../contexts/topology/src/contract/topologyContract.ts';
 
 const root = new URL('../../', import.meta.url);
+const generatedProjectionImportPattern =
+  /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:docs\/generated|workspace-api\/generated)/;
+const providerSdkImportPattern =
+  /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:ai-sdk|openai|anthropic|google|mistral|cohere)/i;
+const authVendorImportPattern =
+  /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:clerk|auth0|firebase|supabase|next-auth|lucia|jsonwebtoken|jose)/i;
+const operationRouterInternalImportPattern =
+  /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:operationRoutingFlow|operationRoutingAdapter|operationRouterContract|operationContract)/;
 
 async function listFiles(dir) {
   const entries = await readdir(new URL(dir, root), { withFileTypes: true });
@@ -181,8 +189,8 @@ test('contexts do not import app implementation or generated projections', async
 
   for (const file of files.filter((path) => path.endsWith('.ts'))) {
     const source = await readFile(new URL(file, root), 'utf8');
-    assert.doesNotMatch(source, /from\s+['"][^'"]*apps\//, file);
-    assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//, file);
+    assert.doesNotMatch(source, /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:apps\/|\.\.\/[^'"]*apps\/)/, file);
+    assert.doesNotMatch(source, generatedProjectionImportPattern, file);
   }
 });
 
@@ -196,6 +204,43 @@ test('worker runtime adapters depend on contracts, not generated projections or 
     assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/, file);
     assert.doesNotMatch(source, /classifyOperationPolicy|validateStructureOperation/, file);
   }
+});
+
+test('worker HTTP and fetch entrypoint boundaries stay route/auth/response adapters only', async () => {
+  const routeBoundaryFiles = [
+    'apps/worker/src/workerEntrypoint.ts',
+    'apps/worker/src/workerHttpRouter.ts',
+    'apps/worker/src/cloudflareWorkerEntrypoint.ts',
+  ];
+  const sqlAdapterImportPattern =
+    /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:SqlAdapter|tursoOperationAuditExecutor|schedulerAgentLocalSqlAdapter|noteDocumentSqlAdapter|operationProposalSqlAdapter)/;
+  const sqlStatementPattern =
+    /\b(?:select\b|insert\s+into|update\s+[`"]?\w+[`"]?\s+set|delete\s+from|create\s+table|alter\s+table|drop\s+table)\b/i;
+
+  for (const file of routeBoundaryFiles) {
+    const source = await readFile(new URL(file, root), 'utf8');
+    assert.doesNotMatch(source, generatedProjectionImportPattern, file);
+    assert.doesNotMatch(source, providerSdkImportPattern, file);
+    assert.doesNotMatch(source, authVendorImportPattern, file);
+    assert.doesNotMatch(source, operationRouterInternalImportPattern, file);
+    assert.doesNotMatch(source, sqlAdapterImportPattern, file);
+    assert.doesNotMatch(source, sqlStatementPattern, file);
+    assert.doesNotMatch(source, /runOperationRoutingFlow|routeGeneratedOperations|classifyOperationPolicy|validateStructureOperation/, file);
+    assert.doesNotMatch(source, /providerRegistry|generateOperations|createStaticOperationGenerationProviderRegistry/, file);
+  }
+});
+
+test('worker runtime port wiring does not own HTTP auth provider or Operation Router policy', async () => {
+  const source = await readFile(new URL('apps/worker/src/workerRuntimePorts.ts', root), 'utf8');
+
+  assert.match(source, /createWorkerRuntimePorts/);
+  assert.doesNotMatch(source, generatedProjectionImportPattern);
+  assert.doesNotMatch(source, providerSdkImportPattern);
+  assert.doesNotMatch(source, authVendorImportPattern);
+  assert.doesNotMatch(source, operationRouterInternalImportPattern);
+  assert.doesNotMatch(source, /from\s+['"][^'"]*(?:workerEntrypoint|workerAuthBoundary|operationRoutingFlow|operationRoutingAdapter)/);
+  assert.doesNotMatch(source, /handleWorkerHttpRequest|matchWorkerRoute|normalizeWorkerAuthBoundary|authenticateWorkerRequest/);
+  assert.doesNotMatch(source, /runOperationRoutingFlow|routeGeneratedOperations|classifyOperationPolicy|validateStructureOperation/);
 });
 
 test('worker scheduler runtime flow does not call provider, operation routing, or audit persistence boundaries', async () => {

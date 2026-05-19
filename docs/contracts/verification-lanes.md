@@ -85,6 +85,21 @@ Worker HTTP routing boundary の重点コマンド:
   - verifies that `wrangler.toml` remains a descriptor without `[vars]` / secrets or Turso/auth/workspace/user values, public HTML leaves required browser dataset metadata for hosted deployment injection, browser mount reads only the allowed deployment-owned dataset keys, and Worker env interfaces expose optional env/binding names without repo-tracked values.
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
+Backend DDD hardening の重点コマンド:
+
+- architecture boundary baseline: `node --test tests/contracts/topology-runtime.test.mjs tests/contracts/worker-no-direct-sot-mutation-guard.test.mjs tests/contracts/web-note-surface-integration-guard.test.mjs`
+  - verifies that `contexts/**` do not import app implementation or generated projections, Web stays outside Worker/provider/auth/generated authority shortcuts, and Worker HTTP / fetch entrypoint modules stay thin route/auth/response adapters.
+- canonical Turso schema readiness: `node --test tests/contracts/worker-schema-readiness.test.mjs`
+  - verifies that current canonical SQL adapters reference only tables and columns represented by the Turso schema fixture, and that Agent-local temporary tables are not included in canonical readiness.
+- Agent-local SQL readiness: `node --test tests/contracts/worker-agent-local-schema-readiness.test.mjs`
+  - verifies that scheduler dirty marks, StructureJob queue, next-open digest preparation, and audit recovery queue readiness stay in Agent-local temporary tables and do not include canonical Note / Section / Block / audit tables.
+- Agent / queue runtime hardening: `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs tests/contracts/worker-structure-job-work-queue-agent-local-sql-adapter.test.mjs`
+  - verifies that WorkspaceBrainAgent keeps a serializable public command surface, no queued jobs do not call downstream ports, claimed running jobs are the only jobs handed to the Agent handler, and terminal completion/failure transitions are observable.
+- failure and recovery boundary hardening: `node --test tests/contracts/worker-operation-routing-flow.test.mjs tests/contracts/worker-operation-audit-recovery-agent-local-sql-adapter.test.mjs tests/contracts/worker-operation-projection-persistence-flow.test.mjs tests/contracts/worker-http-error-responses.test.mjs`
+  - verifies that audit persistence, recovery enqueue, projection/proposal persistence, and public HTTP response failures keep stable runtime meanings without rewriting routing decisions or leaking volatile SQL/Turso/provider/auth details.
+- backend runtime smoke / curl-like lane: `node --test tests/contracts/backend-runtime-smoke.test.mjs`
+  - verifies Worker fetch boundary reachability for note, block, structure trigger, digest, provenance, memory review, and operation approval routes without UI/browser code; also verifies invalid JSON, invalid auth, invalid route/method, missing ports, and canonical-vs-Agent-local ledger separation.
+
 Note Block command / Next Open Digest read boundary の重点コマンド:
 
 - block command guard: `node --test tests/contracts/worker-note-block-command-port.test.mjs`

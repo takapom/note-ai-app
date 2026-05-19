@@ -5,6 +5,8 @@ import { DurableObject, type DurableObjectState } from 'cloudflare:workers';
 import {
   NoteAgent as NoteAgentRuntimeDelegate,
   WorkspaceBrainAgent as WorkspaceBrainAgentRuntimeDelegate,
+  type WorkspaceBrainProcessNextStructureJobCommand,
+  type WorkspaceBrainStructureJobProcessorOptions,
   noteAgentBindingDescriptor,
   workspaceBrainAgentBindingDescriptor,
 } from './cloudflareAgentBindings.ts';
@@ -14,6 +16,7 @@ import {
 } from './noteStructureRuntimeHandlers.ts';
 import {
   createWorkerRuntimePorts,
+  createWorkspaceBrainStructureJobProcessorOptions,
 } from './workerRuntimePorts.ts';
 import { type WorkerEntrypointEnv } from './workerEntrypoint.ts';
 
@@ -22,12 +25,6 @@ export interface NoteAgentScheduleStructureCommand {
   noteId: string;
   route: NoteStructureRouteKind;
   cause?: NoteLeaveCause;
-  now: number;
-}
-
-export interface WorkspaceBrainProcessNextStructureJobCommand {
-  workspaceId: string;
-  userId: string;
   now: number;
 }
 
@@ -42,6 +39,13 @@ export interface CloudflareAgentRpcResult {
   noteSotMutations: [];
   errors: string[];
 }
+
+export const WORKSPACE_BRAIN_PROCESSOR_OPTIONS_ENV_KEY = 'WORKSPACE_BRAIN_STRUCTURE_JOB_PROCESSOR_OPTIONS';
+
+export type WorkspaceBrainStructureJobProcessorOptionsProvider = (input: {
+  env: WorkerEntrypointEnv;
+  command: WorkspaceBrainProcessNextStructureJobCommand;
+}) => WorkspaceBrainStructureJobProcessorOptions | undefined | Promise<WorkspaceBrainStructureJobProcessorOptions | undefined>;
 
 export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   readonly descriptor = noteAgentBindingDescriptor;
@@ -90,17 +94,32 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
     this.workerEnv = env;
-    void this.runtimeDelegate;
   }
 
-  processNextQueuedStructureJob(
+  async processNextQueuedStructureJob(
     input: WorkspaceBrainProcessNextStructureJobCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    void input;
-    void this.workerEnv;
-    return Promise.resolve(rejectedRpcResult('workspace_brain_ports_not_configured', [
-      'workspace brain processor ports are not configured',
-    ]));
+    const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input);
+    if (!options.ok) {
+      return rejectedRpcResult(options.reason, options.errors);
+    }
+
+    const result = await this.runtimeDelegate.processNextQueuedStructureJob(input, options.options);
+    if (!('claim' in result)) {
+      return rejectedRpcResult('invalid_workspace_brain_process_command', result.errors);
+    }
+
+    return {
+      ok: result.ok,
+      accepted: result.errors.length === 0,
+      reason: result.reason,
+      scheduledJobIds: result.claim.job === undefined ? [] : [result.claim.job.id],
+      providerCalls: result.providerCalls,
+      operationRoutingCalls: result.operationRoutingCalls,
+      auditWrites: result.auditWrites,
+      noteSotMutations: [],
+      errors: result.errors,
+    };
   }
 }
 
@@ -116,4 +135,57 @@ function rejectedRpcResult(reason: string, errors: string[]): CloudflareAgentRpc
     noteSotMutations: [],
     errors,
   };
+}
+
+async function readWorkspaceBrainProcessorOptions(
+  env: WorkerEntrypointEnv,
+  command: WorkspaceBrainProcessNextStructureJobCommand,
+): Promise<
+  | { ok: true; options: WorkspaceBrainStructureJobProcessorOptions }
+  | { ok: false; reason: string; errors: string[] }
+> {
+  const configured = env[WORKSPACE_BRAIN_PROCESSOR_OPTIONS_ENV_KEY];
+  if (configured === undefined) {
+    const fromRuntimeBindings = createWorkspaceBrainStructureJobProcessorOptions({
+      env,
+      now: command.now,
+    });
+    if (!fromRuntimeBindings.ok) {
+      return {
+        ok: false,
+        reason: 'workspace_brain_ports_not_configured',
+        errors: fromRuntimeBindings.errors,
+      };
+    }
+
+    return {
+      ok: true,
+      options: fromRuntimeBindings.options,
+    };
+  }
+
+  try {
+    const options = typeof configured === 'function'
+      ? await (configured as WorkspaceBrainStructureJobProcessorOptionsProvider)({ env, command })
+      : configured;
+    if (options === undefined) {
+      return {
+        ok: false,
+        reason: 'workspace_brain_ports_not_configured',
+        errors: ['workspace brain processor ports are not configured'],
+      };
+    }
+
+    return {
+      ok: true,
+      options: options as WorkspaceBrainStructureJobProcessorOptions,
+    };
+  } catch (error) {
+    void error;
+    return {
+      ok: false,
+      reason: 'workspace_brain_ports_not_configured',
+      errors: ['workspace brain processor ports are not configured'],
+    };
+  }
 }

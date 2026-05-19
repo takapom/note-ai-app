@@ -76,11 +76,17 @@ export async function runOperationProjectionPersistenceFlow(
           activeProjectionWriteIntents.push(saveResult.intent ?? intent);
         } else {
           projectionPersistence.errors.push(
-            ...normalizePersistenceErrors(saveResult.errors).map((error) => `projection ${intent.operationId}: ${error}`),
+            ...normalizePersistenceErrors(
+              saveResult.errors,
+              'projection persistence failed',
+              'projection persistence unavailable',
+            ).map((error) => `projection ${intent.operationId}: ${error}`),
           );
         }
       } catch (error) {
-        projectionPersistence.errors.push(`projection ${intent.operationId}: ${toPersistenceErrorMessage(error)}`);
+        projectionPersistence.errors.push(
+          `projection ${intent.operationId}: ${toPersistenceErrorMessage(error, 'projection persistence unavailable')}`,
+        );
       }
       continue;
     }
@@ -108,11 +114,17 @@ export async function runOperationProjectionPersistenceFlow(
           proposalPersistence.savedCount += 1;
         } else {
           proposalPersistence.errors.push(
-            ...normalizePersistenceErrors(proposalResult.errors).map((error) => `proposal ${auditRecord.id}: ${error}`),
+            ...normalizePersistenceErrors(
+              proposalResult.errors,
+              'proposal persistence failed',
+              'proposal persistence unavailable',
+            ).map((error) => `proposal ${auditRecord.id}: ${error}`),
           );
         }
       } catch (error) {
-        proposalPersistence.errors.push(`proposal ${auditRecord.id}: ${toPersistenceErrorMessage(error)}`);
+        proposalPersistence.errors.push(
+          `proposal ${auditRecord.id}: ${toPersistenceErrorMessage(error, 'proposal persistence unavailable')}`,
+        );
       }
     }
   }
@@ -177,17 +189,39 @@ function noProposalPersistence(): OperationProposalPersistenceSummary {
   };
 }
 
-function normalizePersistenceErrors(errors: readonly string[]): string[] {
-  const normalized = errors.filter((error) => error.trim().length > 0);
-  return normalized.length > 0 ? normalized : ['projection persistence failed'];
+function normalizePersistenceErrors(
+  errors: readonly string[],
+  fallbackMessage: string,
+  unavailableMessage: string,
+): string[] {
+  const normalized = errors
+    .map((error) => normalizePersistenceError(error, unavailableMessage))
+    .filter((error) => error.trim().length > 0);
+  return normalized.length > 0 ? normalized : [fallbackMessage];
 }
 
-function toPersistenceErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return `projection persistence failed: ${error.message.trim()}`;
+function toPersistenceErrorMessage(error: unknown, unavailableMessage: string): string {
+  if (error instanceof Error) {
+    return unavailableMessage;
   }
 
-  return 'projection persistence failed';
+  return normalizePersistenceError(error, unavailableMessage);
+}
+
+function normalizePersistenceError(error: unknown, unavailableMessage: string): string {
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    if (trimmed.length === 0 || isVolatileInfrastructureDetail(trimmed)) {
+      return unavailableMessage;
+    }
+    return trimmed;
+  }
+
+  return unavailableMessage;
+}
+
+function isVolatileInfrastructureDetail(message: string): boolean {
+  return /\b(sql|sqlite|libsql|turso|database|db|store|executor|connection|network|timeout|provider|auth0|clerk|token|secret)\b/i.test(message);
 }
 
 function cloneAuditRecord(record: AiOperationAuditRecordContract): AiOperationAuditRecordContract {
