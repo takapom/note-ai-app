@@ -38,6 +38,7 @@ Cloudflare Agents、Workers、AI SDK、Turso の state placement と runtime top
 - Cloudflare runtime では Turso Sync ではなく Turso serverless access を使用する。
 - NoteAgent は edit event buffer、dirty section tracking、note leave handling、structure job scheduling、context_hash dedupe を扱う。
 - NoteAgent / WorkspaceBrainAgent handler は runtime flow の接続境界であり、scheduler trigger policy、work queue lifecycle policy、context assembly policy、provider generation policy、Operation Router policy、audit persistence policy を再実装しない。
+- Cloudflare Agent binding foundation は framework-neutral な NoteAgent / WorkspaceBrainAgent class と deployment binding descriptor として表現してよい。実 SDK binding はこの descriptor を使って runtime flow に委譲し、Cloudflare package type、provider SDK、SQL、Operation Router、audit persistence、canonical Note / Section / Block write を binding class に持ち込んではならない。
 - Worker scheduler runtime flow は NoteAgent / runtime ports を通じて BlockChanged persistence、dirty tracking、StructureJob queue、next_open digest preparation を調整するが、AI provider、Operation Router、audit persistence を呼び出さない。
 - Scheduler Agent-local SQL adapter は BlockChanged save intent / edit event / dirty mark / lightweight index update、StructureJob queue、next_open digest intent を temporary state として保存する。canonical notes / sections / blocks を更新する Turso adapter ではない。
 - Turso Scheduler Note Snapshot adapter は Worker scheduler runtime flow から `SchedulerNoteSnapshotPort` として呼ばれ、Turso canonical sections を read-only で取得する。Agent-local dirty_scope_marks は scheduler planning のための一時 overlay であり、canonical section data でも Turso Sync でもない。

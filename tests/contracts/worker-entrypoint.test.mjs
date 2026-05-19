@@ -86,6 +86,66 @@ test('worker entrypoint rejects missing workspaceId before creating ports', asyn
   });
 });
 
+test('worker entrypoint rejects sentinel userId before creating ports', async () => {
+  let createPortsCalls = 0;
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-user-id': 'user_sentinel',
+    },
+  }), {}, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['userId must be a stable non-sentinel runtime id when provided'],
+  });
+});
+
+test('worker entrypoint rejects shared secret mismatch before creating ports', async () => {
+  let createPortsCalls = 0;
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes/note_001/digest', {
+    method: 'GET',
+    headers: {
+      'x-workspace-id': noteFixture.workspaceId,
+      'x-worker-auth-secret': 'wrong_secret',
+    },
+  }), { WORKER_AUTH_SHARED_SECRET: 'secret_001' }, {
+    now,
+    createPorts() {
+      createPortsCalls += 1;
+      return {
+        digestRead: {
+          async getDigest() {
+            throw new Error('must not be called');
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(createPortsCalls, 0);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    errors: ['worker auth credentials are invalid'],
+  });
+});
+
 test('worker entrypoint returns invalid route responses before creating ports', async () => {
   let createPortsCalls = 0;
   const notFound = await handleWorkerFetch(new Request('https://worker.test/unknown', {

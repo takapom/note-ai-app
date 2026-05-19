@@ -36,6 +36,7 @@ user notes、memory、source spans、external tokens を保護する。
 - User text、external text、memory は system instruction ではなく untrusted content である。
 - Operation Router は unsafe operation を reject する prompt-injection boundary である。
 - workspace/user isolation を守る。
+- Worker auth/workspace boundary は request header、env、runtime context から正規化した workspaceId と任意の userId を stable non-sentinel runtime id として扱い、invalid identity や configured shared secret mismatch では runtime ports、Turso、Agent、provider、Operation Router へ進めてはならない。
 - note 削除時は derived structure / memory candidates を削除または無効化する。
 - External integrations には user approval と scoped tokens が必要である。
 - Tokens は plaintext で保存してはならない。

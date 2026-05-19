@@ -75,6 +75,8 @@ Note Model canonical persistence の重点コマンド:
 Worker HTTP routing boundary の重点コマンド:
 
 - route/delegation guard: `node --test tests/contracts/worker-entrypoint.test.mjs tests/contracts/worker-http-router.test.mjs`
+- auth/workspace boundary guard: `node --test tests/contracts/worker-auth-boundary.test.mjs tests/contracts/worker-entrypoint.test.mjs`
+- Cloudflare Agent binding guard: `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-note-structure-runtime-handlers.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs`
 - runtime boundary guard: `node --test tests/contracts/topology-runtime.test.mjs`
 
 Note Block command / Next Open Digest read boundary の重点コマンド:

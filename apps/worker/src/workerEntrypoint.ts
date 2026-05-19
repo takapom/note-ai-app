@@ -34,6 +34,11 @@ import {
   type WorkerHttpResponse,
   type WorkerHttpRouterPorts,
 } from './workerHttpRouter.ts';
+import {
+  normalizeWorkerAuthBoundary,
+  type WorkerAuthBoundaryContext,
+  type WorkerAuthBoundaryEnv,
+} from './workerAuthBoundary.ts';
 
 type WorkerSqlStatement =
   | NoteDocumentSqlStatement
@@ -46,16 +51,18 @@ type WorkerSqlStatement =
       args: readonly unknown[];
     };
 
-export interface WorkerEntrypointEnv {
+export interface WorkerEntrypointEnv extends WorkerAuthBoundaryEnv {
   WORKSPACE_ID?: string;
   USER_ID?: string;
+  WORKER_AUTH_SHARED_SECRET?: string;
+  AUTH_SHARED_SECRET?: string;
   TURSO?: WorkerTursoClient;
   TURSO_CLIENT?: WorkerTursoClient;
   AGENT_LOCAL_SQL?: WorkerTursoClient;
   [key: string]: unknown;
 }
 
-export interface WorkerEntrypointContext {
+export interface WorkerEntrypointContext extends WorkerAuthBoundaryContext {
   now?: number;
 }
 
@@ -82,7 +89,9 @@ export function createWorkerFetchHandler<Env extends WorkerEntrypointEnv = Worke
   options: WorkerFetchHandlerOptions<Env> = {},
 ): (request: Request, env: Env, context?: WorkerEntrypointContext) => Promise<Response> {
   return async (request, env, context) => {
-    const entrypointContext: WorkerEntrypointContext & { createPorts?: WorkerPortsFactory<Env> } = {};
+    const entrypointContext: WorkerEntrypointContext & { createPorts?: WorkerPortsFactory<Env> } = {
+      ...(context ?? {}),
+    };
     const resolvedNow = context?.now ?? options.now?.();
     if (resolvedNow !== undefined) {
       entrypointContext.now = resolvedNow;
@@ -100,16 +109,12 @@ export async function handleWorkerFetch<Env extends WorkerEntrypointEnv = Worker
   env: Env,
   context?: WorkerEntrypointContext & { createPorts?: WorkerPortsFactory<Env> },
 ): Promise<Response> {
-  const parsed = await parseWorkerRequest(request, env, context?.now === undefined ? {} : { now: context.now });
+  const parsed = await parseWorkerRequest(request, env, context);
   if (!parsed.ok) {
     return toFetchResponse(parsed.response);
   }
 
   if (matchWorkerRoute(parsed.request.method, parsed.request.path) === undefined) {
-    return toFetchResponse(await handleWorkerHttpRequest(parsed.request, {}));
-  }
-
-  if (!isStableRuntimeId(parsed.request.workspaceId)) {
     return toFetchResponse(await handleWorkerHttpRequest(parsed.request, {}));
   }
 
@@ -127,6 +132,17 @@ export async function parseWorkerRequest(
   env: WorkerEntrypointEnv = {},
   context: WorkerEntrypointContext = {},
 ): Promise<WorkerRequestParseResult> {
+  const authResult = normalizeWorkerAuthBoundary({ request, env, context });
+  if (!authResult.ok) {
+    return {
+      ok: false,
+      response: {
+        status: authResult.status,
+        body: { ok: false, errors: authResult.errors },
+      },
+    };
+  }
+
   const bodyResult = await parseJsonBody(request);
   if (!bodyResult.ok) {
     return {
@@ -139,14 +155,12 @@ export async function parseWorkerRequest(
   }
 
   const url = new URL(request.url);
-  const workspaceId = firstHeaderValue(request.headers, 'x-workspace-id') ?? readEnvString(env.WORKSPACE_ID) ?? '';
-  const userId = firstHeaderValue(request.headers, 'x-user-id') ?? readEnvString(env.USER_ID);
   const workerRequest: WorkerHttpRequest = {
     method: request.method,
     path: `${url.pathname}${url.search}`,
-    workspaceId,
+    workspaceId: authResult.identity.workspaceId,
     now: context.now ?? Date.now(),
-    ...(userId === undefined ? {} : { userId }),
+    ...(authResult.identity.userId === undefined ? {} : { userId: authResult.identity.userId }),
     ...(bodyResult.body === undefined ? {} : { body: bodyResult.body }),
   };
 
@@ -294,19 +308,6 @@ function readRows(result: unknown): readonly Record<string, unknown>[] {
   return [];
 }
 
-function firstHeaderValue(headers: Headers, name: string): string | undefined {
-  const value = headers.get(name);
-  if (value === null) {
-    return undefined;
-  }
-  const normalized = value.trim();
-  return normalized.length === 0 ? undefined : normalized;
-}
-
-function readEnvString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-}
-
 function readTursoClient(value: unknown): WorkerTursoClient | undefined {
   return isRecord(value) && typeof value.execute === 'function'
     ? value as unknown as WorkerTursoClient
@@ -315,18 +316,4 @@ function readTursoClient(value: unknown): WorkerTursoClient | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isStableRuntimeId(value: unknown): value is string {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const normalized = value.trim();
-  return (
-    normalized.length > 0 &&
-    normalized === value &&
-    /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(normalized) &&
-    !/(^|_)(unset|unknown|null|undefined|nan|sentinel|placeholder)($|_)/i.test(normalized)
-  );
 }

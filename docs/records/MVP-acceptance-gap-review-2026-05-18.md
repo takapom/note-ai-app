@@ -17,8 +17,8 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | --- | --- | --- | --- |
 | 1 | ユーザーが一枚のノートに自然に書ける | partial | dependency-free AppShell / NoteSurface / Block Editor view model は追加済み。実 DOM/editor rendering は未実装。 |
 | 2 | H1/H2/H3 が section boundary として扱われる | partial | note-model document validation と web NoteSurface view model で heading boundary は検証済み。実 editor rendering/editing は未実装。 |
-| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring は追加済み。実 Cloudflare deployment config と end-to-end UI wiring は未実装。Agent-local save intent は canonical SoT ではない。 |
-| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint は対応済み。実 Cloudflare Agent deployment config は未実装。 |
+| 3 | blocks と sections が内部正本として保存される | partial | canonical Note document persistence port / SQL adapter、block CRUD command port、HTTP router delegation、Worker fetch default Turso wiring、auth/workspace boundary、Cloudflare Agent binding foundation は追加済み。concrete Cloudflare deployment values と end-to-end UI wiring は未実装。Agent-local save intent は canonical SoT ではない。 |
+| 4 | note close / tab switch / app leave で dirty section の structure job が作られる | partial | scheduler domain、worker route handler cause preservation、HTTP router delegation、Worker fetch entrypoint、framework-neutral NoteAgent binding foundation は対応済み。concrete Cloudflare SDK/deployment config は未実装。 |
 | 5 | keystroke ごとに AI が呼ばれない | covered | BlockChanged は save/edit/dirty/index のみで provider/router/audit に進まない。 |
 | 6 | Context Assembly が title、description、target section、related units、memory を使う | covered | ContextEnvelope contract と worker runtime flow で検証済み。 |
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
@@ -95,10 +95,14 @@ MVP acceptance #3 の blocking gap。`docs/contracts/data-model.md` と `docs/co
 実装状況:
 - framework-neutral `workerHttpRouter` と route/delegation guard tests は追加済み。
 - standard `Request` / `Response` の Worker fetch entrypoint、header based workspace/user normalization、JSON response mapping、default Turso / Agent-local executor wiring は追加済み。
-- 残りは Cloudflare Agent class/deployment binding、production auth binding。
+- worker auth/workspace boundary は request header/env/context から stable workspace/user identity を正規化し、configured shared secret mismatch では port factory 前に止める。exact auth provider/JWT package は未固定。
+- framework-neutral Cloudflare Agent binding foundation として NoteAgent / WorkspaceBrainAgent class、deployment binding descriptor、runtime flow delegation guard は追加済み。
+- 残りは concrete Cloudflare SDK/wrangler deployment values と exact production auth provider integration。
 
 検証コマンド:
 - `node --test tests/contracts/worker-*.test.mjs`
+- `node --test tests/contracts/worker-auth-boundary.test.mjs tests/contracts/worker-entrypoint.test.mjs`
+- `node --test tests/contracts/worker-cloudflare-agent-bindings.test.mjs tests/contracts/worker-note-structure-runtime-handlers.test.mjs tests/contracts/worker-structure-job-processor-flow.test.mjs`
 - `node --test tests/contracts/topology-runtime.test.mjs`
 - `node --test tests/**/*.test.mjs`
 - `tsc -p tsconfig.json --noEmit`
