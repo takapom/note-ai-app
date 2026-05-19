@@ -149,6 +149,9 @@ Web NoteSurface foundation の重点コマンド:
 - hosted NoteSurface contract E2E guard: `node --test tests/contracts/hosted-note-surface-e2e.test.mjs`
   - runs `node scripts/build-web.mjs`, verifies `dist/web/index.html` imports the compiled browser app entry asset, mounts the browser NoteSurface with deployment-style root dataset metadata and an injected fetch-like binding backed by the Worker fetch handler, and confirms `GET /notes/:noteId` plus explicit editor save `PATCH /blocks/:blockId` reach Worker routes without real Cloudflare deploy.
   - verifies the Worker route uses in-memory Note document persistence and the Note Block command port so saved user-authored block text updates canonical document `plainText` and owning section `contentHash`, while `lastStructuredHash` remains unchanged and AI/provider/Operation Router paths are not required.
+- real browser editor guard: `node --test tests/contracts/web-note-surface-real-browser-editor.test.mjs`
+  - runs the browser build artifact in installed Chrome through DevTools Protocol, focuses the editable user block, places a Selection API cursor, triggers save re-renders, and verifies the cursor remains in the same block / text offset while the reserved status region and block width stay stable.
+  - this guard skips when Chrome is absent or the local sandbox prevents DevTools startup; a Chrome-capable environment must run it before claiming production editor polish complete.
 - deployment environment values guard: `node --test tests/contracts/deployment-environment-values.test.mjs`
   - verifies local/hosted E2E values are supplied by deployment env/bindings, request headers, runtime context, or root dataset injection, not repo-tracked `wrangler.toml` vars or public HTML placeholder attributes.
 - full frontend-safe typecheck: `tsc -p tsconfig.json --noEmit`
