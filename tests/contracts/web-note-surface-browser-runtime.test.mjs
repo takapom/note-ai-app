@@ -68,6 +68,7 @@ test('browser runtime dispatches AI memory digest and provenance actions through
 
   const ai = await host.handler(aiEvent);
   const memory = await host.handler(memoryEvent);
+  assert.match(host.html, /data-block-id="block_ai_memory_candidate_001"/);
   const digest = await host.handler({
     dataset: {
       action: 'read_digest',
@@ -288,6 +289,208 @@ test('browser runtime applies digest and provenance UI-only actions as local pro
   assert.ok(host.renderCount >= 4);
 });
 
+test('browser runtime applies successful API response projections without owning canonical note state', async () => {
+  const host = createHost();
+  const controllerResults = [
+    {
+      ok: true,
+      status: 'sent',
+      transportResult: {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            available: true,
+            unresolvedQuestions: [
+              {
+                id: 'digest_question_001',
+                text: 'Review the response projection reducer.',
+                sourceBlockId: 'block_paragraph_001',
+              },
+            ],
+          },
+        },
+        errors: [],
+      },
+      errors: [],
+    },
+    {
+      ok: true,
+      status: 'sent',
+      transportResult: {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            available: true,
+            sourceSpanId: 'span_001',
+            sourceBlockId: 'block_paragraph_001',
+            excerpt: 'Bounded source excerpt from the Worker response.',
+            source: {
+              sourceBlockId: 'block_paragraph_001',
+              noteId: 'note_001',
+              startOffset: 4,
+              endOffset: 42,
+              reason: 'memory_candidate_source',
+            },
+          },
+        },
+        errors: [],
+      },
+      errors: [],
+    },
+    {
+      ok: true,
+      status: 'sent',
+      transportResult: {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            memory: {
+              id: 'memory_001',
+              content: 'Remember the edited response projection text.',
+            },
+          },
+        },
+        errors: [],
+      },
+      errors: [],
+    },
+    {
+      ok: true,
+      status: 'sent',
+      transportResult: {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            memory: {
+              id: 'memory_001',
+              status: 'active',
+            },
+          },
+        },
+        errors: [],
+      },
+      errors: [],
+    },
+  ];
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      expandedDigest: true,
+      nextOpenDigest: { available: true },
+      provenancePopover: { open: false },
+    }),
+    eventController: createQueuedController(controllerResults),
+    host,
+  });
+  await runtime.mount();
+
+  const digest = await host.handler({
+    action: 'read_digest',
+    target: 'next_open_digest',
+    apiIntent: 'GET /notes/:noteId/digest',
+    noteId: 'note_001',
+  });
+
+  assert.deepEqual([digest.ok, digest.status, digest.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="true"/);
+  assert.match(host.html, /Review the response projection reducer\./);
+  assert.match(host.html, /data-digest-item-id="digest_question_001" data-source-block-id="block_paragraph_001"/);
+
+  const provenance = await host.handler({
+    action: 'inspect_source',
+    target: 'provenance_popover',
+    apiIntent: 'POST /provenance/source',
+    blockId: 'block_ai_memory_candidate_001',
+  });
+
+  assert.deepEqual([provenance.ok, provenance.status, provenance.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-component="provenance-popover" data-open="true"/);
+  assert.match(host.html, /data-source-block-id="block_paragraph_001"/);
+  assert.match(host.html, /Bounded source excerpt from the Worker response\./);
+  assert.match(host.html, /memory_candidate_source/);
+
+  const edit = await host.handler({
+    action: 'edit',
+    target: 'memory_candidate_block',
+    apiIntent: 'POST /memory/:memoryId/edit',
+    blockId: 'block_ai_memory_candidate_001',
+    content: 'Client draft should lose to response content.',
+  });
+
+  assert.deepEqual([edit.ok, edit.status, edit.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /Remember the edited response projection text\./);
+  assert.doesNotMatch(host.html, /Client draft should lose/);
+
+  const remember = await host.handler({
+    action: 'remember',
+    target: 'memory_candidate_block',
+    apiIntent: 'POST /memory/:memoryId/accept',
+    blockId: 'block_ai_memory_candidate_001',
+  });
+
+  assert.deepEqual([remember.ok, remember.status, remember.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.doesNotMatch(host.html, /data-block-id="block_ai_memory_candidate_001"/);
+  assert.doesNotMatch(host.html, /Remember the edited response projection text\./);
+});
+
+test('browser runtime preserves projection state when API action transport fails', async () => {
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      expandedDigest: true,
+      nextOpenDigest: {
+        available: true,
+        unresolvedQuestions: [
+          { id: 'question_existing', text: 'Existing digest item remains visible.' },
+        ],
+      },
+      provenancePopover: { open: false },
+    }),
+    eventController: {
+      async handleRenderEvent() {
+        return {
+          ok: false,
+          status: 'transport_error',
+          transportResult: {
+            ok: false,
+            status: 503,
+            body: {
+              ok: false,
+              errors: ['projection unavailable'],
+            },
+            errors: ['projection unavailable'],
+          },
+          errors: ['projection unavailable'],
+        };
+      },
+    },
+    host,
+  });
+  await runtime.mount();
+
+  const before = host.html;
+  const result = await host.handler({
+    action: 'remember',
+    target: 'memory_candidate_block',
+    apiIntent: 'POST /memory/:memoryId/accept',
+    blockId: 'block_ai_memory_candidate_001',
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'controller_error');
+  assert.match(result.errors.join('\n'), /projection unavailable/);
+  assert.equal(host.html, before);
+  assert.match(host.html, /data-block-id="block_ai_memory_candidate_001"/);
+  assert.match(host.html, /Existing digest item remains visible\./);
+});
+
 test('browser runtime closes render and event controller failures into boundary results', async () => {
   const invalidModel = createNoteSurfaceViewModel(noteDocumentFixture);
   invalidModel.excludedSurfaces.persistentChatPanel = true;
@@ -413,6 +616,16 @@ function createController(calls) {
       return undefined;
     },
   });
+}
+
+function createQueuedController(results) {
+  return {
+    async handleRenderEvent() {
+      const result = results.shift();
+      assert.ok(result, 'expected queued controller result');
+      return result;
+    },
+  };
 }
 
 function createHost() {

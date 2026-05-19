@@ -552,7 +552,7 @@ function createAiAssistBlock(block: BlockContract): AiAssistBlockViewModel | und
   };
 }
 
-function createNextOpenDigestViewModel(
+export function createNextOpenDigestViewModel(
   digest: NextOpenDigestInput | undefined,
   expanded: boolean,
 ): NextOpenDigestViewModel {
@@ -611,7 +611,7 @@ function createDigestSection(
   };
 }
 
-function createProvenancePopoverViewModel(
+export function createProvenancePopoverViewModel(
   provenance: ProvenancePopoverInput | undefined,
 ): ProvenancePopoverViewModel {
   if (provenance?.open !== true) {

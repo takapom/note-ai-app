@@ -1,4 +1,10 @@
-import type { NoteSurfaceViewModel } from './noteSurface.ts';
+import {
+  createNextOpenDigestViewModel,
+  createProvenancePopoverViewModel,
+  type NextOpenDigestInput,
+  type NoteSurfaceViewModel,
+  type ProvenancePopoverInput,
+} from './noteSurface.ts';
 import {
   renderNoteSurfaceHtml,
   type NoteSurfaceHtmlRenderEventDescriptor,
@@ -91,9 +97,12 @@ export function createNoteSurfaceBrowserRuntime(
         };
       }
 
-      const successfulSaveAction = resolveSuccessfulSaveProjectionAction(eventDescriptor);
-      if (successfulSaveAction !== undefined) {
-        currentModel = applyLocalProjectionAction(currentModel, successfulSaveAction);
+      const successfulProjectionAction = resolveSuccessfulApiProjectionAction(
+        eventDescriptor,
+        controllerResult,
+      );
+      if (successfulProjectionAction !== undefined) {
+        currentModel = applySuccessfulApiProjectionAction(currentModel, successfulProjectionAction);
         return renderCurrentModel(controllerResult);
       }
 
@@ -187,6 +196,17 @@ type LocalProjectionAction =
   | { action: 'save_block'; target: 'block_editor'; blockId: string; content: string }
   | { action: 'close_provenance'; target: 'provenance_popover' };
 
+type SuccessfulApiProjectionAction =
+  | LocalProjectionAction
+  | { action: 'read_digest'; target: 'next_open_digest'; digest: NextOpenDigestInput }
+  | { action: 'lookup_provenance'; target: 'provenance_popover'; provenance: ProvenancePopoverInput }
+  | {
+      action: 'remember' | 'reject' | 'delete' | 'snooze';
+      target: 'memory_candidate_block';
+      blockId: string;
+    }
+  | { action: 'edit'; target: 'memory_candidate_block'; blockId: string; content: string };
+
 function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
   if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
     return undefined;
@@ -226,7 +246,10 @@ function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjection
   return undefined;
 }
 
-function resolveSuccessfulSaveProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
+function resolveSuccessfulApiProjectionAction(
+  eventDescriptor: unknown,
+  controllerResult: NoteSurfaceEventControllerResult,
+): SuccessfulApiProjectionAction | undefined {
   if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
     return undefined;
   }
@@ -239,17 +262,79 @@ function resolveSuccessfulSaveProjectionAction(eventDescriptor: unknown): LocalP
   const target = readDescriptorString(source, dataset, 'target');
   const apiIntent = readDescriptorString(source, dataset, 'apiIntent');
 
-  if (action !== 'save_block' || target !== 'block_editor' || apiIntent !== 'block.update') {
-    return undefined;
+  if (action === 'save_block' && target === 'block_editor' && apiIntent === 'block.update') {
+    const blockId = readDescriptorString(source, dataset, 'blockId');
+    const content = readDescriptorRawString(source, dataset, 'content');
+    if (blockId === undefined || content === undefined) {
+      return undefined;
+    }
+
+    return { action, target, blockId, content };
   }
 
-  const blockId = readDescriptorString(source, dataset, 'blockId');
-  const content = readDescriptorRawString(source, dataset, 'content');
-  if (blockId === undefined || content === undefined) {
-    return undefined;
+  const body = controllerResult.transportResult?.body;
+
+  if (
+    action === 'read_digest'
+    && target === 'next_open_digest'
+    && (apiIntent === 'digest.read' || apiIntent === 'GET /notes/:noteId/digest')
+  ) {
+    const digest = readDigestProjection(body);
+    return digest === undefined ? undefined : { action, target, digest };
   }
 
-  return { action, target, blockId, content };
+  if (
+    action === 'inspect_source'
+    && target === 'provenance_popover'
+    && (apiIntent === 'provenance.lookup' || apiIntent === 'POST /provenance/source')
+  ) {
+    const provenance = readProvenanceProjection(body);
+    return provenance === undefined
+      ? undefined
+      : { action: 'lookup_provenance', target, provenance };
+  }
+
+  if (
+    target === 'memory_candidate_block'
+    && (
+      apiIntent === 'memory.remember'
+      || apiIntent === 'memory.reject'
+      || apiIntent === 'memory.edit'
+      || apiIntent === 'memory.delete'
+      || apiIntent === 'memory.snooze'
+      || apiIntent === 'POST /memory/:memoryId/accept'
+      || apiIntent === 'POST /memory/:memoryId/reject'
+      || apiIntent === 'POST /memory/:memoryId/edit'
+      || apiIntent === 'POST /memory/:memoryId/delete'
+      || apiIntent === 'POST /memory/:memoryId/hold'
+    )
+  ) {
+    const blockId = readDescriptorString(source, dataset, 'blockId');
+    if (blockId === undefined) {
+      return undefined;
+    }
+
+    const memory = readMemoryProjection(body);
+    if (memory === undefined) {
+      return undefined;
+    }
+
+    if (action === 'edit') {
+      const content = readString(memory.content) ?? readDescriptorRawString(source, dataset, 'content');
+      return content === undefined ? undefined : { action, target, blockId, content };
+    }
+
+    if (
+      action === 'remember'
+      || action === 'reject'
+      || action === 'delete'
+      || action === 'snooze'
+    ) {
+      return { action, target, blockId };
+    }
+  }
+
+  return undefined;
 }
 
 function applyLocalProjectionAction(
@@ -336,6 +421,160 @@ function applyLocalProjectionAction(
   }
 }
 
+function applySuccessfulApiProjectionAction(
+  model: NoteSurfaceViewModel,
+  action: SuccessfulApiProjectionAction,
+): NoteSurfaceViewModel {
+  switch (action.action) {
+    case 'expand_digest':
+    case 'collapse_digest':
+    case 'edit_block':
+    case 'cancel_edit':
+    case 'save_block':
+    case 'close_provenance':
+      return applyLocalProjectionAction(model, action);
+    case 'read_digest':
+      return {
+        ...model,
+        noteSurface: {
+          ...model.noteSurface,
+          nextOpenDigest: createNextOpenDigestViewModel(
+            action.digest,
+            model.noteSurface.nextOpenDigest.expanded,
+          ),
+        },
+      };
+    case 'lookup_provenance':
+      return {
+        ...model,
+        noteSurface: {
+          ...model.noteSurface,
+          provenancePopover: createProvenancePopoverViewModel(action.provenance),
+        },
+      };
+    case 'remember':
+    case 'reject':
+    case 'delete':
+    case 'snooze':
+      return {
+        ...model,
+        noteSurface: {
+          ...model.noteSurface,
+          blocks: model.noteSurface.blocks.filter((block) => block.id !== action.blockId),
+          sectionBoundaries: model.noteSurface.sectionBoundaries.filter((boundary) => (
+            boundary.blockId !== action.blockId
+          )),
+        },
+      };
+    case 'edit':
+      return {
+        ...model,
+        noteSurface: {
+          ...model.noteSurface,
+          blocks: model.noteSurface.blocks.map((block) => (
+            block.id === action.blockId
+              ? {
+                  ...block,
+                  text: action.content,
+                  editor: {
+                    ...block.editor,
+                    state: 'idle',
+                  },
+                }
+              : block
+          )),
+        },
+      };
+  }
+}
+
+function readDigestProjection(body: unknown): NextOpenDigestInput | undefined {
+  const candidate = unwrapResultBody(body);
+  if (!isPlainObject(candidate) || typeof candidate.available !== 'boolean') {
+    return undefined;
+  }
+
+  return {
+    available: candidate.available,
+    ...copyDigestArray(candidate, 'unresolvedQuestions'),
+    ...copyDigestArray(candidate, 'decisions'),
+    ...copyDigestArray(candidate, 'relatedNotes'),
+    ...copyDigestArray(candidate, 'memoryCandidates'),
+  };
+}
+
+function copyDigestArray(
+  digest: Record<string, unknown>,
+  fieldName: 'unresolvedQuestions' | 'decisions' | 'relatedNotes' | 'memoryCandidates',
+): Partial<NextOpenDigestInput> {
+  const value = digest[fieldName];
+  return Array.isArray(value) ? { [fieldName]: value.filter(isDigestItemInput) } : {};
+}
+
+function isDigestItemInput(value: unknown): value is NonNullable<NextOpenDigestInput['unresolvedQuestions']>[number] {
+  return isPlainObject(value) && typeof value.id === 'string' && typeof value.text === 'string';
+}
+
+function readProvenanceProjection(body: unknown): ProvenancePopoverInput | undefined {
+  const candidate = unwrapResultBody(body);
+  if (!isPlainObject(candidate)) {
+    return undefined;
+  }
+
+  const source = isPlainObject(candidate.source) ? candidate.source : undefined;
+  const excerpt = readString(candidate.excerpt);
+  const sourceBlockId = readString(candidate.sourceBlockId) ?? readString(source?.sourceBlockId);
+  const sourceNoteId = readString(candidate.sourceNoteId) ?? readString(source?.noteId);
+  const sourceUnitId = readString(candidate.sourceUnitId) ?? readString(source?.sourceUnitId);
+  const sourceTitle = readString(candidate.sourceTitle) ?? readString(source?.sourceTitle);
+  const startOffset = readNumber(candidate.startOffset) ?? readNumber(source?.startOffset);
+  const endOffset = readNumber(candidate.endOffset) ?? readNumber(source?.endOffset);
+  const reason = readString(candidate.reason) ?? readString(source?.reason);
+
+  if (excerpt === undefined && sourceBlockId === undefined && sourceNoteId === undefined) {
+    return undefined;
+  }
+
+  return {
+    open: true,
+    ...(sourceBlockId === undefined ? {} : { sourceBlockId }),
+    ...(sourceNoteId === undefined ? {} : { sourceNoteId }),
+    ...(sourceUnitId === undefined ? {} : { sourceUnitId }),
+    ...(sourceTitle === undefined ? {} : { sourceTitle }),
+    ...(startOffset === undefined ? {} : { startOffset }),
+    ...(endOffset === undefined ? {} : { endOffset }),
+    ...(excerpt === undefined ? {} : { excerpt }),
+    ...(reason === undefined ? {} : { reason }),
+  };
+}
+
+function readMemoryProjection(body: unknown): Record<string, unknown> | undefined {
+  const candidate = unwrapResultBody(body);
+  if (!isPlainObject(candidate)) {
+    return undefined;
+  }
+
+  const memory = isPlainObject(candidate.memory) ? candidate.memory : candidate;
+  if (!isPlainObject(memory)) {
+    return undefined;
+  }
+
+  return readString(memory.id) !== undefined
+    || readString(memory.status) !== undefined
+    || readString(memory.content) !== undefined
+    || readString(memory.reviewDecision) !== undefined
+    ? memory
+    : undefined;
+}
+
+function unwrapResultBody(body: unknown): unknown {
+  if (!isPlainObject(body)) {
+    return undefined;
+  }
+
+  return isPlainObject(body.result) ? body.result : body;
+}
+
 function readDescriptorString(
   source: Record<string, unknown>,
   dataset: Record<string, unknown> | undefined,
@@ -352,6 +591,23 @@ function readDescriptorRawString(
 ): string | undefined {
   const value = source[field] ?? dataset?.[field];
   return typeof value === 'string' ? value : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function toBoundaryErrors(error: unknown): readonly string[] {

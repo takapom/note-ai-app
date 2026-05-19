@@ -114,6 +114,7 @@ Web NoteSurface foundation の重点コマンド:
 
 - note surface guard: `node --test tests/contracts/web-note-surface.test.mjs tests/contracts/note-model-runtime.test.mjs`
 - HTML renderer guard: `node --test tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface.test.mjs`
+- browser runtime projection reducer guard: `node --test tests/contracts/web-note-surface-browser-runtime.test.mjs`
 - API intent mapping guard: `node --test tests/contracts/web-note-surface-api-intents.test.mjs tests/contracts/web-note-surface.test.mjs`
 - API transport guard: `node --test tests/contracts/web-note-surface-api-transport.test.mjs tests/contracts/web-note-surface-api-intents.test.mjs`
 - event controller guard: `node --test tests/contracts/web-note-surface-event-controller.test.mjs tests/contracts/web-note-surface-html-renderer.test.mjs tests/contracts/web-note-surface-api-transport.test.mjs`

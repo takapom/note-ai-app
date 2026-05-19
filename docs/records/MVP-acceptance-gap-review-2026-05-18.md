@@ -24,9 +24,9 @@ GitHub issue / push 操作は sandbox policy により `approval required by pol
 | 7 | AI は operation schema に従って返す | covered | operation list、allowed/forbidden types、source spans、confidence を contract/test で検証済み。 |
 | 8 | Operation Router が unsafe operation を reject する | covered | unknown/forbidden operations、unsafe targets、low confidence、invalid audit IDs を reject。 |
 | 9 | AI Assist Block が同じノート内に表示される | partial | Web NoteSurface view model、inline AI Assist action intents、Worker request descriptor mapping、fetch-like transport、framework-neutral HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP product app composition guard は追加済み。`GET /notes/:noteId` response の optional projection snapshot は Web が operation IDs を生成せず product state input に写す。browser deployment embedding adapter は global `document` / `fetch`、mount target lookup、deployment-supplied root dataset metadata を `browserNoteSurfaceMount.ts` に閉じる責務であり、browser app entry は injected runtime で mount adapter を起動する deployment bootstrap である。TypeScript browser ESM build artifact path と public deployment template、repo-local hosted contract E2E は追加済み。wrangler config は `./dist/web` static build artifact と Worker API route patterns を同一 Worker deployment に接続する volatile detail として追加済み。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
-| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP digest product provider boundary、HTTP product app composition guard、HTTP digest product app composition guard、repo-local hosted contract E2E は追加済み。`GET /notes/:noteId` response/caller supplied `nextOpenDigest` は Web が生成・推測せず viewState に渡す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も digest projection の意味は application boundary が所有しない。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
-| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、`create_memory_candidate` proposal 変換 boundary、Worker accept route/default Turso wiring、Web Memory Candidate action model、remember/edit/different/delete/hold descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP product app composition guard、repo-local hosted contract E2E は追加済み。`GET /notes/:noteId` response の optional projection snapshot は Web が memory IDs を生成せず product state input に写す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も Memory lifecycle policy は Web browser mount に入れない。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
-| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP product app composition guard、repo-local hosted contract E2E は追加済み。`GET /notes/:noteId` response の optional projection snapshot は Web が provenance / sourceSpan IDs を生成せず product state input に写す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も source lookup policy は Worker/runtime boundary に残る。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
+| 10 | Next Open Digest が表示できる | partial | digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable view model、digest GET descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP digest product provider boundary、HTTP product app composition guard、HTTP digest product app composition guard、repo-local hosted contract E2E は追加済み。browser runtime は `digest.read` 成功 response body 由来の `nextOpenDigest` projection を UI state に反映して再描画し、failure では既存 projection を保持する。`GET /notes/:noteId` response/caller supplied `nextOpenDigest` は Web が生成・推測せず viewState に渡す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も digest projection の意味は application boundary が所有しない。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
+| 11 | Memory candidate をノート内で承認または拒否できる | partial | Memory review port / SQL adapter / HTTP router / Worker fetch wiring、`create_memory_candidate` proposal 変換 boundary、Worker accept route/default Turso wiring、Web Memory Candidate action model、remember/edit/different/delete/hold descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP product app composition guard、repo-local hosted contract E2E は追加済み。browser runtime は memory remember/reject/delete/snooze 成功後に該当 candidate block を UI projection から非表示にし、memory.edit 成功後に response content を表示 text に反映し、failure では既存 projection を保持する。`GET /notes/:noteId` response の optional projection snapshot は Web が memory IDs を生成せず product state input に写す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も Memory lifecycle policy は Web browser mount に入れない。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
+| 12 | Provenance Popover で source を確認できる | partial | Provenance lookup port / SQL read adapter、`POST /provenance/source` Worker route / runtime wiring、Web bounded popover view model、request descriptor mapping、fetch-like transport、HTML renderer、event controller、browser runtime、DOM host、action input resolver、app bootstrap、document-derived resolver options、product state composition、product app entrypoint、HTTP product provider、HTTP product app composition guard、repo-local hosted contract E2E は追加済み。browser runtime は `provenance.lookup` 成功 response body 由来の bounded excerpt / source metadata を provenance popover に反映して open にし、failure では既存 projection を保持する。`GET /notes/:noteId` response の optional projection snapshot は Web が provenance / sourceSpan IDs を生成せず product state input に写す。browser deployment embedding adapter / browser app entry / browser ESM build artifact 後も source lookup policy は Worker/runtime boundary に残る。wrangler config は static build artifact serving path と Worker-first API routes だけを所有する。deployment environment values の repo-tracked 直書き禁止 contract / guard は追加済み。 |
 | 13 | AI provider failure が発生しても note editing は継続できる | partial | backend guard と web view model の failed AI status / editing action separation、browser editor save request path、API-free browser projection actions、failed save 時に editing projection を維持する browser runtime guard、repo-local hosted contract E2E は covered。残りは production-grade editor ergonomics。 |
 | 14 | MVP 除外 UI / 連携が入っていない | partial | web view model に excluded-surface guard を追加済み。実 UI 実装時にも継続 guard が必要。 |
 | 15 | Codex task、Superset workspace、docs contract の traceability が維持される | partial | contracts/records は維持。GitHub issue close/create と push は sandbox で未実行。 |
@@ -140,7 +140,7 @@ scheduler domain は各 trigger を持つが、current Worker route input は `n
 Next Open Digest を preparation intent だけでなく、read model と `GET /notes/:noteId/digest` で表示可能にする。
 
 コンテキスト:
-MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP router delegation は存在するが、real Worker/Turso wiring と UI integration がない。
+MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP router delegation、Worker fetch Agent-local wiring、Web compact/expandable UI、browser response projection reducer は存在する。
 
 制約:
 - Digest は projection/read model であり canonical Note/Block SoT ではない。
@@ -148,8 +148,8 @@ MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP route
 - Digest generation failure は note editing を止めない。
 
 実装メモ:
-- digest read port、Agent-local or Turso projection adapter、route handler を追加する。
-- compact/expandable UI は別 UI issue に接続する。
+- digest read port、Agent-local projection adapter、route handler、Web compact/expandable UI は追加済み。
+- browser runtime は success response / caller supplied digest projection だけを UI projection に反映し、missing digest から fake content を作らない。
 
 完了条件:
 - `GET /notes/:noteId/digest` 相当の runtime flow が digest を返せる。
@@ -157,8 +157,8 @@ MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP route
 - provider/context failure が editing flow を止めない。
 
 実装状況:
-- `NextOpenDigestReadPort`、in-memory read port、Agent-local SQL read adapter、HTTP router delegation、focused contract tests は追加済み。
-- 残りは real Worker/Turso binding と compact/expandable UI。
+- `NextOpenDigestReadPort`、in-memory read port、Agent-local SQL read adapter、HTTP router delegation、Worker fetch wiring、Web compact/expandable view model / renderer / local expand-collapse、browser response projection reducer、focused contract tests は追加済み。
+- 残りは hosted runtime env/binding injection の E2E と production editor ergonomics 側の表示 polish。
 
 検証コマンド:
 - `node --test tests/contracts/worker-structure-scheduler-flow.test.mjs`
@@ -171,7 +171,7 @@ MVP acceptance #10。Agent-local digest preparation、read boundary、HTTP route
 Memory candidate の 覚える / 編集 / 違う / 削除 / 保留 actions を runtime port と persistence adapter で扱う。
 
 コンテキスト:
-MVP acceptance #11。`contexts/memory` の status transition はあるが、Worker API と Turso status update port がない。
+MVP acceptance #11。`contexts/memory` の status transition、Worker API、Turso status update port、Web action mapping、browser response projection reducer は存在する。
 
 制約:
 - Memory は source-backed projection であり、hidden profiling にしない。
@@ -195,7 +195,8 @@ MVP acceptance #11。`contexts/memory` の status transition はあるが、Work
 - Web NoteSurface view model と API intent mapping に Memory Candidate action model は追加済み。
 - `create_memory_candidate` proposal から memory item への変換 boundary は追加済み。accepted proposal intent から source-backed candidate write intent を作り、invalid primitive、workspace mismatch、source provenance のない item、non-memory operation では persistence port を呼ばない。
 - Worker accept route と default Turso wiring は accepted `create_memory_candidate` proposal を memory candidate proposal boundary に接続済み。`insert_assist_block` accept では memory persistence を呼ばず、memory candidate preflight failure では proposal state を accepted に進めない。
-- 残りは full editor integration。
+- Browser runtime は memory review success response 由来で該当 memory candidate block を非表示にし、edit response/content 由来で candidate text projection を更新する。Memory lifecycle policy は Worker/runtime boundary に残す。
+- 残りは production editor ergonomics 側の表示 polish。
 
 検証コマンド:
 - `node --test tests/contracts/worker-memory-review-port.test.mjs`
@@ -209,7 +210,7 @@ MVP acceptance #11。`contexts/memory` の status transition はあるが、Work
 AI Assist Block、memory candidate、operation audit の source span から、ユーザーが確認できる source excerpt を解決する。
 
 コンテキスト:
-MVP acceptance #12。source span data と read-only lookup boundary は存在するが、Provenance Popover UI と real Worker/Turso wiring がない。
+MVP acceptance #12。source span data、read-only lookup boundary、Provenance Popover UI、Worker/Turso wiring、browser response projection reducer は存在する。
 
 制約:
 - lookup は scoped read model であり canonical data を mutate しない。
@@ -217,9 +218,9 @@ MVP acceptance #12。source span data と read-only lookup boundary は存在す
 - full note / full workspace dump を返さない。
 
 実装メモ:
-- provenance lookup contract、runtime port、SQL read adapter を追加する。
-- operation audit source spans、memory source spans、AI block annotations の 3 経路を扱う。
-- UI popover は別 UI issue でこの flow を読む。
+- provenance lookup contract、runtime port、SQL read adapter、UI popover は追加済み。
+- operation audit source spans、memory source spans、AI block annotations の 3 経路を caller supplied mapping で扱う。
+- UI popover は lookup success response の bounded excerpt / source metadata だけを反映する。
 
 完了条件:
 - valid source reference は bounded excerpt と reason を返す。
@@ -231,7 +232,8 @@ MVP acceptance #12。source span data と read-only lookup boundary は存在す
 - lookup は workspaceId/sourceSpanId/sourceBlockId/offsets を検証し、不正 input では query しない。
 - Web NoteSurface view model に bounded Provenance Popover model は追加済み。
 - Web API intent mapping は `POST /provenance/source` request descriptor を作れる。
-- 残りは operation audit / memory / AI block annotation からの caller wiring、full editor integration。
+- Browser runtime は provenance lookup success response を bounded excerpt / source metadata の popover UI projection として反映する。
+- 残りは production editor ergonomics 側の表示 polish。
 
 検証コマンド:
 - `node --test tests/contracts/worker-provenance-lookup-port.test.mjs`
@@ -311,6 +313,7 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 - actions は provider call、hidden profiling、automatic active memory、user-authored block direct mutation を持たないことを contract test で検証済み。
 - framework-neutral event controller は追加済み。renderer の event descriptor と caller supplied mapping から API intent input を組み立て、transport に渡す。invalid metadata では caller resolver / transport を呼ばず、transport failure は controller result に閉じる。
 - framework-neutral browser runtime は追加済み。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、escaped HTML mount、event binding、action dispatch、render/controller failure result を contract test で検証済み。
+- browser runtime action response projection reducer は追加済み。`digest.read` / `provenance.lookup` / memory review 成功 response body 由来の UI projection だけを更新し、controller / transport failure では既存 projection を保持する。canonical Note / Section / Block SoT と Memory lifecycle policy は Web runtime に持ち込まない。
 - DOM host adapter は追加済み。実 DOM API はこの adapter に閉じ、root HTML 差し替え、delegated click binding、render event descriptor による dataset 補完、listener replacement を contract test で検証済み。
 - action input resolver は追加済み。operationId / memoryId / noteId / provenance / memory edit content は caller supplied lookup から取得し、ID 生成、backend policy validation、transport ownership を持たないことを contract test で検証済み。
 - app bootstrap は追加済み。caller supplied note document、DOM root、fetch-like binding、workspace/user metadata、resolver lookup から view model、transport、resolver、controller、DOM host、browser runtime を組み立て、invalid options では root binding / fetch-like call 前に止める。
@@ -344,18 +347,14 @@ MVP acceptance #9/#10/#11/#12。backend/domain data は部分的にあるが、U
 
 ## Suggested Implementation Order
 
-1. Note Model canonical persistence
-2. Worker HTTP router / Agent wiring
-3. Trigger reason preservation
-4. Next Open Digest read route
-5. Memory review runtime
-6. Provenance lookup runtime
-7. Web AppShell / NoteSurface / Block Editor
-8. Web inline AI blocks / memory / digest / provenance UI
+1. Production-grade editor ergonomics: dirty/error/success display、retry、カーソル維持、layout stability。
+2. Hosted runtime env/binding injection E2E。
+3. Exact production auth provider integration。
+4. GitHub issue close/create と push による traceability projection 更新。
 
 ## Review Notes
 
 - MVP complete は未宣言。repo-local hosted E2E と deployment environment values の repo-tracked 直書き禁止は contract / focused guard として固定済み。
-- DDD 境界上、次の backend slice は Note Model SoT persistence と Memory/Provenance runtime を混ぜない。
-- UI slice は `apps/web` がまだ実装なしのため、最初に shell/editor、次に AI projections UI に分ける。
+- DDD 境界上、次の backend slice は deployment/auth integration と product/domain policy を混ぜない。
+- UI slice は production editor ergonomics に絞り、canonical Note / Section / Block SoT と Memory lifecycle policy を Web runtime に移さない。
 - GitHub issue close/create と push は sandbox policy により未実行。
