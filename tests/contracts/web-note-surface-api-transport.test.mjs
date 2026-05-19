@@ -13,7 +13,7 @@ const metadata = {
   userId: 'user_001',
 };
 
-test('transport sends AI memory digest and provenance descriptors through the injected fetch-like binding', async () => {
+test('transport sends AI memory block digest and provenance descriptors through the injected fetch-like binding', async () => {
   const calls = [];
   const transport = createNoteSurfaceApiTransport({
     baseUrl: 'https://worker.example.test/api/',
@@ -40,6 +40,13 @@ test('transport sends AI memory digest and provenance descriptors through the in
       ...metadata,
       memoryId: 'memory_001',
       content: 'Remember this source-backed preference.',
+    }).request,
+    createNoteSurfaceApiRequest({
+      intent: 'block.update',
+      ...metadata,
+      noteId: 'note_001',
+      blockId: 'block_paragraph_001',
+      content: 'Updated user-authored block text.',
     }).request,
     createNoteSurfaceApiRequest({
       intent: 'digest.read',
@@ -72,6 +79,7 @@ test('transport sends AI memory digest and provenance descriptors through the in
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
     ['POST', 'https://worker.example.test/api/memory/memory_001/edit'],
+    ['PATCH', 'https://worker.example.test/api/blocks/block_paragraph_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
     ['POST', 'https://worker.example.test/api/provenance/source'],
   ]);
@@ -84,6 +92,15 @@ test('transport sends AI memory digest and provenance descriptors through the in
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ content: 'Remember this source-backed preference.' }),
+  });
+  assert.deepEqual(calls[2].init, {
+    method: 'PATCH',
+    headers: {
+      'X-Workspace-Id': 'workspace_001',
+      'X-User-Id': 'user_001',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
   });
 });
 
@@ -202,7 +219,7 @@ test('transport rejects invalid base URL path method and headers before calling 
 
   const invalidMethod = await sendNoteSurfaceApiRequest(
     {
-      method: 'PATCH',
+      method: 'PUT',
       path: '/memory/memory_001/accept',
       headers: {
         'X-Workspace-Id': 'workspace_001',
@@ -214,7 +231,7 @@ test('transport rejects invalid base URL path method and headers before calling 
     },
   );
   assert.equal(invalidMethod.ok, false);
-  assert.match(invalidMethod.errors.join('\n'), /method must be GET or POST/);
+  assert.match(invalidMethod.errors.join('\n'), /method must be GET, POST, or PATCH/);
 
   const invalidHeader = await sendNoteSurfaceApiRequest(
     {

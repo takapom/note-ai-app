@@ -81,6 +81,33 @@ test('action input resolver returns memory ids and edit content from caller supp
   }), { memoryId: 'memory_for_block_memory_non_string_001' });
 });
 
+test('action input resolver returns block id and plain text content for editor save actions', () => {
+  const resolveActionInput = createNoteSurfaceActionInputResolver({});
+
+  assert.deepEqual(resolveActionInput({
+    action: 'save_block',
+    target: 'block_editor',
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    content: 'Updated user-authored block text.',
+    apiIntent: 'block.update',
+  }), {
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    content: 'Updated user-authored block text.',
+  });
+  assert.deepEqual(resolveActionInput({
+    action: 'save_block',
+    target: 'block_editor',
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'PATCH /blocks/:blockId',
+  }), {
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+  });
+});
+
 test('action input resolver returns digest note id with event note id before configured active note id', () => {
   const resolveActionInput = createNoteSurfaceActionInputResolver({
     activeNoteId: 'note_active_001',
@@ -202,6 +229,14 @@ test('action input resolver integrates with the event controller without owning 
 
   for (const event of [
     {
+      action: 'save_block',
+      target: 'block_editor',
+      noteId: 'note_001',
+      blockId: 'block_paragraph_001',
+      content: 'Updated user-authored block text.',
+      apiIntent: 'block.update',
+    },
+    {
       action: 'adopt',
       target: 'ai_assist_block',
       blockId: 'block_ai_001',
@@ -231,6 +266,10 @@ test('action input resolver integrates with the event controller without owning 
   }
 
   assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
+    ['PATCH', '/blocks/block_paragraph_001', {
+      noteId: 'note_001',
+      content: 'Updated user-authored block text.',
+    }],
     ['POST', '/ai-operations/operation_001/accept', undefined],
     ['POST', '/memory/memory_001/edit', { content: 'Remember the source-backed editor preference.' }],
     ['GET', '/notes/note_active_001/digest', undefined],

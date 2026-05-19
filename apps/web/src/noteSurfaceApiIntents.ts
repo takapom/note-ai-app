@@ -1,4 +1,4 @@
-export type NoteSurfaceWorkerRequestMethod = 'GET' | 'POST';
+export type NoteSurfaceWorkerRequestMethod = 'GET' | 'POST' | 'PATCH';
 
 export type NoteSurfaceApiIntentKind =
   | 'ai_assist.accept'
@@ -8,6 +8,7 @@ export type NoteSurfaceApiIntentKind =
   | 'memory.edit'
   | 'memory.delete'
   | 'memory.snooze'
+  | 'block.update'
   | 'digest.read'
   | 'provenance.lookup';
 
@@ -47,6 +48,13 @@ export interface MemoryEditApiIntentInput extends NoteSurfaceApiIntentBaseInput 
   content: string;
 }
 
+export interface BlockUpdateApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'block.update';
+  noteId: string;
+  blockId: string;
+  content: string;
+}
+
 export interface DigestApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   intent: 'digest.read';
   noteId: string;
@@ -68,6 +76,7 @@ export type NoteSurfaceApiIntentInput =
   | AiAssistApiIntentInput
   | MemoryReviewApiIntentInput
   | MemoryEditApiIntentInput
+  | BlockUpdateApiIntentInput
   | DigestApiIntentInput
   | ProvenanceApiIntentInput;
 
@@ -79,6 +88,7 @@ const supportedIntents = new Set<NoteSurfaceApiIntentKind>([
   'memory.edit',
   'memory.delete',
   'memory.snooze',
+  'block.update',
   'digest.read',
   'provenance.lookup',
 ]);
@@ -155,6 +165,22 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         method: 'POST',
         path: `/memory/${getStringField(input, 'memoryId')}/hold`,
         headers: createMetadataHeaders(input),
+      });
+    case 'block.update':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      validatePathSegment('blockId', getStringField(input, 'blockId'), errors);
+      validateBlockUpdateContent(getStringField(input, 'content'), errors);
+      return requestResult(errors, {
+        method: 'PATCH',
+        path: `/blocks/${getStringField(input, 'blockId')}`,
+        headers: {
+          ...createMetadataHeaders(input),
+          'Content-Type': 'application/json',
+        },
+        body: {
+          noteId: getStringField(input, 'noteId'),
+          content: getStringField(input, 'content'),
+        },
       });
     case 'digest.read':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
@@ -271,6 +297,12 @@ function validateMemoryEditContent(value: string | undefined, errors: string[]):
 
   if (value !== value.trim()) {
     errors.push('content must not include leading or trailing whitespace');
+  }
+}
+
+function validateBlockUpdateContent(value: string | undefined, errors: string[]): void {
+  if (typeof value !== 'string' || value.trim() === '') {
+    errors.push('content is required');
   }
 }
 

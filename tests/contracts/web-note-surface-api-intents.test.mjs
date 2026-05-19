@@ -176,6 +176,61 @@ test('memory edit rejects invalid content before request descriptors are returne
   assert.deepEqual(trimMismatch.errors, ['content must not include leading or trailing whitespace']);
 });
 
+test('block update maps explicit editor save actions to the Worker block command boundary', () => {
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'block.update',
+      ...metadata,
+      noteId: 'note_001',
+      blockId: 'block_paragraph_001',
+      content: 'Updated user-authored block text.',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'PATCH',
+        path: '/blocks/block_paragraph_001',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          noteId: 'note_001',
+          content: 'Updated user-authored block text.',
+        },
+      },
+      errors: [],
+    },
+  );
+});
+
+test('block update rejects blank content and invalid block ids before request descriptors are returned', () => {
+  const blankContent = createNoteSurfaceApiRequest({
+    intent: 'block.update',
+    ...metadata,
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    content: '   ',
+  });
+
+  assert.equal(blankContent.ok, false);
+  assert.equal(blankContent.request, undefined);
+  assert.deepEqual(blankContent.errors, ['content is required']);
+
+  const invalidBlock = createNoteSurfaceApiRequest({
+    intent: 'block.update',
+    ...metadata,
+    noteId: 'note_001',
+    blockId: 'block/paragraph/001',
+    content: 'Updated user-authored block text.',
+  });
+
+  assert.equal(invalidBlock.ok, false);
+  assert.equal(invalidBlock.request, undefined);
+  assert.deepEqual(invalidBlock.errors, ['blockId must be a single path segment']);
+});
+
 test('digest read maps to the next-open digest GET route', () => {
   assert.deepEqual(
     createNoteSurfaceApiRequest({

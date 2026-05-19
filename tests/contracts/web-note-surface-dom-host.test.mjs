@@ -86,6 +86,32 @@ test('DOM host preserves explicit dataset apiIntent without requiring a render e
   });
 });
 
+test('DOM host enriches save block clicks with same-block plain text content', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'block.update',
+  })], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  root.click(createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+  }, 'Updated user-authored block text.'));
+
+  assert.equal(handled.length, 1);
+  assert.equal(handled[0].apiIntent, 'block.update');
+  assert.equal(handled[0].content, 'Updated user-authored block text.');
+});
+
 test('DOM host replaces prior click listener on repeated bindActionEvents calls', () => {
   const root = createFakeRoot();
   const host = createNoteSurfaceDomHost(root);
@@ -186,6 +212,29 @@ function createActionElement(dataset) {
     },
   };
   return element;
+}
+
+function createSaveActionElement(dataset, content) {
+  const contentElement = {
+    textContent: content,
+  };
+  const article = {
+    querySelector(selector) {
+      assert.equal(selector, '[data-block-editor-content="true"]');
+      return contentElement;
+    },
+  };
+  const button = {
+    dataset,
+    closest(selector) {
+      if (selector === '[data-action]') {
+        return button;
+      }
+      assert.equal(selector, 'article[data-block-id]');
+      return article;
+    },
+  };
+  return button;
 }
 
 function createRenderEvent(overrides) {

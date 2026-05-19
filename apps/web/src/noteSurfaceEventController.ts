@@ -13,6 +13,7 @@ import type { NoteSurfaceHtmlRenderEventDescriptor } from './noteSurfaceHtmlRend
 export type NoteSurfaceEventControllerApiIntent =
   | NoteSurfaceHtmlRenderEventDescriptor['apiIntent']
   | NoteSurfaceApiIntentKind
+  | 'PATCH /blocks/:blockId'
   | 'GET /notes/:noteId/digest'
   | 'POST /provenance/source';
 
@@ -25,6 +26,7 @@ export interface NoteSurfaceEventControllerDescriptor {
   blockType?: string;
   digestSectionId?: string;
   dataAction?: string;
+  content?: string;
 }
 
 export interface NoteSurfaceProvenanceActionInput {
@@ -37,6 +39,7 @@ export interface NoteSurfaceProvenanceActionInput {
 export interface NoteSurfaceResolvedActionInput {
   operationId?: string;
   memoryId?: string;
+  blockId?: string;
   content?: string;
   noteId?: string;
   provenance?: NoteSurfaceProvenanceActionInput;
@@ -82,6 +85,7 @@ const apiIntentToIntentKind: Readonly<Record<string, NoteSurfaceApiIntentKind>> 
   'POST /memory/:memoryId/edit': 'memory.edit',
   'POST /memory/:memoryId/delete': 'memory.delete',
   'POST /memory/:memoryId/hold': 'memory.snooze',
+  'PATCH /blocks/:blockId': 'block.update',
   'GET /notes/:noteId/digest': 'digest.read',
   'POST /provenance/source': 'provenance.lookup',
   'ai_assist.accept': 'ai_assist.accept',
@@ -91,6 +95,7 @@ const apiIntentToIntentKind: Readonly<Record<string, NoteSurfaceApiIntentKind>> 
   'memory.edit': 'memory.edit',
   'memory.delete': 'memory.delete',
   'memory.snooze': 'memory.snooze',
+  'block.update': 'block.update',
   'digest.read': 'digest.read',
   'provenance.lookup': 'provenance.lookup',
 };
@@ -238,6 +243,7 @@ function normalizeEventDescriptor(
         readString(source, 'digestSectionId') ?? readString(dataset, 'digestSectionId'),
       ),
       ...optionalString('dataAction', readString(source, 'dataAction') ?? readString(dataset, 'action')),
+      ...optionalString('content', readString(source, 'content') ?? readString(dataset, 'content')),
     },
   };
 }
@@ -304,6 +310,24 @@ function createApiIntentInput(
         },
       };
     }
+    case 'block.update': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      const blockId = requireResolvedString(resolved, 'blockId', apiIntent, errors);
+      const content = requireResolvedString(resolved, 'content', apiIntent, errors);
+      if (noteId === undefined || blockId === undefined || content === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
+          blockId,
+          content,
+        },
+      };
+    }
     case 'digest.read': {
       const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
       if (noteId === undefined) {
@@ -353,7 +377,7 @@ function validateControllerOptions(options: NoteSurfaceEventControllerOptions): 
 
 function requireResolvedString(
   resolved: NoteSurfaceResolvedActionInput | undefined,
-  field: keyof Pick<NoteSurfaceResolvedActionInput, 'operationId' | 'memoryId' | 'content' | 'noteId'>,
+  field: keyof Pick<NoteSurfaceResolvedActionInput, 'operationId' | 'memoryId' | 'blockId' | 'content' | 'noteId'>,
   apiIntent: string,
   errors: string[],
 ): string | undefined {

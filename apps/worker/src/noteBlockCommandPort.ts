@@ -5,6 +5,7 @@
 import {
   type BlockContract,
   type NoteDocumentContract,
+  userAuthoredBlockOrigin,
   validateBlockContract,
 } from '../../../contexts/note-model/src/contract/noteContract.ts';
 import {
@@ -80,6 +81,17 @@ export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
       noteId: input.noteId === undefined ? 'optional' : 'required',
       blockId: 'required',
     });
+    const textUpdate = readTextUpdateBody(input.body);
+    if (textUpdate.kind === 'text_update') {
+      const noteIdErrors = validateTextUpdateNoteId(input, textUpdate.noteId);
+      const errors = [...identityErrors, ...textUpdate.errors, ...noteIdErrors];
+      if (errors.length > 0) {
+        return failure(errors);
+      }
+
+      return this.updateUserAuthoredTextBlock(input, textUpdate);
+    }
+
     const blockResult = readBlockBody(input.body);
     const blockErrors = blockResult.block === undefined
       ? blockResult.errors
@@ -112,6 +124,45 @@ export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
       return failure(['block noteId must match the canonical document note.id']);
     }
 
+    const blocks = loaded.document.blocks.map((candidate, index) => index === existingIndex ? block : candidate);
+    const document = withBlocks(loaded.document, blocks);
+    const documentErrors = validateNoteDocumentForPersistence(document);
+    if (documentErrors.length > 0) {
+      return failure(documentErrors);
+    }
+
+    const saved = await this.persistence.saveDocument(document);
+    if (!saved.ok || saved.document === undefined) {
+      return failure(saved.errors);
+    }
+
+    return success({ document: saved.document, block });
+  }
+
+  private async updateUserAuthoredTextBlock(
+    input: NoteBlockCommandInput,
+    update: TextBlockUpdateBody,
+  ): Promise<NoteBlockCommandResult> {
+    const loaded = await this.persistence.loadDocument({
+      workspaceId: input.workspaceId,
+      noteId: update.noteId,
+    });
+    if (!loaded.ok || loaded.document === undefined) {
+      return failure(loaded.errors);
+    }
+
+    const existingIndex = loaded.document.blocks.findIndex((candidate) => candidate.id === input.blockId);
+    if (existingIndex === -1) {
+      return failure(['block not found']);
+    }
+
+    const existingBlock = loaded.document.blocks[existingIndex];
+    const updateErrors = validateUserAuthoredTextUpdate(existingBlock, update.noteId);
+    if (updateErrors.length > 0) {
+      return failure(updateErrors);
+    }
+
+    const block = applyTextUpdate(existingBlock, update.content, input.now);
     const blocks = loaded.document.blocks.map((candidate, index) => index === existingIndex ? block : candidate);
     const document = withBlocks(loaded.document, blocks);
     const documentErrors = validateNoteDocumentForPersistence(document);
@@ -237,6 +288,85 @@ function readBlockBody(body: unknown): { block?: unknown; errors: string[] } {
   }
 
   return { block: record.block, errors: [] };
+}
+
+interface TextBlockUpdateBody {
+  kind: 'text_update';
+  noteId: string;
+  content: string;
+  errors: string[];
+}
+
+function readTextUpdateBody(body: unknown): TextBlockUpdateBody | { kind: 'not_text_update' } {
+  const record = asRecord(body);
+  if (!record || record.block !== undefined || record.content === undefined || record.noteId === undefined) {
+    return { kind: 'not_text_update' };
+  }
+
+  const errors: string[] = [];
+  const noteId = typeof record.noteId === 'string' ? record.noteId : '';
+  const content = typeof record.content === 'string' ? record.content : '';
+  errors.push(...validateStableId('body.noteId', noteId));
+  if (content.trim() === '') {
+    errors.push('body.content must be a non-empty string');
+  }
+
+  return {
+    kind: 'text_update',
+    noteId,
+    content,
+    errors,
+  };
+}
+
+function validateTextUpdateNoteId(input: NoteBlockCommandInput, noteId: string): string[] {
+  if (input.noteId !== undefined && input.noteId !== noteId) {
+    return ['body.noteId must match noteId'];
+  }
+  return [];
+}
+
+function validateUserAuthoredTextUpdate(block: BlockContract, noteId: string): string[] {
+  const errors: string[] = [];
+
+  if (block.noteId !== noteId) {
+    errors.push('block noteId must match body.noteId');
+  }
+  if (block.origin !== userAuthoredBlockOrigin) {
+    errors.push('only user-authored blocks can be updated from editor text content');
+  }
+  if (block.type === 'heading') {
+    errors.push('heading block text updates require the heading editor boundary');
+  }
+  const content = asRecord(block.contentJson);
+  if (!content || typeof content.text !== 'string') {
+    errors.push('block contentJson.text must exist for editor text updates');
+  }
+
+  return errors;
+}
+
+function applyTextUpdate(block: BlockContract, content: string, updatedAt: number): BlockContract {
+  const contentJson = asRecord(block.contentJson) ?? {};
+  return {
+    ...block,
+    contentJson: {
+      ...contentJson,
+      text: content,
+    },
+    plainText: content,
+    contentHash: createEditorTextContentHash(block.id, content),
+    updatedAt,
+  };
+}
+
+function createEditorTextContentHash(blockId: string, content: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < content.length; index += 1) {
+    hash ^= content.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return `hash_${blockId}_${hash.toString(16)}`;
 }
 
 function readDeleteNoteId(input: NoteBlockCommandInput): { noteId?: string; errors: string[] } {

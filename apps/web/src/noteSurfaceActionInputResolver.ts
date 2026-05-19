@@ -38,6 +38,10 @@ export function createNoteSurfaceActionInputResolver(
       return readBlockString(options.operationIdByBlockId, event, 'operationId');
     }
 
+    if (isBlockUpdateIntent(event.apiIntent)) {
+      return readBlockUpdateInput(event);
+    }
+
     if (isMemoryEditIntent(event.apiIntent)) {
       const resolved = readBlockString(options.memoryIdByBlockId, event, 'memoryId');
       const content = readMemoryEditContent(options.memoryEditContentByBlockId, event);
@@ -68,7 +72,7 @@ export function createNoteSurfaceActionInputResolver(
 function isEditorNoopAction(event: NoteSurfaceEventControllerDescriptor): boolean {
   return (
     event.target === 'block_editor'
-    && (event.action === 'edit_block' || event.action === 'save_block' || event.action === 'cancel_edit')
+    && (event.action === 'edit_block' || event.action === 'cancel_edit')
   );
 }
 
@@ -83,6 +87,10 @@ function isAiAssistOperationIntent(apiIntent: string): boolean {
 
 function isMemoryEditIntent(apiIntent: string): boolean {
   return apiIntent === 'POST /memory/:memoryId/edit' || apiIntent === 'memory.edit';
+}
+
+function isBlockUpdateIntent(apiIntent: string): boolean {
+  return apiIntent === 'PATCH /blocks/:blockId' || apiIntent === 'block.update';
 }
 
 function isMemoryReviewIntent(apiIntent: string): boolean {
@@ -121,6 +129,20 @@ function readMemoryEditContent(
 ): string | undefined {
   const content = readBlockLookup(lookup, event);
   return typeof content === 'string' && content !== '' ? content : undefined;
+}
+
+function readBlockUpdateInput(
+  event: NoteSurfaceEventControllerDescriptor,
+): NoteSurfaceResolvedActionInput | undefined {
+  if (event.blockId === undefined) {
+    return undefined;
+  }
+
+  return {
+    blockId: event.blockId,
+    ...(event.noteId === undefined ? {} : { noteId: event.noteId }),
+    ...(typeof event.content === 'string' ? { content: event.content } : {}),
+  };
 }
 
 function readDigestNoteInput(

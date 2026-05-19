@@ -45,6 +45,7 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-component="block-editor"/);
   assert.match(html, /data-block-id="block_paragraph_001"/);
   assert.match(html, /data-editor-state="editing"/);
+  assert.match(html, /data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true"/);
   assert.match(html, /data-inline-ai-block="true"/);
   assert.match(html, /data-action="adopt" data-target="ai_assist_block" data-block-id="block_ai_question_001"/);
   assert.match(html, /data-inline-memory-candidate="true"/);
@@ -54,7 +55,11 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-component="provenance-popover" data-open="true"/);
   assert.match(html, /data-action="close_provenance" data-target="provenance_popover"/);
 
-  assert.equal(events.some((event) => event.target === 'block_editor' && event.action === 'save_block'), true);
+  assert.equal(events.some((event) => (
+    event.target === 'block_editor'
+    && event.action === 'save_block'
+    && event.apiIntent === 'block.update'
+  )), true);
   assert.equal(events.some((event) => event.target === 'ai_assist_block' && event.action === 'inspect_source'), true);
   assert.equal(events.some((event) => event.target === 'memory_candidate_block' && event.action === 'remember'), true);
   assert.equal(events.some((event) => event.target === 'next_open_digest' && event.action === 'collapse_digest'), true);

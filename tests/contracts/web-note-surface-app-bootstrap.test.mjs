@@ -48,7 +48,7 @@ test('app bootstrap mounts the note surface and dispatches delegated clicks thro
   ]);
 });
 
-test('app bootstrap keeps editor no-op actions out of transport', async () => {
+test('app bootstrap sends editor save clicks as plain text block update requests', async () => {
   const root = createFakeRoot();
   const calls = [];
   const app = createNoteSurfaceAppBootstrap({
@@ -59,11 +59,6 @@ test('app bootstrap keeps editor no-op actions out of transport', async () => {
     ...metadata,
     viewOptions: {
       editingBlockIds: ['block_paragraph_001'],
-    },
-    resolverOptions: {
-      operationIdByBlockId: {
-        block_paragraph_001: 'operation_should_not_send',
-      },
     },
   });
 
@@ -76,8 +71,20 @@ test('app bootstrap keeps editor no-op actions out of transport', async () => {
     blockId: 'block_paragraph_001',
   }));
 
+  root.click(createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+  }, 'Updated user-authored block text.'));
+
   await settle();
-  assert.equal(calls.length, 0);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    [
+      'PATCH',
+      'https://worker.example.test/api/blocks/block_paragraph_001',
+      JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
+    ],
+  ]);
 });
 
 test('app bootstrap rejects invalid options before root binding or fetch-like calls', async () => {
@@ -182,6 +189,29 @@ function createActionElement(dataset) {
     closest(selector) {
       assert.equal(selector, '[data-action]');
       return element;
+    },
+  };
+  return element;
+}
+
+function createSaveActionElement(dataset, content) {
+  const contentElement = {
+    textContent: content,
+  };
+  const article = {
+    querySelector(selector) {
+      assert.equal(selector, '[data-block-editor-content="true"]');
+      return contentElement;
+    },
+  };
+  const element = {
+    dataset,
+    closest(selector) {
+      if (selector === '[data-action]') {
+        return element;
+      }
+      assert.equal(selector, 'article[data-block-id]');
+      return article;
     },
   };
   return element;

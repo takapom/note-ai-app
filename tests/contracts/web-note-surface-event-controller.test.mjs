@@ -75,6 +75,33 @@ test('event controller sends memory remember reject edit delete and snooze actio
   ]);
 });
 
+test('event controller sends explicit block editor save actions as block update requests', async () => {
+  const calls = [];
+  const controller = createController(calls, (event) => ({
+    noteId: event.noteId,
+    blockId: event.blockId,
+    content: event.content,
+  }));
+
+  const result = await controller.handleRenderEvent({
+    action: 'save_block',
+    target: 'block_editor',
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    content: 'Updated user-authored block text.',
+    apiIntent: 'block.update',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 'sent');
+  assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
+    ['PATCH', '/blocks/block_paragraph_001', {
+      noteId: 'note_001',
+      content: 'Updated user-authored block text.',
+    }],
+  ]);
+});
+
 test('event controller sends digest read and provenance lookup actions from caller-resolved ids', async () => {
   const calls = [];
   const controller = createController(calls, (event) => {

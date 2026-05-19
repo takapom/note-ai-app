@@ -8,6 +8,7 @@ import type {
   NoteSurfaceIntentEvent,
   NoteSurfaceViewModel,
 } from './noteSurface.ts';
+import type { NoteSurfaceApiIntentKind } from './noteSurfaceApiIntents.ts';
 
 export type NoteSurfaceHtmlRenderTarget =
   | 'block_editor'
@@ -34,7 +35,7 @@ export interface NoteSurfaceHtmlRenderEventDescriptor {
   blockType?: NoteBlockViewModel['type'];
   digestSectionId?: NextOpenDigestSectionViewModel['id'];
   userIntent?: string;
-  apiIntent: NoteSurfaceApiIntent | 'none';
+  apiIntent: NoteSurfaceApiIntent | NoteSurfaceApiIntentKind | 'none';
   event?: NoteSurfaceIntentEvent;
   emitsAiProviderCall: false;
   mutatesUserAuthoredBlock: false;
@@ -265,7 +266,7 @@ function renderUserBlockBody(block: NoteBlockViewModel): string {
     ].join('');
   }
 
-  return `<div class="ann-block-text" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(block.text)}</div>`;
+  return `<div class="ann-block-text" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(block.text)}</div>`;
 }
 
 function renderAiAssistBlock(block: NoteBlockViewModel): string {
@@ -376,9 +377,12 @@ function createRenderEvents(model: NoteSurfaceViewModel): readonly NoteSurfaceHt
         target: 'block_editor',
         label: renderBlockEditorActionLabel(action),
         dataAction: action,
+        noteId: model.noteSurface.noteHeader.noteId,
         blockId: block.id,
         blockType: block.type,
-        apiIntent: 'none',
+        apiIntent: action === 'save_block' && block.origin === 'user' && block.sectionBoundary === undefined
+          ? 'block.update'
+          : 'none',
         emitsAiProviderCall: false,
         mutatesUserAuthoredBlock: false,
         hiddenProfiling: false,

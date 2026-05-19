@@ -104,7 +104,7 @@ test('browser runtime dispatches AI memory digest and provenance actions through
   ]);
 });
 
-test('browser runtime keeps editor apiIntent none actions as controller no-ops without transport calls', async () => {
+test('browser runtime sends editor save actions through the block update boundary', async () => {
   const calls = [];
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
@@ -117,19 +117,31 @@ test('browser runtime keeps editor apiIntent none actions as controller no-ops w
   await runtime.mount();
   const editorEvents = host.events.filter((event) => event.target === 'block_editor');
 
-  const results = [];
-  for (const action of ['edit_block', 'save_block', 'cancel_edit']) {
+  for (const action of ['edit_block', 'cancel_edit']) {
     const event = editorEvents.find((entry) => entry.action === action);
     assert.ok(event);
-    results.push(await host.handler(event));
+    const result = await host.handler(event);
+    assert.equal(result.ok, true);
+    assert.equal(result.controllerResult?.status, 'noop');
   }
 
-  assert.deepEqual(results.map((result) => [result.ok, result.status, result.controllerResult?.status]), [
-    [true, 'handled', 'noop'],
-    [true, 'handled', 'noop'],
-    [true, 'handled', 'noop'],
+  const saveEvent = editorEvents.find((entry) => (
+    entry.action === 'save_block' && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(saveEvent);
+  const save = await host.handler({
+    ...saveEvent,
+    content: 'Updated user-authored block text.',
+  });
+
+  assert.deepEqual([save.ok, save.status, save.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    [
+      'PATCH',
+      'https://worker.example.test/api/blocks/block_paragraph_001',
+      JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
+    ],
   ]);
-  assert.equal(calls.length, 0);
 });
 
 test('browser runtime closes render and event controller failures into boundary results', async () => {
@@ -245,6 +257,13 @@ function createController(calls) {
             startOffset: 4,
             endOffset: 42,
           },
+        };
+      }
+      if (event.target === 'block_editor') {
+        return {
+          noteId: event.noteId,
+          blockId: event.blockId,
+          content: event.content,
         };
       }
       return undefined;

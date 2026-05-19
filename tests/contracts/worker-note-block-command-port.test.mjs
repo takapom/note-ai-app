@@ -67,6 +67,35 @@ test('note block command port updates existing blocks without touching projectio
   );
 });
 
+test('note block command port updates user-authored text from explicit editor content', async () => {
+  const persistence = new TrackingPersistence([noteDocumentFixture]);
+  const port = new NoteDocumentBlockCommandPort(persistence);
+
+  const result = await port.updateBlock({
+    workspaceId: noteFixture.workspaceId,
+    blockId: blockFixtures[1].id,
+    now,
+    body: {
+      noteId: noteFixture.id,
+      content: 'Updated from the browser editor save action.',
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(persistence.loads, 1);
+  assert.equal(persistence.saves, 1);
+  assert.equal(result.body.block.id, blockFixtures[1].id);
+  assert.equal(result.body.block.noteId, noteFixture.id);
+  assert.equal(result.body.block.origin, 'user');
+  assert.equal(result.body.block.plainText, 'Updated from the browser editor save action.');
+  assert.deepEqual(result.body.block.contentJson, {
+    ...blockFixtures[1].contentJson,
+    text: 'Updated from the browser editor save action.',
+  });
+  assert.equal(result.body.block.updatedAt, now);
+  assert.match(result.body.block.contentHash, /^hash_block_paragraph_001_[a-f0-9]+$/);
+});
+
 test('note block command port deletes existing blocks from the canonical document only', async () => {
   const persistence = new TrackingPersistence([noteDocumentFixture]);
   const port = new NoteDocumentBlockCommandPort(persistence);
@@ -117,6 +146,18 @@ test('note block command port rejects invalid identity and body primitives befor
   assert.equal(persistence.loads, 0);
   assert.equal(persistence.saves, 0);
   assert.deepEqual(bodyResult.errors, ['body.block must be provided as an object']);
+
+  const textBodyResult = await port.updateBlock({
+    workspaceId: noteFixture.workspaceId,
+    blockId: blockFixtures[1].id,
+    now,
+    body: { noteId: noteFixture.id, content: '   ' },
+  });
+
+  assert.equal(textBodyResult.ok, false);
+  assert.equal(persistence.loads, 0);
+  assert.equal(persistence.saves, 0);
+  assert.deepEqual(textBodyResult.errors, ['body.content must be a non-empty string']);
 });
 
 test('note block command port rejects Note Model block validation and document-level validation before saving', async () => {
@@ -202,6 +243,38 @@ test('note block command port rejects missing blocks and noteId mismatches', asy
   });
   assert.equal(mismatch.ok, false);
   assert.ok(mismatch.errors.includes('block.noteId must match noteId'));
+  assert.equal(persistence.saves, 0);
+});
+
+test('note block command port rejects editor text updates for non-user or structural blocks', async () => {
+  const persistence = new TrackingPersistence([noteDocumentFixture]);
+  const port = new NoteDocumentBlockCommandPort(persistence);
+
+  const heading = await port.updateBlock({
+    workspaceId: noteFixture.workspaceId,
+    blockId: blockFixtures[0].id,
+    now,
+    body: {
+      noteId: noteFixture.id,
+      content: 'Updated heading text.',
+    },
+  });
+
+  assert.equal(heading.ok, false);
+  assert.deepEqual(heading.errors, ['heading block text updates require the heading editor boundary']);
+
+  const aiBlock = await port.updateBlock({
+    workspaceId: noteFixture.workspaceId,
+    blockId: blockFixtures[2].id,
+    now,
+    body: {
+      noteId: noteFixture.id,
+      content: 'Attempted AI block edit.',
+    },
+  });
+
+  assert.equal(aiBlock.ok, false);
+  assert.deepEqual(aiBlock.errors, ['only user-authored blocks can be updated from editor text content']);
   assert.equal(persistence.saves, 0);
 });
 

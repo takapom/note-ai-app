@@ -11,6 +11,8 @@ type NoteSurfaceDomDataset = Record<string, string | undefined>;
 interface NoteSurfaceDomActionElement {
   dataset?: NoteSurfaceDomDataset;
   closest?: (selector: string) => unknown;
+  querySelector?: (selector: string) => unknown;
+  textContent?: string | null;
   parentElement?: unknown;
   parentNode?: unknown;
 }
@@ -35,6 +37,7 @@ interface NoteSurfaceDomEventDescriptor {
   blockType?: string;
   digestSectionId?: string;
   dataAction?: string;
+  content?: string;
 }
 
 export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurfaceBrowserRuntimeHost {
@@ -57,7 +60,7 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
           return;
         }
 
-        const descriptor = createEventDescriptor(actionElement.dataset ?? {}, events);
+        const descriptor = createEventDescriptor(actionElement, events);
         void Promise.resolve(handler(descriptor)).catch(() => undefined);
       };
 
@@ -68,10 +71,16 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
 }
 
 function createEventDescriptor(
-  dataset: NoteSurfaceDomDataset,
+  actionElement: NoteSurfaceDomActionElement,
   events: readonly NoteSurfaceHtmlRenderEventDescriptor[],
 ): NoteSurfaceDomEventDescriptor | NoteSurfaceHtmlRenderEventDescriptor {
+  const dataset = actionElement.dataset ?? {};
   const datasetDescriptor = readDatasetDescriptor(dataset);
+  const content = readSaveBlockContent(actionElement, datasetDescriptor);
+  if (content !== undefined) {
+    datasetDescriptor.content = content;
+  }
+
   if (datasetDescriptor.apiIntent !== undefined) {
     return datasetDescriptor;
   }
@@ -85,6 +94,7 @@ function createEventDescriptor(
     ...renderedDescriptor,
     ...datasetDescriptor,
     apiIntent: renderedDescriptor.apiIntent,
+    ...(content === undefined ? {} : { content }),
     dataset: datasetDescriptor.dataset,
   };
 }
@@ -105,6 +115,7 @@ function readDatasetDescriptor(dataset: NoteSurfaceDomDataset): NoteSurfaceDomEv
   copyDatasetString(descriptor, dataset, 'noteId');
   copyDatasetString(descriptor, dataset, 'blockType');
   copyDatasetString(descriptor, dataset, 'digestSectionId');
+  copyDatasetString(descriptor, dataset, 'content');
 
   return descriptor;
 }
@@ -179,6 +190,19 @@ function copyDatasetString(
 function readDatasetString(dataset: NoteSurfaceDomDataset, key: string): string | undefined {
   const value = dataset[key];
   return typeof value === 'string' && value.trim() !== '' ? value : undefined;
+}
+
+function readSaveBlockContent(
+  actionElement: NoteSurfaceDomActionElement,
+  descriptor: NoteSurfaceDomEventDescriptor,
+): string | undefined {
+  if (descriptor.action !== 'save_block' || descriptor.target !== 'block_editor') {
+    return undefined;
+  }
+
+  const blockElement = asActionElement(actionElement.closest?.('article[data-block-id]'));
+  const contentElement = asActionElement(blockElement?.querySelector?.('[data-block-editor-content="true"]'));
+  return typeof contentElement?.textContent === 'string' ? contentElement.textContent : undefined;
 }
 
 function asActionElement(value: unknown): NoteSurfaceDomActionElement | undefined {

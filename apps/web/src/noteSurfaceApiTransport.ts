@@ -37,7 +37,7 @@ export interface NoteSurfaceApiTransportResult {
   errors: readonly string[];
 }
 
-const supportedMethods = new Set<NoteSurfaceWorkerRequestMethod>(['GET', 'POST']);
+const supportedMethods = new Set<NoteSurfaceWorkerRequestMethod>(['GET', 'POST', 'PATCH']);
 
 export function createNoteSurfaceApiTransport(options: NoteSurfaceApiTransportOptions): NoteSurfaceApiTransport {
   return {
@@ -189,7 +189,7 @@ function parseBaseUrl(baseUrl: string | URL, errors: string[]): URL | undefined 
 
 function validateMethod(method: string, errors: string[]): void {
   if (!supportedMethods.has(method as NoteSurfaceWorkerRequestMethod)) {
-    errors.push('method must be GET or POST');
+    errors.push('method must be GET, POST, or PATCH');
   }
 }
 
