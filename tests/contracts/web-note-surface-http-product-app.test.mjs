@@ -37,7 +37,7 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
   assert.equal(mounted.status, 'mounted');
   assert.equal(root.innerHTML, mounted.html);
   assert.match(root.innerHTML, /Research Workspace/);
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
   ]);
@@ -177,21 +177,24 @@ function createFetchLike(calls, snapshotResponse) {
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },

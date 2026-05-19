@@ -188,17 +188,20 @@ function createFakeRoot(dataset = {}) {
   return {
     dataset,
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },

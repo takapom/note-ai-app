@@ -33,7 +33,7 @@ test('app bootstrap mounts the note surface and dispatches delegated clicks thro
   assert.equal(root.innerHTML, mounted.html);
   assert.match(root.innerHTML, /class="ann-app-shell"/);
   assert.match(root.innerHTML, /data-action="adopt" data-target="ai_assist_block"/);
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
   assert.equal(mounted.events.some((event) => event.target === 'ai_assist_block' && event.action === 'adopt'), true);
 
   root.click(createActionElement({
@@ -162,21 +162,24 @@ test('app bootstrap source stays framework-neutral and avoids forbidden imports 
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },

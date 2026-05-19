@@ -69,7 +69,7 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
   assert.match(root.innerHTML, /Research Workspace/);
   assert.match(root.innerHTML, /Clarify the migration stop condition\./);
   assert.match(root.innerHTML, /Keep digest as a read projection\./);
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
@@ -247,21 +247,24 @@ function createFetchLike(calls, responses) {
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },

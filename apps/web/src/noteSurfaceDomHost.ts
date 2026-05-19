@@ -21,10 +21,20 @@ interface NoteSurfaceDomClickEvent {
   target?: unknown;
 }
 
+interface NoteSurfaceDomCompositionEvent {
+  target?: unknown;
+}
+
 interface NoteSurfaceDomHostRoot {
   innerHTML: string;
-  addEventListener(type: 'click', listener: (event: NoteSurfaceDomClickEvent) => void): void;
-  removeEventListener(type: 'click', listener: (event: NoteSurfaceDomClickEvent) => void): void;
+  addEventListener(
+    type: 'click' | 'compositionstart' | 'compositionend' | 'input',
+    listener: (event: NoteSurfaceDomClickEvent | NoteSurfaceDomCompositionEvent) => void,
+  ): void;
+  removeEventListener(
+    type: 'click' | 'compositionstart' | 'compositionend' | 'input',
+    listener: (event: NoteSurfaceDomClickEvent | NoteSurfaceDomCompositionEvent) => void,
+  ): void;
 }
 
 interface NoteSurfaceDomEventDescriptor {
@@ -38,13 +48,48 @@ interface NoteSurfaceDomEventDescriptor {
   digestSectionId?: string;
   dataAction?: string;
   content?: string;
+  focusedBlockId?: string;
+  inputCompositionState?: 'active' | 'pending';
 }
 
 export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurfaceBrowserRuntimeHost {
   let removePreviousClickListener: (() => void) | undefined;
+  const composingBlockIds = new Set<string>();
+  const pendingCompositionBlockIds = new Set<string>();
+
+  const compositionStartListener = (event: NoteSurfaceDomCompositionEvent): void => {
+    const blockId = readClosestBlockId(event.target);
+    if (blockId === undefined) {
+      return;
+    }
+
+    composingBlockIds.add(blockId);
+    pendingCompositionBlockIds.delete(blockId);
+  };
+  const compositionEndListener = (event: NoteSurfaceDomCompositionEvent): void => {
+    const blockId = readClosestBlockId(event.target);
+    if (blockId === undefined) {
+      return;
+    }
+
+    composingBlockIds.delete(blockId);
+    pendingCompositionBlockIds.add(blockId);
+  };
+  const inputListener = (event: NoteSurfaceDomCompositionEvent): void => {
+    const blockId = readClosestBlockId(event.target);
+    if (blockId !== undefined) {
+      pendingCompositionBlockIds.delete(blockId);
+    }
+  };
+
+  root.addEventListener('compositionstart', compositionStartListener);
+  root.addEventListener('compositionend', compositionEndListener);
+  root.addEventListener('input', inputListener);
 
   return {
     setHtml(html: string): void {
+      composingBlockIds.clear();
+      pendingCompositionBlockIds.clear();
       root.innerHTML = html;
     },
 
@@ -60,7 +105,10 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
           return;
         }
 
-        const descriptor = createEventDescriptor(actionElement, events);
+        const descriptor = createEventDescriptor(actionElement, events, {
+          composingBlockIds,
+          pendingCompositionBlockIds,
+        });
         void Promise.resolve(handler(descriptor)).catch(() => undefined);
       };
 
@@ -73,6 +121,10 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
 function createEventDescriptor(
   actionElement: NoteSurfaceDomActionElement,
   events: readonly NoteSurfaceHtmlRenderEventDescriptor[],
+  composition: {
+    composingBlockIds: ReadonlySet<string>;
+    pendingCompositionBlockIds: ReadonlySet<string>;
+  },
 ): NoteSurfaceDomEventDescriptor | NoteSurfaceHtmlRenderEventDescriptor {
   const dataset = actionElement.dataset ?? {};
   const datasetDescriptor = readDatasetDescriptor(dataset);
@@ -80,6 +132,7 @@ function createEventDescriptor(
   if (content !== undefined) {
     datasetDescriptor.content = content;
   }
+  applyFocusedBlockDescriptor(actionElement, datasetDescriptor, composition);
 
   if (datasetDescriptor.apiIntent !== undefined) {
     return datasetDescriptor;
@@ -95,6 +148,10 @@ function createEventDescriptor(
     ...datasetDescriptor,
     apiIntent: renderedDescriptor.apiIntent,
     ...(content === undefined ? {} : { content }),
+    ...(datasetDescriptor.focusedBlockId === undefined ? {} : { focusedBlockId: datasetDescriptor.focusedBlockId }),
+    ...(datasetDescriptor.inputCompositionState === undefined
+      ? {}
+      : { inputCompositionState: datasetDescriptor.inputCompositionState }),
     dataset: datasetDescriptor.dataset,
   };
 }
@@ -118,6 +175,31 @@ function readDatasetDescriptor(dataset: NoteSurfaceDomDataset): NoteSurfaceDomEv
   copyDatasetString(descriptor, dataset, 'content');
 
   return descriptor;
+}
+
+function applyFocusedBlockDescriptor(
+  actionElement: NoteSurfaceDomActionElement,
+  descriptor: NoteSurfaceDomEventDescriptor,
+  composition: {
+    composingBlockIds: ReadonlySet<string>;
+    pendingCompositionBlockIds: ReadonlySet<string>;
+  },
+): void {
+  const focusedBlockId = descriptor.blockId ?? (
+    descriptor.target === 'block_editor' ? readClosestBlockId(actionElement) : undefined
+  );
+  if (focusedBlockId === undefined) {
+    return;
+  }
+
+  descriptor.focusedBlockId = focusedBlockId;
+  if (composition.composingBlockIds.has(focusedBlockId)) {
+    descriptor.inputCompositionState = 'active';
+    return;
+  }
+  if (composition.pendingCompositionBlockIds.has(focusedBlockId)) {
+    descriptor.inputCompositionState = 'pending';
+  }
 }
 
 function findRenderedEventDescriptor(
@@ -179,7 +261,10 @@ function copyDataset(dataset: NoteSurfaceDomDataset): NoteSurfaceDomDataset {
 function copyDatasetString(
   descriptor: NoteSurfaceDomEventDescriptor,
   dataset: NoteSurfaceDomDataset,
-  key: Exclude<keyof NoteSurfaceDomEventDescriptor, 'dataset' | 'action' | 'dataAction'>,
+  key: Exclude<
+    keyof NoteSurfaceDomEventDescriptor,
+    'dataset' | 'action' | 'dataAction' | 'focusedBlockId' | 'inputCompositionState'
+  >,
 ): void {
   const value = readDatasetString(dataset, key);
   if (value !== undefined) {
@@ -203,6 +288,12 @@ function readSaveBlockContent(
   const blockElement = asActionElement(actionElement.closest?.('article[data-block-id]'));
   const contentElement = asActionElement(blockElement?.querySelector?.('[data-block-editor-content="true"]'));
   return typeof contentElement?.textContent === 'string' ? contentElement.textContent : undefined;
+}
+
+function readClosestBlockId(target: unknown): string | undefined {
+  const targetElement = asActionElement(target);
+  const blockElement = asActionElement(targetElement?.closest?.('article[data-block-id]'));
+  return readDatasetString(blockElement?.dataset ?? {}, 'blockId');
 }
 
 function asActionElement(value: unknown): NoteSurfaceDomActionElement | undefined {

@@ -43,12 +43,13 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-layout="single_note_surface"/);
   assert.match(html, /data-surface="single-note"/);
   assert.match(html, /data-component="block-editor"/);
-  assert.match(html, /<h2 class="ann-block-text ann-heading" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="2" data-section-title="MVP scope">MVP scope<\/h2>/);
+  assert.match(html, /<h2 class="ann-block-text ann-heading" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="2" data-section-title="MVP scope">MVP scope<\/h2>/);
   assert.match(html, /data-block-id="block_paragraph_001"/);
+  assert.match(html, /data-block-id="block_paragraph_001"[^>]*data-editor-layout-stability="block-identity"/);
   assert.match(html, /data-editor-state="editing"/);
   assert.match(html, /data-editor-save-status="dirty"/);
-  assert.match(html, /data-editor-status-region="fixed" data-editor-save-status="dirty" data-retry-available="false" aria-live="polite" aria-atomic="true"/);
-  assert.match(html, /data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true"/);
+  assert.match(html, /data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="dirty" data-retry-available="false" aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true"/);
   assert.match(html, /data-inline-ai-block="true"/);
   assert.match(html, /data-action="adopt" data-target="ai_assist_block" data-block-id="block_ai_question_001"/);
   assert.match(html, /data-inline-memory-candidate="true"/);

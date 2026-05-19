@@ -115,7 +115,7 @@ test('browser runtime sends editor save actions through the block update boundar
     }),
     eventController: createController(calls, () => {
       observedSavingProjection = /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="saving"/.test(host.html)
-        && /data-editor-status-region="fixed" data-editor-save-status="saving"/.test(host.html);
+        && /data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="saving"/.test(host.html);
     }),
     host,
   });
@@ -164,6 +164,79 @@ test('browser runtime sends editor save actions through the block update boundar
       JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
     ],
   ]);
+});
+
+test('browser runtime suppresses composition-pending editor save without changing draft projection', async () => {
+  const calls = [];
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_paragraph_001'],
+    }),
+    eventController: createController(calls),
+    host,
+  });
+  await runtime.mount();
+
+  const beforeHtml = host.html;
+  const saveEvent = host.events.find((entry) => (
+    entry.target === 'block_editor'
+    && entry.action === 'save_block'
+    && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(saveEvent);
+
+  const save = await host.handler({
+    ...saveEvent,
+    focusedBlockId: 'block_paragraph_001',
+    inputCompositionState: 'pending',
+    content: 'IME draft not ready for transport.',
+  });
+
+  assert.deepEqual(save, {
+    ok: true,
+    status: 'handled',
+    errors: [],
+  });
+  assert.equal(calls.length, 0);
+  assert.equal(host.html, beforeHtml);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
+  assert.match(host.html, /data-editor-status-region="fixed"[^>]*data-editor-save-status="dirty"/);
+});
+
+test('browser runtime preserves focused block identity and draft text across save status renders', async () => {
+  const calls = [];
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_paragraph_001'],
+    }),
+    eventController: createController(calls, () => {
+      assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-layout-stability="block-identity"/);
+      assert.match(host.html, /data-editor-status-region="fixed"[^>]*data-editor-layout-stability="status-reserved"[^>]*data-editor-save-status="saving"/);
+      assert.match(host.html, /Draft text that keeps block identity\./);
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const saveEvent = host.events.find((entry) => (
+    entry.target === 'block_editor'
+    && entry.action === 'save_block'
+    && entry.blockId === 'block_paragraph_001'
+  ));
+  assert.ok(saveEvent);
+
+  const save = await host.handler({
+    ...saveEvent,
+    focusedBlockId: 'block_paragraph_001',
+    content: 'Draft text that keeps block identity.',
+  });
+
+  assert.deepEqual([save.ok, save.status, save.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="idle"/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-layout-stability="block-identity"/);
+  assert.match(host.html, /Draft text that keeps block identity\./);
 });
 
 test('browser runtime updates heading projection after the canonical save boundary succeeds', async () => {
@@ -238,10 +311,80 @@ test('browser runtime keeps editing projection when save transport fails', async
   assert.match(save.errors.join('\n'), /request failed with status 503/);
   assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
   assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="error"/);
-  assert.match(host.html, /data-editor-status-region="fixed" data-editor-save-status="error" data-retry-available="true" data-retry-action="save_block" aria-live="polite" aria-atomic="true"/);
+  assert.match(host.html, /data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="error" data-retry-available="true" data-retry-action="save_block" aria-live="polite" aria-atomic="true"/);
   assert.match(host.html, /request failed with status 503/);
   assert.match(host.html, /Unsaved text should stay local to the DOM editor\./);
   assert.match(host.html, /data-action="save_block" data-target="block_editor" data-block-id="block_paragraph_001">Retry<\/button>/);
+});
+
+test('browser runtime does not dispatch block save while input composition is active or pending', async () => {
+  const host = createHost();
+  let controllerCalls = 0;
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_paragraph_001'],
+    }),
+    eventController: {
+      async handleRenderEvent() {
+        controllerCalls += 1;
+        throw new Error('composition-blocked save must not reach transport');
+      },
+    },
+    host,
+  });
+  await runtime.mount();
+  const before = host.html;
+
+  const active = await host.handler({
+    action: 'save_block',
+    target: 'block_editor',
+    apiIntent: 'block.update',
+    blockId: 'block_paragraph_001',
+    content: 'Composition text must remain in the DOM editor.',
+    inputCompositionState: 'active',
+  });
+  const pending = await host.handler({
+    action: 'save_block',
+    target: 'block_editor',
+    apiIntent: 'block.update',
+    blockId: 'block_paragraph_001',
+    content: 'Composition text must remain in the DOM editor.',
+    inputCompositionState: 'pending',
+  });
+
+  assert.deepEqual([active.ok, active.status], [true, 'handled']);
+  assert.deepEqual([pending.ok, pending.status], [true, 'handled']);
+  assert.equal(controllerCalls, 0);
+  assert.equal(host.html, before);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-state="editing"/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="dirty"/);
+});
+
+test('browser runtime only suppresses composition saves after block update intent is resolved', async () => {
+  const host = createHost();
+  let controllerCalls = 0;
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      editingBlockIds: ['block_paragraph_001'],
+    }),
+    eventController: {
+      async handleRenderEvent() {
+        controllerCalls += 1;
+        return { ok: true, status: 'sent', errors: [] };
+      },
+    },
+    host,
+  });
+  await runtime.mount();
+
+  const result = await host.handler({
+    action: 'save_block',
+    target: 'block_editor',
+    inputCompositionState: 'active',
+  });
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.equal(controllerCalls, 1);
 });
 
 test('browser runtime applies digest and provenance UI-only actions as local projection state', async () => {

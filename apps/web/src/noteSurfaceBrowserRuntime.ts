@@ -86,6 +86,14 @@ export function createNoteSurfaceBrowserRuntime(
 
     const pendingSaveAction = resolveBlockUpdateProjectionAction(eventDescriptor);
     if (pendingSaveAction !== undefined) {
+      if (isInputCompositionSaveBlocked(eventDescriptor)) {
+        return {
+          ok: true,
+          status: 'handled',
+          errors: [],
+        };
+      }
+
       currentModel = applyEditorSaveStarted(currentModel, pendingSaveAction);
       const pendingRender = await renderCurrentModel();
       if (!pendingRender.ok) {
@@ -397,6 +405,24 @@ function resolveBlockUpdateProjectionAction(eventDescriptor: unknown): BlockUpda
   return blockId === undefined || content === undefined
     ? undefined
     : { action, target, blockId, content };
+}
+
+function isInputCompositionSaveBlocked(eventDescriptor: unknown): boolean {
+  if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
+    return false;
+  }
+
+  const source = eventDescriptor as Record<string, unknown>;
+  const dataset = source.dataset !== null && typeof source.dataset === 'object'
+    ? source.dataset as Record<string, unknown>
+    : undefined;
+  const action = readDescriptorString(source, dataset, 'action');
+  const target = readDescriptorString(source, dataset, 'target');
+  const state = readDescriptorString(source, dataset, 'inputCompositionState');
+
+  return action === 'save_block'
+    && target === 'block_editor'
+    && (state === 'active' || state === 'pending');
 }
 
 function applyLocalProjectionAction(

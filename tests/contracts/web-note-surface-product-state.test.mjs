@@ -164,21 +164,24 @@ test('product state source stays a product composition boundary without runtime 
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },

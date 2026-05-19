@@ -248,7 +248,7 @@ function renderBlock(block: NoteBlockViewModel): string {
   const controls = renderBlockEditorControls(block);
 
   return [
-    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}">`,
+    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}" data-editor-layout-stability="block-identity">`,
     body,
     controls,
     renderBlockEditorStatus(block),
@@ -263,13 +263,13 @@ function renderUserBlockBody(block: NoteBlockViewModel): string {
     const level = block.sectionBoundary.level;
     const tag = `h${level}`;
     return [
-      `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
+      `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
       escapeHtml(text),
       `</${tag}>`,
     ].join('');
   }
 
-  return `<div class="ann-block-text" data-block-editor-content="true" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(text)}</div>`;
+  return `<div class="ann-block-text" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(text)}</div>`;
 }
 
 function renderAiAssistBlock(block: NoteBlockViewModel): string {
@@ -324,7 +324,7 @@ function renderBlockEditorStatus(block: NoteBlockViewModel): string {
     : ` data-retry-available="true" data-retry-action="${escapeAttribute(block.editor.retryAction)}"`;
 
   return [
-    `<div class="ann-block-status" data-editor-status-region="fixed" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}"${retryAttrs} aria-live="polite" aria-atomic="true">`,
+    `<div class="ann-block-status" data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}"${retryAttrs} aria-live="polite" aria-atomic="true">`,
     `<span data-editor-status-message="true">${escapeHtml(block.editor.statusMessage)}</span>`,
     '</div>',
   ].join('');

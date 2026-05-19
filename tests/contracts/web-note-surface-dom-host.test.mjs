@@ -42,7 +42,7 @@ test('DOM host delegates click actions and enriches missing apiIntent from rende
 
   root.click(iconInsideButton);
 
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
   assert.equal(handled.length, 1);
   assert.equal(handled[0].action, 'adopt');
   assert.equal(handled[0].target, 'ai_assist_block');
@@ -112,6 +112,73 @@ test('DOM host enriches save block clicks with same-block plain text content', (
   assert.equal(handled[0].content, 'Updated user-authored block text.');
 });
 
+test('DOM host marks save descriptors while block input composition is active or pending', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'block.update',
+  })], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  const saveButton = createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+  }, 'Composing draft text.');
+  const editorContent = saveButton.editorContent;
+
+  root.fire('compositionstart', editorContent);
+  root.click(saveButton);
+  root.fire('compositionend', editorContent);
+  root.click(saveButton);
+  root.fire('input', editorContent);
+  root.click(saveButton);
+
+  assert.equal(handled.length, 3);
+  assert.equal(handled[0].content, 'Composing draft text.');
+  assert.equal(handled[0].focusedBlockId, 'block_paragraph_001');
+  assert.equal(handled[0].inputCompositionState, 'active');
+  assert.equal(handled[1].inputCompositionState, 'pending');
+  assert.equal(handled[2].inputCompositionState, undefined);
+});
+
+test('DOM host clears composition state when rendered HTML is replaced', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'block.update',
+  })], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  const saveButton = createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+  }, 'Draft after host render replacement.');
+
+  root.fire('compositionstart', saveButton.editorContent);
+  host.setHtml('<article data-block-id="block_paragraph_001"></article>');
+  root.click(saveButton);
+
+  assert.equal(handled.length, 1);
+  assert.equal(handled[0].focusedBlockId, 'block_paragraph_001');
+  assert.equal(handled[0].inputCompositionState, undefined);
+});
+
 test('DOM host replaces prior click listener on repeated bindActionEvents calls', () => {
   const root = createFakeRoot();
   const host = createNoteSurfaceDomHost(root);
@@ -142,9 +209,9 @@ test('DOM host replaces prior click listener on repeated bindActionEvents calls'
     blockId: 'block_ai_memory_candidate_001',
   }));
 
-  assert.equal(root.addedListeners, 2);
+  assert.equal(root.addedListeners, 5);
   assert.equal(root.removedListeners, 1);
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(handled, ['POST /memory/:memoryId/accept']);
 });
 
@@ -182,21 +249,29 @@ test('DOM host source owns only the thin DOM adapter boundary', async () => {
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
+        listener({ target });
+      }
+    },
+    fire(type, target) {
+      for (const listener of this.listeners[type]) {
         listener({ target });
       }
     },
@@ -215,17 +290,25 @@ function createActionElement(dataset) {
 }
 
 function createSaveActionElement(dataset, content) {
-  const contentElement = {
-    textContent: content,
-  };
   const article = {
+    dataset: {
+      blockId: dataset.blockId,
+    },
     querySelector(selector) {
       assert.equal(selector, '[data-block-editor-content="true"]');
       return contentElement;
     },
   };
+  const contentElement = {
+    textContent: content,
+    closest(selector) {
+      assert.equal(selector, 'article[data-block-id]');
+      return article;
+    },
+  };
   const button = {
     dataset,
+    editorContent: contentElement,
     closest(selector) {
       if (selector === '[data-action]') {
         return button;

@@ -42,7 +42,7 @@ test('product app loads provider snapshot then mounts and dispatches clicks thro
   assert.equal(root.innerHTML, mounted.html);
   assert.match(root.innerHTML, /Research Workspace/);
   assert.match(root.innerHTML, /data-action="adopt" data-target="ai_assist_block"/);
-  assert.equal(root.listeners.length, 1);
+  assert.equal(root.listeners.click.length, 1);
 
   root.click(createActionElement({
     action: 'adopt',
@@ -182,21 +182,24 @@ test('product app source stays a framework-neutral mount boundary without forbid
 function createFakeRoot() {
   return {
     innerHTML: '',
-    listeners: [],
+    listeners: {
+      click: [],
+      compositionstart: [],
+      compositionend: [],
+      input: [],
+    },
     addedListeners: 0,
     removedListeners: 0,
     addEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.addedListeners += 1;
-      this.listeners.push(listener);
+      this.listeners[type].push(listener);
     },
     removeEventListener(type, listener) {
-      assert.equal(type, 'click');
       this.removedListeners += 1;
-      this.listeners = this.listeners.filter((entry) => entry !== listener);
+      this.listeners[type] = this.listeners[type].filter((entry) => entry !== listener);
     },
     click(target) {
-      for (const listener of this.listeners) {
+      for (const listener of this.listeners.click) {
         listener({ target });
       }
     },
