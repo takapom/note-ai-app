@@ -18,6 +18,7 @@
 - framework-neutral な NoteSurface browser runtime。view model、HTML renderer、event controller、DOM 風 host adapter を接続し、実 DOM API には依存しない mount / action dispatch 境界。
 - framework-neutral な NoteSurface app bootstrap。caller supplied note document、DOM root、fetch-like binding、workspace/user metadata、resolver lookup から view model、API transport、action input resolver、event controller、DOM host、browser runtime を組み立てる composition 境界。
 - NoteSurface DOM host adapter。実 DOM API を所有する薄い adapter として、root HTML 差し替え、delegated action click binding、render event descriptor による dataset 補完だけを行う。
+- NoteSurface browser deployment embedding adapter。`apps/web/src/browserNoteSurfaceMount.ts` だけが browser global の `document` / `fetch`、mount target query、deployment-supplied metadata extraction を薄く所有し、NoteSurface application boundary に caller supplied root / fetch-like binding / product mount options として渡す。
 - AI Assist Blocks のレンダリング。
 - 次回オープンダイジェストコンポーネントのふるまい。
 - Provenance popover の配置。
@@ -60,7 +61,10 @@
 - App bootstrap は invalid workspaceId / userId / apiBaseUrl / root / fetchLike / note document を、transport、DOM root action binding、runtime mount の前に boundary result として返してください。
 - DOM host adapter だけが `innerHTML`、`addEventListener`、`closest` などの実 DOM API を所有してよいです。adapter は event controller、transport、Worker 実装、generated OpenAPI、provider call、auth policy、global fetch、user-authored block の直接 mutation を import / 所有しないでください。
 - DOM host adapter は同じ root への再 bind 時に click listener を増殖させず、button dataset に `apiIntent` がない場合は renderer から渡された render event descriptor を action / target / blockId で照合して補完してください。
+- Browser deployment embedding adapter は Product App entrypoint / HTTP product app composition / app bootstrap の caller であり、NoteSurface application boundary や domain policy ではありません。browser global の `document` / `fetch`、mount target lookup、deployment-supplied dataset / config 読み取りだけを薄く所有し、operation / memory / provenance / note / block ID generation、Worker internals、generated OpenAPI、provider SDK、auth policy、canonical Note / Section / Block collection / field の直接 mutation を所有しないでください。
+- Browser deployment embedding adapter は browser global と deployment detail を `browserNoteSurfaceMount.ts` に閉じるための adapter です。`noteSurface*.ts` application files は引き続き caller supplied root / fetch-like binding / options だけを受け取り、global fetch、DOM query、framework runtime、deployment config を import / 所有しないでください。
 - Web NoteSurface integration source guard は `apps/web/src/noteSurface*.ts`、想定 bootstrap path `apps/web/src/noteSurfaceAppBootstrap.ts`、想定 product app entrypoint path `apps/web/src/noteSurfaceProductApp.ts`、想定 HTTP product app composition path `apps/web/src/noteSurfaceHttpProductApp.ts`、想定 HTTP digest product app composition path `apps/web/src/noteSurfaceHttpDigestProductApp.ts`、想定 HTTP product provider path `apps/web/src/noteSurfaceHttpProductProvider.ts`、想定 HTTP digest product provider path `apps/web/src/noteSurfaceHttpDigestProductProvider.ts`、想定 document-derived resolver options path `apps/web/src/noteSurfaceResolverOptionsFromDocument.ts`、想定 product state composition path `apps/web/src/noteSurfaceProductState.ts` を監視し、未実装時も path guard として維持してください。
+- Browser deployment embedding guard は `apps/web/src/browserNoteSurfaceMount.ts` を別に監視し、browser global / DOM query / deployment config の所有がこの adapter に限定され、`noteSurface*.ts` application guard の禁止対象が application boundary に戻り込まないことを確認してください。
 - HTML renderer は note text、digest text、provenance excerpt を trusted HTML として扱わず、必ず escape してください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
