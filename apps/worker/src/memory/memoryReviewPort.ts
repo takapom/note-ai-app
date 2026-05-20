@@ -5,11 +5,11 @@
 import type {
   MemoryItemContract,
   MemoryUserAction,
-} from '../../../contexts/memory/src/contract/memoryContract.ts';
+} from '../../../../contexts/memory/src/contract/memoryContract.ts';
 import {
   transitionMemoryStatus,
   validateMemoryItem,
-} from '../../../contexts/memory/src/contract/memoryContract.ts';
+} from '../../../../contexts/memory/src/contract/memoryContract.ts';
 
 export type MemoryReviewDecision = 'accepted' | 'rejected' | 'edited' | 'archived' | 'held';
 

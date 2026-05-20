@@ -8,7 +8,7 @@ import {
   mapMemoryReviewLookupToSql,
   mapMemoryReviewStatusUpdateToSql,
   TursoMemoryReviewSqlAdapter,
-} from '../../apps/worker/src/memoryReviewPort.ts';
+} from '../../apps/worker/src/memory/memoryReviewPort.ts';
 import { isContextEligibleMemory } from '../../contexts/memory/src/contract/memoryContract.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
@@ -383,7 +383,7 @@ test('memory review SQL adapter reports workspace scoped misses as rejected writ
 });
 
 test('memory review source guard forbids provider router context assembly and canonical note SQL', async () => {
-  const source = await readFile(new URL('apps/worker/src/memoryReviewPort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/memory/memoryReviewPort.ts', root), 'utf8');
 
   assert.match(source, /MemoryReviewPort/);
   assert.match(source, /from memory_items/);

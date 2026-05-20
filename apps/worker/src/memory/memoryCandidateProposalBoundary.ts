@@ -2,15 +2,15 @@
 // Authority: docs/contracts/memory.md
 // Companion: docs/contracts/backend-runtime.md, docs/contracts/repository-topology.md
 
-import type { MemoryItemContract } from '../../../contexts/memory/src/contract/memoryContract.ts';
-import { memoryTypes, validateMemoryItem } from '../../../contexts/memory/src/contract/memoryContract.ts';
-import type { ApprovedOperationIntent } from './operationApprovalRuntimeHandlers.ts';
+import type { MemoryItemContract } from '../../../../contexts/memory/src/contract/memoryContract.ts';
+import { memoryTypes, validateMemoryItem } from '../../../../contexts/memory/src/contract/memoryContract.ts';
+import type { MemoryCandidateApprovalInput } from './memoryCandidateApprovalInput.ts';
 
 export interface MemoryCandidateProposalBoundaryInput {
   memoryCandidatePersistence: MemoryCandidatePersistencePort;
   workspaceId: string;
   userId: string;
-  approvedIntent?: ApprovedOperationIntent;
+  approvalInput?: MemoryCandidateApprovalInput;
   now: number;
 }
 
@@ -174,39 +174,39 @@ export function prepareMemoryCandidateWriteIntent(
     return { ok: false, errors: inputErrors };
   }
 
-  if (input.approvedIntent === undefined) {
+  if (input.approvalInput === undefined) {
     return { ok: true };
   }
 
-  const intentErrors = validateApprovedIntentScope(input);
+  const intentErrors = validateMemoryCandidateApprovalInputScope(input);
   if (intentErrors.length > 0) {
     return { ok: false, errors: intentErrors };
   }
 
-  if (input.approvedIntent.auditRecord.operationType !== 'create_memory_candidate') {
+  if (input.approvalInput.auditRecord.operationType !== 'create_memory_candidate') {
     return { ok: true };
   }
 
-  const operation = input.approvedIntent.auditRecord.operation;
+  const operation = input.approvalInput.auditRecord.operation;
   const operationErrors = validateCreateMemoryCandidateOperation(operation);
   if (operationErrors.length > 0 || !isCreateMemoryCandidateOperation(operation)) {
     return {
       ok: false,
       errors: operationErrors.length > 0
-        ? operationErrors.map((error) => `approvedIntent.auditRecord.operation: ${error}`)
-        : ['approvedIntent.auditRecord.operation must be create_memory_candidate'],
+        ? operationErrors.map((error) => `approvalInput.auditRecord.operation: ${error}`)
+        : ['approvalInput.auditRecord.operation must be create_memory_candidate'],
     };
   }
 
   const memory = mapCreateMemoryCandidateOperationToMemory({
     workspaceId: input.workspaceId,
     userId: input.userId,
-    operationId: input.approvedIntent.operationId,
+    operationId: input.approvalInput.operationId,
     operation,
     now: input.now,
-    ...(input.approvedIntent.auditRecord.noteId === undefined
+    ...(input.approvalInput.auditRecord.noteId === undefined
       ? {}
-      : { noteId: input.approvedIntent.auditRecord.noteId }),
+      : { noteId: input.approvalInput.auditRecord.noteId }),
   });
   const memoryValidation = validateMemoryItem(memory);
   if (!memoryValidation.valid) {
@@ -219,7 +219,7 @@ export function prepareMemoryCandidateWriteIntent(
   const writeIntent = {
     workspaceId: input.workspaceId,
     userId: input.userId,
-    sourceOperationId: input.approvedIntent.operationId,
+    sourceOperationId: input.approvalInput.operationId,
     memory,
   };
   const writeIntentErrors = validateMemoryCandidateWriteIntent(writeIntent);
@@ -303,46 +303,46 @@ function validateBoundaryInput(input: unknown): string[] {
   return errors;
 }
 
-function validateApprovedIntentScope(input: MemoryCandidateProposalBoundaryInput): string[] {
-  const intent = input.approvedIntent;
+function validateMemoryCandidateApprovalInputScope(input: MemoryCandidateProposalBoundaryInput): string[] {
+  const intent = input.approvalInput;
   if (intent === undefined) {
     return [];
   }
 
   const errors: string[] = [];
-  if (intent.type !== 'operation_proposal_accepted') {
-    errors.push('approvedIntent.type must be operation_proposal_accepted');
+  if (intent.type !== 'memory_candidate_from_accepted_operation') {
+    errors.push('approvalInput.type must be memory_candidate_from_accepted_operation');
   }
   if (!isStableRuntimeId(intent.workspaceId)) {
-    errors.push('approvedIntent.workspaceId must be a stable non-sentinel runtime id');
+    errors.push('approvalInput.workspaceId must be a stable non-sentinel runtime id');
   }
   if (!isStableRuntimeId(intent.operationId)) {
-    errors.push('approvedIntent.operationId must be a stable non-sentinel runtime id');
+    errors.push('approvalInput.operationId must be a stable non-sentinel runtime id');
   }
   if (!Number.isFinite(intent.acceptedAt)) {
-    errors.push('approvedIntent.acceptedAt must be a finite number');
+    errors.push('approvalInput.acceptedAt must be a finite number');
   }
   if (intent.workspaceId !== input.workspaceId) {
-    errors.push('approvedIntent.workspaceId must match workspaceId');
+    errors.push('approvalInput.workspaceId must match workspaceId');
   }
   if (!isRecord(intent.auditRecord)) {
-    errors.push('approvedIntent.auditRecord must be an object');
+    errors.push('approvalInput.auditRecord must be an object');
     return errors;
   }
   if (intent.auditRecord.id !== intent.operationId) {
-    errors.push('approvedIntent.auditRecord.id must match approvedIntent.operationId');
+    errors.push('approvalInput.auditRecord.id must match approvalInput.operationId');
   }
   if (intent.auditRecord.workspaceId !== input.workspaceId) {
-    errors.push('approvedIntent.auditRecord.workspaceId must match workspaceId');
+    errors.push('approvalInput.auditRecord.workspaceId must match workspaceId');
   }
   if (intent.auditRecord.status !== 'proposed') {
-    errors.push('approvedIntent.auditRecord.status must be proposed');
+    errors.push('approvalInput.auditRecord.status must be proposed');
   }
   if (intent.auditRecord.policy !== 'review' && intent.auditRecord.operationType === 'create_memory_candidate') {
-    errors.push('approvedIntent.auditRecord.policy must be review for create_memory_candidate');
+    errors.push('approvalInput.auditRecord.policy must be review for create_memory_candidate');
   }
   if (intent.auditRecord.noteId !== undefined && !isStableRuntimeId(intent.auditRecord.noteId)) {
-    errors.push('approvedIntent.auditRecord.noteId must be a stable non-sentinel runtime id when provided');
+    errors.push('approvalInput.auditRecord.noteId must be a stable non-sentinel runtime id when provided');
   }
 
   return errors;

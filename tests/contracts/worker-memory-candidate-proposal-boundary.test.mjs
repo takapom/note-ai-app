@@ -6,7 +6,7 @@ import {
   InMemoryMemoryCandidatePersistencePort,
   mapMemoryCandidateWriteIntentToSql,
   runMemoryCandidateProposalBoundary,
-} from '../../apps/worker/src/memoryCandidateProposalBoundary.ts';
+} from '../../apps/worker/src/memory/memoryCandidateProposalBoundary.ts';
 
 const root = new URL('../../', import.meta.url);
 const now = 1_764_010_000_000;
@@ -27,7 +27,7 @@ test('accepted create_memory_candidate intent writes a source-backed canonical m
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent(),
+    approvalInput: makeApprovalInput(),
     now,
   });
 
@@ -56,7 +56,7 @@ test('accepted create_memory_candidate without offsets does not fabricate a sour
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent({
+    approvalInput: makeApprovalInput({
       operationId: 'operation_memory_candidate_no_offsets',
       operation: {
         ...baseOperation,
@@ -85,7 +85,7 @@ test('memory candidate boundary rejects source-less candidates before persistenc
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent({
+    approvalInput: makeApprovalInput({
       operationId: 'operation_memory_candidate_no_source',
       noteId: undefined,
       operation: {
@@ -114,7 +114,7 @@ test('insert_assist_block accepted intent and missing approved intent do not wri
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent({
+    approvalInput: makeApprovalInput({
       operationId: 'operation_assist_001',
       operationType: 'insert_assist_block',
       policy: 'inline',
@@ -154,20 +154,20 @@ test('workspace mismatch and invalid primitives reject before persistence', asyn
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent({ workspaceId: 'workspace_other' }),
+    approvalInput: makeApprovalInput({ workspaceId: 'workspace_other' }),
     now,
   });
   const invalid = await runMemoryCandidateProposalBoundary({
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_unset',
     userId: ' user_001',
-    approvedIntent: makeApprovedIntent(),
+    approvalInput: makeApprovalInput(),
     now: Number.NaN,
   });
 
   assert.equal(mismatch.ok, false);
-  assert.ok(mismatch.errors.includes('approvedIntent.workspaceId must match workspaceId'));
-  assert.ok(mismatch.errors.includes('approvedIntent.auditRecord.workspaceId must match workspaceId'));
+  assert.ok(mismatch.errors.includes('approvalInput.workspaceId must match workspaceId'));
+  assert.ok(mismatch.errors.includes('approvalInput.auditRecord.workspaceId must match workspaceId'));
   assert.deepEqual(invalid.errors, [
     'workspaceId must be a stable non-sentinel runtime id',
     'userId must be a stable non-sentinel runtime id',
@@ -189,7 +189,7 @@ test('invalid source span primitives reject before persistence', async () => {
     memoryCandidatePersistence: persistence,
     workspaceId: 'workspace_001',
     userId: 'user_001',
-    approvedIntent: makeApprovedIntent({
+    approvalInput: makeApprovalInput({
       operationId: 'operation_memory_candidate_bad_span',
       noteId: undefined,
       operation: {
@@ -261,7 +261,7 @@ test('SQL mapper inserts memory_items candidate with provenance columns only', a
 });
 
 test('memory candidate boundary source guard forbids shortcut dependencies and canonical note writes', async () => {
-  const source = await readFile(new URL('apps/worker/src/memoryCandidateProposalBoundary.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/memory/memoryCandidateProposalBoundary.ts', root), 'utf8');
 
   assert.match(source, /MemoryCandidatePersistencePort/);
   assert.match(source, /insert into memory_items/);
@@ -270,14 +270,14 @@ test('memory candidate boundary source guard forbids shortcut dependencies and c
   assert.doesNotMatch(source, /\b(?:update|delete\s+from|upsert|alter|create)\s+[`"]?(?:notes|sections|blocks|ai_operations|source_spans|semantic_units|memory_context_candidates)[`"]?\b/i);
 });
 
-function makeApprovedIntent(overrides = {}) {
+function makeApprovalInput(overrides = {}) {
   const operationId = overrides.operationId ?? 'operation_memory_candidate_001';
   const workspaceId = overrides.workspaceId ?? 'workspace_001';
   const noteId = Object.hasOwn(overrides, 'noteId') ? overrides.noteId : 'note_001';
   const operation = overrides.operation ?? baseOperation;
 
   return {
-    type: 'operation_proposal_accepted',
+    type: 'memory_candidate_from_accepted_operation',
     workspaceId,
     operationId,
     acceptedAt: now + 1,
@@ -289,12 +289,6 @@ function makeApprovedIntent(overrides = {}) {
       operationType: overrides.operationType ?? operation.type,
       policy: overrides.policy ?? 'review',
       operation,
-      errors: [],
-      sourceSpans: [],
-      confidence: operation.confidence,
-      generatedBy: 'worker_runtime',
-      createdAt: now - 100,
-      updatedAt: now - 100,
     },
   };
 }
