@@ -5,10 +5,10 @@ import test from 'node:test';
 import {
   handleWorkerHttpRequest,
   matchWorkerRoute,
-} from '../../apps/worker/src/workerHttpRouter.ts';
-import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memoryCandidateProposalBoundary.ts';
-import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/operationProposalPort.ts';
-import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/noteDocumentPersistencePort.ts';
+} from '../../apps/worker/src/runtime/http/workerHttpRouter.ts';
+import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memory/memoryCandidateProposalBoundary.ts';
+import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
+import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import {
@@ -582,7 +582,7 @@ test('worker HTTP router returns explicit not configured for unimplemented port-
 });
 
 test('worker HTTP router source stays a thin routing boundary', async () => {
-  const source = await readFile(new URL('apps/worker/src/workerHttpRouter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/http/workerHttpRouter.ts', root), 'utf8');
 
   assert.doesNotMatch(source, /from ['"].*docs\/generated\//);
   assert.doesNotMatch(source, /operationRouter|OperationRouter|providerRegistry|createStaticOperationGenerationProviderRegistry/);

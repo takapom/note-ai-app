@@ -7,8 +7,8 @@ import {
   createWorkerFetchHandler,
   handleWorkerFetch,
   parseWorkerRequest,
-} from '../../apps/worker/src/workerEntrypoint.ts';
-import { WorkerTursoSqlExecutor } from '../../apps/worker/src/workerRuntimePorts.ts';
+} from '../../apps/worker/src/runtime/http/workerEntrypoint.ts';
+import { WorkerTursoSqlExecutor } from '../../apps/worker/src/runtime/composition/workerTursoSqlExecutor.ts';
 import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const now = 1_764_001_000_000;
@@ -870,7 +870,7 @@ test('worker Turso SQL executor exposes query rows and ordered writes without SQ
 });
 
 test('worker entrypoint source stays a thin fetch and port wiring boundary', async () => {
-  const source = await readFile(new URL('../../apps/worker/src/workerEntrypoint.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../apps/worker/src/runtime/http/workerEntrypoint.ts', import.meta.url), 'utf8');
 
   assert.match(source, /createWorkerFetchHandler/);
   assert.match(source, /handleWorkerHttpRequest/);

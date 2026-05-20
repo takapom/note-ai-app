@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memoryCandidateProposalBoundary.ts';
-import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/noteBlockCommandPort.ts';
-import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/noteDocumentPersistencePort.ts';
-import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/operationProposalPort.ts';
-import { InMemoryProvenanceLookupPort } from '../../apps/worker/src/provenanceLookupPort.ts';
-import { createWorkerFetchHandler } from '../../apps/worker/src/workerEntrypoint.ts';
+import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memory/memoryCandidateProposalBoundary.ts';
+import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/note-model/noteBlockCommandPort.ts';
+import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
+import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
+import { InMemoryProvenanceLookupPort } from '../../apps/worker/src/note-model/provenanceLookupPort.ts';
+import { createWorkerFetchHandler } from '../../apps/worker/src/runtime/http/workerEntrypoint.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import { dirtyFlagSectionFixture } from '../../contexts/scheduler/src/contract/structureSchedulerFixtures.ts';

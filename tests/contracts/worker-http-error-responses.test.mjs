@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   handleWorkerHttpRequest,
-} from '../../apps/worker/src/workerHttpRouter.ts';
+} from '../../apps/worker/src/runtime/http/workerHttpRouter.ts';
 
 const now = 1_764_001_000_000;
 const baseRequest = {

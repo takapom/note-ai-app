@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   isStableRuntimeId,
   normalizeWorkerAuthBoundary,
-} from '../../apps/worker/src/workerAuthBoundary.ts';
+} from '../../apps/worker/src/runtime/http/workerAuthBoundary.ts';
 
 const root = new URL('../../', import.meta.url);
 
@@ -198,7 +198,7 @@ test('worker auth boundary stable runtime id validator rejects blank, trimmed, a
 });
 
 test('worker auth boundary source stays provider-neutral and policy-free', async () => {
-  const source = await readFile(new URL('apps/worker/src/workerAuthBoundary.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/http/workerAuthBoundary.ts', root), 'utf8');
 
   assert.match(source, /normalizeWorkerAuthBoundary/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(jsonwebtoken|jose|auth0|clerk|next-auth|passport)/i);

@@ -7,32 +7,33 @@ import {
   runOperationDismissHandler,
   type OperationApprovalRuntimeHandlerInput,
   type OperationApprovalRuntimeHandlerResult,
-} from './operationApprovalRuntimeHandlers.ts';
+} from '../../ai-operations/operationApprovalRuntimeHandlers.ts';
+import { mapApprovedOperationIntentToMemoryCandidateApprovalInput } from '../../ai-operations/memoryCandidateApprovalMapping.ts';
 import {
   prepareMemoryCandidateWriteIntent,
   runMemoryCandidateProposalBoundary,
   type MemoryCandidatePersistencePort,
   type MemoryCandidateProposalBoundaryResult,
-} from './memoryCandidateProposalBoundary.ts';
+} from '../../memory/memoryCandidateProposalBoundary.ts';
 import {
   runNoteStructureRouteHandler,
   type NoteLeaveCause,
   type NoteStructureRouteHandlerResult,
   type NoteStructureRouteKind,
-} from './noteStructureRuntimeHandlers.ts';
+} from '../../scheduler/noteStructureRouteHandler.ts';
 import type {
   NoteDocumentContract,
-} from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../../contexts/note-model/src/contract/noteContract.ts';
 import type {
   NoteDocumentLoadRequest,
   NoteDocumentLoadResult,
   NoteDocumentPersistencePort,
   NoteDocumentSaveResult,
-} from './noteDocumentPersistencePort.ts';
-import type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
-import type { DigestReadPort } from './nextOpenDigestReadPort.ts';
-import type { ProvenanceLookupInput, ProvenanceLookupPort, ProvenanceLookupResult } from './provenanceLookupPort.ts';
-import type { StructureTriggerSchedulerFlowInput } from './structureSchedulerRuntimeFlow.ts';
+} from '../../note-model/noteDocumentPersistencePort.ts';
+import type { NoteBlockCommandPort } from '../../note-model/noteBlockCommandPort.ts';
+import type { DigestReadPort } from '../../scheduler/nextOpenDigestReadPort.ts';
+import type { ProvenanceLookupInput, ProvenanceLookupPort, ProvenanceLookupResult } from '../../note-model/provenanceLookupPort.ts';
+import type { StructureTriggerSchedulerFlowInput } from '../../scheduler/structureSchedulerRuntimeFlow.ts';
 
 export interface WorkerHttpRequest {
   method: string;
@@ -48,8 +49,8 @@ export interface WorkerHttpResponse {
   body: unknown;
 }
 
-export type { DigestReadPort } from './nextOpenDigestReadPort.ts';
-export type { NoteBlockCommandPort } from './noteBlockCommandPort.ts';
+export type { DigestReadPort } from '../../scheduler/nextOpenDigestReadPort.ts';
+export type { NoteBlockCommandPort } from '../../note-model/noteBlockCommandPort.ts';
 
 export interface MemoryReviewPort {
   acceptMemory(input: WorkerRouteCommandInput): Promise<WorkerRouteCommandResult>;
@@ -478,13 +479,13 @@ async function preflightMemoryCandidateProposalAccept(
     memoryCandidatePersistence: ports.memoryCandidatePersistence,
     workspaceId: request.workspaceId,
     userId: request.userId,
-    approvedIntent: {
+    approvalInput: mapApprovedOperationIntentToMemoryCandidateApprovalInput({
       type: 'operation_proposal_accepted',
       workspaceId: request.workspaceId,
       operationId,
       auditRecord: proposal.auditRecord,
       acceptedAt: request.now,
-    },
+    }),
     now: request.now,
   });
 
@@ -521,7 +522,7 @@ async function runAcceptedOperationMemoryCandidateBoundary(
     memoryCandidatePersistence,
     workspaceId: request.workspaceId,
     userId: request.userId,
-    approvedIntent: approval.approvedIntent,
+    approvalInput: mapApprovedOperationIntentToMemoryCandidateApprovalInput(approval.approvedIntent),
     now: request.now,
   });
 }

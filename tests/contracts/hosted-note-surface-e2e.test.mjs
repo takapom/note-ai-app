@@ -4,9 +4,9 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/noteBlockCommandPort.ts';
-import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/noteDocumentPersistencePort.ts';
-import { createWorkerFetchHandler } from '../../apps/worker/src/workerEntrypoint.ts';
+import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/note-model/noteBlockCommandPort.ts';
+import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
+import { createWorkerFetchHandler } from '../../apps/worker/src/runtime/http/workerEntrypoint.ts';
 import { noteDocumentFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
