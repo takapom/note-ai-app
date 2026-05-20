@@ -12,8 +12,8 @@ import {
   mapCompletedJobRows,
   mapNextOpenDigestPreparationToAgentLocalSql,
   mapStructureJobsToAgentLocalSql,
-} from '../../apps/worker/src/schedulerAgentLocalSqlAdapter.ts';
-import { runStructureTriggerSchedulerFlow } from '../../apps/worker/src/structureSchedulerRuntimeFlow.ts';
+} from '../../apps/worker/src/scheduler/schedulerAgentLocalSqlAdapter.ts';
+import { runStructureTriggerSchedulerFlow } from '../../apps/worker/src/scheduler/structureSchedulerRuntimeFlow.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import { handleBlockChanged } from '../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 import {
@@ -385,7 +385,7 @@ test('StructureJob queue reports partial Agent-local SQL writes instead of hidin
 test('scheduler agent-local SQL adapter does not mention forbidden runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/schedulerAgentLocalSqlAdapter.ts',
+    '../../apps/worker/src/scheduler/schedulerAgentLocalSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

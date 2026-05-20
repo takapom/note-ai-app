@@ -2,12 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
-import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/operationGenerationProviderFlow.ts';
-import {
-  runNoteStructureRouteHandler,
-  runStructureJobAgentHandler,
-} from '../../apps/worker/src/noteStructureRuntimeHandlers.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/ai-operations/operationGenerationProviderFlow.ts';
+import { runNoteStructureRouteHandler } from '../../apps/worker/src/scheduler/noteStructureRouteHandler.ts';
+import { runStructureJobAgentHandler } from '../../apps/worker/src/ai-operations/structure-job/structureJobAgentHandler.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
@@ -318,21 +316,27 @@ test('structure job Agent handler stops before provider when context assembly fa
 });
 
 test('note structure runtime handlers stay thin and avoid direct policy/import shortcuts', async () => {
-  const source = await readFile(
-    new URL('../../apps/worker/src/noteStructureRuntimeHandlers.ts', import.meta.url),
+  const routeHandlerSource = await readFile(
+    new URL('../../apps/worker/src/scheduler/noteStructureRouteHandler.ts', import.meta.url),
     'utf8',
   );
+  const structureJobAgentHandlerSource = await readFile(
+    new URL('../../apps/worker/src/ai-operations/structure-job/structureJobAgentHandler.ts', import.meta.url),
+    'utf8',
+  );
+  const combinedSource = `${routeHandlerSource}\n${structureJobAgentHandlerSource}`;
 
-  assert.match(source, /runStructureTriggerSchedulerFlow/);
-  assert.match(source, /runContextEnvelopeAssemblyFlow/);
-  assert.match(source, /runStructureJobOperationOrchestrationFlow/);
-  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
-  assert.doesNotMatch(source, /from\s+['"][^'"]*operationContract\.ts['"]/);
-  assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
-  assert.doesNotMatch(source, /from\s+['"][^'"]*operationAuditPort\.ts['"]/);
-  assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
-  assert.doesNotMatch(source, /\bclassifyOperationPolicy\b|\bvalidateStructureOperation\b|auditPersistence\.save\s*\(/i);
-  assert.doesNotMatch(source, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from)\b/i);
+  assert.match(routeHandlerSource, /runStructureTriggerSchedulerFlow/);
+  assert.doesNotMatch(routeHandlerSource, /runContextEnvelopeAssemblyFlow/);
+  assert.match(structureJobAgentHandlerSource, /runContextEnvelopeAssemblyFlow/);
+  assert.match(structureJobAgentHandlerSource, /runStructureJobOperationOrchestrationFlow/);
+  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*operationRouterContract\.ts['"]/);
+  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*operationContract\.ts['"]/);
+  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
+  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*operationAuditPort\.ts['"]/);
+  assert.doesNotMatch(combinedSource, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
+  assert.doesNotMatch(combinedSource, /\bclassifyOperationPolicy\b|\bvalidateStructureOperation\b|auditPersistence\.save\s*\(/i);
+  assert.doesNotMatch(combinedSource, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from)\b/i);
 });
 
 function runningSectionJob() {

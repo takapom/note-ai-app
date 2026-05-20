@@ -2,7 +2,7 @@
 // Authority: docs/contracts/ai-structuring-lifecycle.md
 // Companion: docs/contracts/backend-runtime.md
 
-import type { SectionContract } from '../../../contexts/note-model/src/contract/noteContract.ts';
+import type { SectionContract } from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import {
   handleBlockChanged,
   planStructureJobs,
@@ -20,7 +20,7 @@ import {
   type StructureTargetScope,
   type StructureTriggerReason,
   type WholeNoteStructureReason,
-} from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+} from '../../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 
 export type ValidBlockChangedResult = Extract<BlockChangedResult, {
   savedBlocks: BlockSaveIntentContract[];

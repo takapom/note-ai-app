@@ -9,7 +9,7 @@ import {
   type StructureJobContract,
   type StructureJobPriority,
   type StructureJobStatus,
-} from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+} from '../../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 
 const structureJobStatuses = ['queued', 'running', 'completed', 'failed', 'skipped', 'deduped'] as const;
 const structureJobPriorities = ['low', 'normal', 'high'] as const;

@@ -6,7 +6,7 @@ import {
   AgentLocalNextOpenDigestReadAdapter,
   InMemoryNextOpenDigestReadPort,
   mapNextOpenDigestReadToAgentLocalSql,
-} from '../../apps/worker/src/nextOpenDigestReadPort.ts';
+} from '../../apps/worker/src/scheduler/nextOpenDigestReadPort.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -166,7 +166,7 @@ test('SQL next open digest read rejects cross-workspace rows', async () => {
 });
 
 test('next open digest read source stays a focused read boundary', async () => {
-  const source = await readFile(new URL('apps/worker/src/nextOpenDigestReadPort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/scheduler/nextOpenDigestReadPort.ts', root), 'utf8');
 
   assert.match(source, /DigestReadPort/);
   assert.match(source, /from agent_local_next_open_digest_preparation_intents/);

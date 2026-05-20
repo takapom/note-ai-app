@@ -2,7 +2,7 @@
 // Authority: docs/contracts/backend-runtime.md
 // Companion: docs/contracts/ai-structuring-lifecycle.md, docs/contracts/cloudflare-agents-turso.md
 
-import type { StructureJobContract } from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+import type { StructureJobContract } from '../../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 import type {
   SchedulerAgentLocalSqlExecutor,
   SchedulerAgentLocalSqlStatement,

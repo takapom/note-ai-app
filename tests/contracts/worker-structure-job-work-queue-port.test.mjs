@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   InMemoryStructureJobWorkQueue,
   validateStructureJobWorkQueueRecord,
-} from '../../apps/worker/src/structureJobWorkQueuePort.ts';
+} from '../../apps/worker/src/scheduler/structureJobWorkQueuePort.ts';
 import { completedSectionJobFixture } from '../../contexts/scheduler/src/contract/structureSchedulerFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -192,7 +192,7 @@ test('structure job work queue record validator rejects invalid terminal statuse
 });
 
 test('structure job work queue port source does not cross provider, routing, audit, or canonical write boundaries', async () => {
-  const source = await readFile(new URL('apps/worker/src/structureJobWorkQueuePort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/scheduler/structureJobWorkQueuePort.ts', root), 'utf8');
 
   assert.match(source, /StructureJobWorkQueuePort/);
   assert.match(source, /claimNextQueuedJob/);

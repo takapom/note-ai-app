@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   runBlockChangedSchedulerFlow,
   runStructureTriggerSchedulerFlow,
-} from '../../apps/worker/src/structureSchedulerRuntimeFlow.ts';
+} from '../../apps/worker/src/scheduler/structureSchedulerRuntimeFlow.ts';
 import {
   blockChangedInputFixture,
   completedSectionJobFixture,

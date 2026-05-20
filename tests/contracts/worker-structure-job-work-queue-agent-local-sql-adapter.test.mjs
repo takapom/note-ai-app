@@ -10,7 +10,7 @@ import {
   mapNextQueuedStructureJobLookupToAgentLocalSql,
   mapStructureJobLookupByIdToAgentLocalSql,
   mapStructureJobWorkQueueRow,
-} from '../../apps/worker/src/structureJobWorkQueueAgentLocalSqlAdapter.ts';
+} from '../../apps/worker/src/scheduler/structureJobWorkQueueAgentLocalSqlAdapter.ts';
 import { completedSectionJobFixture } from '../../contexts/scheduler/src/contract/structureSchedulerFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -216,7 +216,7 @@ test('Agent-local StructureJob work queue reports stale lifecycle updates when e
 
 test('Agent-local StructureJob work queue adapter writes only temporary job state', async () => {
   const source = await readFile(
-    new URL('apps/worker/src/structureJobWorkQueueAgentLocalSqlAdapter.ts', root),
+    new URL('apps/worker/src/scheduler/structureJobWorkQueueAgentLocalSqlAdapter.ts', root),
     'utf8',
   );
 

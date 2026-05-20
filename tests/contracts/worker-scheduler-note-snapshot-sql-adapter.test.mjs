@@ -11,8 +11,8 @@ import {
   mapSectionSnapshotLookupToSql,
   overlayDirtySectionMarks,
   TursoSchedulerNoteSnapshotAdapter,
-} from '../../apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts';
-import { runStructureTriggerSchedulerFlow } from '../../apps/worker/src/structureSchedulerRuntimeFlow.ts';
+} from '../../apps/worker/src/scheduler/schedulerNoteSnapshotSqlAdapter.ts';
+import { runStructureTriggerSchedulerFlow } from '../../apps/worker/src/scheduler/structureSchedulerRuntimeFlow.ts';
 import { noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import {
   dirtyFlagSectionFixture,
@@ -290,7 +290,7 @@ test('scheduler note snapshot adapter failure stops scheduler flow before enqueu
 test('scheduler note snapshot SQL adapter does not mention forbidden runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts',
+    '../../apps/worker/src/scheduler/schedulerNoteSnapshotSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

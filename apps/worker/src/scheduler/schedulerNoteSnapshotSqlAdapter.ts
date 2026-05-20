@@ -2,7 +2,7 @@
 // Authority: docs/contracts/cloudflare-agents-turso.md
 // Companion: docs/contracts/app-note-model.md, docs/contracts/backend-runtime.md
 
-import type { SectionContract } from '../../../contexts/note-model/src/contract/noteContract.ts';
+import type { SectionContract } from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import type { SchedulerNoteSnapshotPort } from './structureSchedulerRuntimeFlow.ts';
 
 export interface SchedulerNoteSnapshotSqlStatement {
