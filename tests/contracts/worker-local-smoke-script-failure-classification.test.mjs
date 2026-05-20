@@ -6,13 +6,28 @@ import { test } from 'node:test';
 
 const repoRoot = new URL('../..', import.meta.url);
 const scriptPath = new URL('../../scripts/smoke-worker-local-runtime.mjs', import.meta.url);
+const wranglerDevPath = new URL('../../scripts/worker-local-smoke/wranglerDev.mjs', import.meta.url);
+const failureClassificationPath = new URL('../../scripts/worker-local-smoke/failureClassification.mjs', import.meta.url);
+const httpSmokeRunnerPath = new URL('../../scripts/worker-local-smoke/httpSmokeRunner.mjs', import.meta.url);
 
 test('local smoke script injects only required local Worker vars into script-launched Wrangler', async () => {
-  const source = await readFile(scriptPath, 'utf8');
+  const wranglerSource = await readFile(wranglerDevPath, 'utf8');
+  const entrypointSource = await readFile(scriptPath, 'utf8');
 
-  assert.match(source, /'--var'[\s\S]*`LOCAL_AGENT_SMOKE_ENABLED:\$\{process\.env\.LOCAL_AGENT_SMOKE_ENABLED\s*\?\?\s*'1'\}`/);
-  assert.match(source, /args\.push\('--var',\s*`WORKER_AUTH_SHARED_SECRET:\$\{config\.authSecret\}`\)/);
-  assert.doesNotMatch(source, /CLOUDFLARE_INCLUDE_PROCESS_ENV/);
+  assert.match(wranglerSource, /'--var'[\s\S]*`LOCAL_AGENT_SMOKE_ENABLED:\$\{process\.env\.LOCAL_AGENT_SMOKE_ENABLED\s*\?\?\s*'1'\}`/);
+  assert.match(wranglerSource, /args\.push\('--var',\s*`WORKER_AUTH_SHARED_SECRET:\$\{authSecret\}`\)/);
+  assert.doesNotMatch(wranglerSource, /CLOUDFLARE_INCLUDE_PROCESS_ENV/);
+  assert.doesNotMatch(entrypointSource, /spawn\(/);
+});
+
+test('local smoke modules keep failure classification separated from HTTP runner', async () => {
+  const failureSource = await readFile(failureClassificationPath, 'utf8');
+  const httpSource = await readFile(httpSmokeRunnerPath, 'utf8');
+
+  assert.match(failureSource, /export class SetupFailure/);
+  assert.match(failureSource, /export class SmokeFailure/);
+  assert.match(failureSource, /export class BlockerFailure/);
+  assert.doesNotMatch(httpSource, /export class (?:SetupFailure|SmokeFailure|BlockerFailure)/);
 });
 
 test('local smoke script reports setup failure for invalid seed/reset setup body', async () => {
