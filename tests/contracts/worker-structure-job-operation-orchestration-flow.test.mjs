@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
 import {
   createStaticOperationGenerationProviderRegistry,
-} from '../../apps/worker/src/operationGenerationProviderFlow.ts';
+} from '../../apps/worker/src/ai-operations/operationGenerationProviderFlow.ts';
 import {
   runStructureJobOperationOrchestrationFlow,
-} from '../../apps/worker/src/structureJobOperationOrchestrationFlow.ts';
+} from '../../apps/worker/src/ai-operations/structure-job/structureJobOperationOrchestrationFlow.ts';
 import { assembleContextEnvelope } from '../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';

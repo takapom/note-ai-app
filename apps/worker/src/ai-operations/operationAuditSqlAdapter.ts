@@ -2,7 +2,7 @@
 // Authority: docs/contracts/cloudflare-agents-turso.md
 // Companion: docs/contracts/data-model.md, docs/contracts/operation-return-contract.md
 
-import type { AiOperationAuditRecordContract } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+import type { AiOperationAuditRecordContract } from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 import {
   type OperationAuditPersistencePort,
   type OperationAuditSaveResult,

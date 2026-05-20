@@ -5,7 +5,7 @@
 import {
   type AiOperationAuditRecordContract,
   validateOperationAuditRecordContract,
-} from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+} from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
 export interface OperationAuditSaveResult {
   ok: boolean;

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
-import { InMemoryOperationAuditRecoveryQueue } from '../../apps/worker/src/operationAuditRecoveryQueue.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { InMemoryOperationAuditRecoveryQueue } from '../../apps/worker/src/ai-operations/operationAuditRecoveryQueue.ts';
 import {
   createStructureJobOperationIdPrefix,
   runStructureJobOperationFlow,
-} from '../../apps/worker/src/structureJobOperationFlow.ts';
+} from '../../apps/worker/src/ai-operations/structure-job/structureJobOperationFlow.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 import { completedSectionJobFixture } from '../../contexts/scheduler/src/contract/structureSchedulerFixtures.ts';

@@ -2,7 +2,7 @@
 // Authority: docs/contracts/backend-runtime.md
 // Companion: docs/contracts/cloudflare-agents-turso.md, docs/contracts/repository-topology.md
 
-import type { AiOperationAuditRecordContract } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+import type { AiOperationAuditRecordContract } from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 import {
   type OperationAuditRecoveryQueuePayload,
   type OperationAuditRecoveryQueuePort,

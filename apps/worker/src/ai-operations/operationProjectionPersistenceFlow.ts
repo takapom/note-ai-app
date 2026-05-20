@@ -6,7 +6,7 @@ import type {
   AiOperationAuditRecordContract,
   OperationListRouteResult,
   OperationRouteResult,
-} from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+} from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 import {
   runOperationProposalPersistenceFlow,
   type OperationProposalPersistenceFlowResult,

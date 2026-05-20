@@ -8,13 +8,13 @@ import {
   type ContextAssemblyLimits,
   type ContextEnvelopeContract,
   type ContextEnvelopeValidationResult,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import {
   type CompletedStructureJobContract,
   completeStructureJob,
   type StructureJobContract,
-} from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
-import type { ContextEnvelopeBuiltEvent } from './contextAssemblyRuntimeFlow.ts';
+} from '../../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+import type { ContextEnvelopeBuiltEvent } from './contextEnvelopeBuiltEvent.ts';
 
 export interface OperationGenerationProviderRequest {
   structureJob: StructureJobContract;

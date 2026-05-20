@@ -4,7 +4,7 @@
 
 import type {
   AiOperationAuditRecordContract,
-} from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+} from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
 export type ActiveOperationProjectionEffect = 'create_semantic_unit' | 'create_relation' | 'mark_stale';
 

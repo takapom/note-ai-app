@@ -4,14 +4,14 @@ import test from 'node:test';
 
 import {
   runOperationProjectionPersistenceFlow,
-} from '../../apps/worker/src/operationProjectionPersistenceFlow.ts';
+} from '../../apps/worker/src/ai-operations/operationProjectionPersistenceFlow.ts';
 import {
   InMemoryOperationProjectionPersistencePort,
-} from '../../apps/worker/src/operationProjectionPort.ts';
+} from '../../apps/worker/src/ai-operations/operationProjectionPort.ts';
 import {
   InMemoryOperationProposalPersistencePort,
-} from '../../apps/worker/src/operationProposalPort.ts';
-import { routeGeneratedOperations } from '../../apps/worker/src/operationRoutingAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
+import { routeGeneratedOperations } from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 
@@ -304,8 +304,8 @@ test('projection port rejects mismatched or non-silent active projection intents
 
 test('projection persistence boundary does not import schema internals, provider SDK, or canonical note SQL writes', async () => {
   for (const file of [
-    'apps/worker/src/operationProjectionPort.ts',
-    'apps/worker/src/operationProjectionPersistenceFlow.ts',
+    'apps/worker/src/ai-operations/operationProjectionPort.ts',
+    'apps/worker/src/ai-operations/operationProjectionPersistenceFlow.ts',
   ]) {
     const source = await readFile(new URL(file, root), 'utf8');
 

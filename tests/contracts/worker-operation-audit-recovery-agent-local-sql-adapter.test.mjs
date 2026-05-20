@@ -5,8 +5,8 @@ import test from 'node:test';
 import {
   AgentLocalOperationAuditRecoveryQueueAdapter,
   mapOperationAuditRecoveryPayloadToAgentLocalSql,
-} from '../../apps/worker/src/operationAuditRecoveryAgentLocalSqlAdapter.ts';
-import { routeGeneratedOperations } from '../../apps/worker/src/operationRoutingAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditRecoveryAgentLocalSqlAdapter.ts';
+import { routeGeneratedOperations } from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 
@@ -95,7 +95,7 @@ test('Agent-local audit recovery adapter maps executor failure to stable enqueue
 
 test('Agent-local audit recovery adapter does not own retry, transaction, or canonical audit writes', async () => {
   const source = await readFile(
-    new URL('apps/worker/src/operationAuditRecoveryAgentLocalSqlAdapter.ts', root),
+    new URL('apps/worker/src/ai-operations/operationAuditRecoveryAgentLocalSqlAdapter.ts', root),
     'utf8',
   );
 

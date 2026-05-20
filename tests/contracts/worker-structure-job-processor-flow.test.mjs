@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
-import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/operationGenerationProviderFlow.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/ai-operations/operationGenerationProviderFlow.ts';
 import {
   runStructureJobProcessorFlow,
-} from '../../apps/worker/src/structureJobProcessorFlow.ts';
-import { InMemoryStructureJobWorkQueue } from '../../apps/worker/src/structureJobWorkQueuePort.ts';
+} from '../../apps/worker/src/ai-operations/structure-job/structureJobProcessorFlow.ts';
+import { InMemoryStructureJobWorkQueue } from '../../apps/worker/src/scheduler/structureJobWorkQueuePort.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
@@ -462,7 +462,7 @@ test('structure job processor preserves downstream audit failure while marking t
 });
 
 test('structure job processor source only delegates through runtime ports and flows', async () => {
-  const source = await readFile(new URL('apps/worker/src/structureJobProcessorFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/ai-operations/structure-job/structureJobProcessorFlow.ts', root), 'utf8');
 
   assert.match(source, /claimNextQueuedJob/);
   assert.match(source, /runStructureJobAgentHandler/);

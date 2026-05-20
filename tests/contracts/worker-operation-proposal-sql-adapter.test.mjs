@@ -8,7 +8,7 @@ import {
   mapOperationProposalRows,
   mapOperationProposalStateUpdateToSql,
   TursoOperationProposalSqlAdapter,
-} from '../../apps/worker/src/operationProposalSqlAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationProposalSqlAdapter.ts';
 
 const root = new URL('../../', import.meta.url);
 const now = 1_764_001_000_000;
@@ -232,7 +232,7 @@ test('operation proposal row mapper rejects workspace and operation id mismatche
 });
 
 test('operation proposal SQL adapter source guard keeps policy and direct SoT writes out', async () => {
-  const source = await readFile(new URL('apps/worker/src/operationProposalSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/ai-operations/operationProposalSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /operation_proposals/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);

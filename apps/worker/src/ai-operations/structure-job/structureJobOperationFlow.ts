@@ -2,14 +2,14 @@
 // Authority: docs/contracts/ai-structuring-lifecycle.md
 // Companion: docs/contracts/backend-runtime.md, docs/contracts/api-events.md
 
-import type { OperationRouterSnapshot } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
-import type { StructureJobContract } from '../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
-import type { OperationAuditPersistencePort } from './operationAuditPort.ts';
-import type { OperationAuditRecoveryQueuePort } from './operationAuditRecoveryQueue.ts';
+import type { OperationRouterSnapshot } from '../../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+import type { StructureJobContract } from '../../../../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
+import type { OperationAuditPersistencePort } from '../operationAuditPort.ts';
+import type { OperationAuditRecoveryQueuePort } from '../operationAuditRecoveryQueue.ts';
 import {
   runOperationRoutingFlow,
   type OperationRoutingFlowResult,
-} from './operationRoutingFlow.ts';
+} from '../operationRoutingFlow.ts';
 
 export interface StructureJobOperationFlowInput {
   structureJob: StructureJobContract;

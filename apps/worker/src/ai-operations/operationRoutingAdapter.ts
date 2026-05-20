@@ -7,7 +7,7 @@ import {
   type OperationListRouteResult,
   type OperationRouterSnapshot,
   type RouteOperationOptions,
-} from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+} from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
 export interface RuntimeOperationRoutingInput {
   workspaceId: string;

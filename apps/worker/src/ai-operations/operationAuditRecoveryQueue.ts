@@ -2,7 +2,7 @@
 // Authority: docs/contracts/cloudflare-agents-turso.md
 // Companion: docs/contracts/operation-return-contract.md, docs/contracts/repository-topology.md
 
-import type { AiOperationAuditRecordContract } from '../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
+import type { AiOperationAuditRecordContract } from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
 export interface OperationAuditRecoveryQueuePayload {
   operationId: string;

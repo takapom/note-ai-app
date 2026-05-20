@@ -2,19 +2,19 @@
 // Authority: docs/contracts/backend-runtime.md
 // Companion: docs/contracts/cloudflare-agents-turso.md, docs/contracts/ai-structuring-lifecycle.md
 
-import type { ContextAssemblyLimits } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+import type { ContextAssemblyLimits } from '../../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import {
   runStructureJobAgentHandler,
   type StructureJobAgentHandlerInput,
   type StructureJobAgentHandlerResult,
-} from './noteStructureRuntimeHandlers.ts';
+} from './structureJobAgentHandler.ts';
 import type {
   StructureJobClaimResult,
   StructureJobCompletedResult,
   StructureJobFailedResult,
   StructureJobWorkQueuePort,
-} from './structureJobWorkQueuePort.ts';
-import { validateStructureJobWorkQueueRecord } from './structureJobWorkQueuePort.ts';
+} from '../../scheduler/structureJobWorkQueuePort.ts';
+import { validateStructureJobWorkQueueRecord } from '../../scheduler/structureJobWorkQueuePort.ts';
 import type {
   StructureJobOperationOrchestrationFlowResult,
 } from './structureJobOperationOrchestrationFlow.ts';

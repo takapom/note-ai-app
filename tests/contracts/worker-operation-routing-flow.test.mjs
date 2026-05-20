@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
-import { InMemoryOperationAuditRecoveryQueue } from '../../apps/worker/src/operationAuditRecoveryQueue.ts';
-import { runOperationRoutingFlow } from '../../apps/worker/src/operationRoutingFlow.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { InMemoryOperationAuditRecoveryQueue } from '../../apps/worker/src/ai-operations/operationAuditRecoveryQueue.ts';
+import { runOperationRoutingFlow } from '../../apps/worker/src/ai-operations/operationRoutingFlow.ts';
 import {
   forbiddenRewriteOperationFixture,
   validOperationFixtures,

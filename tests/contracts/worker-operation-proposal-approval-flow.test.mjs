@@ -5,14 +5,14 @@ import test from 'node:test';
 import {
   runOperationAcceptHandler,
   runOperationDismissHandler,
-} from '../../apps/worker/src/operationApprovalRuntimeHandlers.ts';
+} from '../../apps/worker/src/ai-operations/operationApprovalRuntimeHandlers.ts';
 import {
   InMemoryOperationProposalPersistencePort,
   runOperationProposalPersistenceFlow,
-} from '../../apps/worker/src/operationProposalPort.ts';
+} from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
-import { routeGeneratedOperations } from '../../apps/worker/src/operationRoutingAdapter.ts';
+import { routeGeneratedOperations } from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 
 const root = new URL('../../', import.meta.url);
 const now = 1_700_000_000_000;
@@ -306,8 +306,8 @@ test('approval boundary rejects returned proposal workspace and operation id mis
 
 test('approval handlers do not import provider SDK, Operation Router internals, or canonical note SQL writes', async () => {
   for (const file of [
-    'apps/worker/src/operationProposalPort.ts',
-    'apps/worker/src/operationApprovalRuntimeHandlers.ts',
+    'apps/worker/src/ai-operations/operationProposalPort.ts',
+    'apps/worker/src/ai-operations/operationApprovalRuntimeHandlers.ts',
   ]) {
     const source = await readFile(new URL(file, root), 'utf8');
 

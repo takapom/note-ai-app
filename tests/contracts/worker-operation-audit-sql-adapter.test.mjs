@@ -4,8 +4,8 @@ import test from 'node:test';
 import {
   mapOperationAuditRecordToSql,
   OperationAuditSqlPersistenceAdapter,
-} from '../../apps/worker/src/operationAuditSqlAdapter.ts';
-import { routeGeneratedOperations } from '../../apps/worker/src/operationRoutingAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditSqlAdapter.ts';
+import { routeGeneratedOperations } from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 

@@ -6,7 +6,7 @@ import {
   runOperationGenerationProviderFlow,
   type OperationGenerationProviderFlowInput,
   type OperationGenerationProviderFlowResult,
-} from './operationGenerationProviderFlow.ts';
+} from '../operationGenerationProviderFlow.ts';
 import {
   runStructureJobOperationFlow,
   type StructureJobOperationFlowInput,

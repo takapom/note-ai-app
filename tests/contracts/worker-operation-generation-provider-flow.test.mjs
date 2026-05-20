@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   createStaticOperationGenerationProviderRegistry,
   runOperationGenerationProviderFlow,
-} from '../../apps/worker/src/operationGenerationProviderFlow.ts';
+} from '../../apps/worker/src/ai-operations/operationGenerationProviderFlow.ts';
 import { assembleContextEnvelope } from '../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
 import { completedSectionJobFixture } from '../../contexts/scheduler/src/contract/structureSchedulerFixtures.ts';

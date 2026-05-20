@@ -4,8 +4,8 @@ import test from 'node:test';
 import {
   InMemoryOperationAuditPersistencePort,
   validateOperationAuditRecordForPersistence,
-} from '../../apps/worker/src/operationAuditPort.ts';
-import { routeGeneratedOperations } from '../../apps/worker/src/operationRoutingAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { routeGeneratedOperations } from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 

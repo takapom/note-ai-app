@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   createOperationIds,
   routeGeneratedOperations,
-} from '../../apps/worker/src/operationRoutingAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationRoutingAdapter.ts';
 import {
   forbiddenRewriteOperationFixture,
   validOperationFixtures,

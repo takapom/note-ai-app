@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   TursoOperationAuditExecutor,
   validateOperationAuditStatements,
-} from '../../apps/worker/src/tursoOperationAuditExecutor.ts';
+} from '../../apps/worker/src/ai-operations/tursoOperationAuditExecutor.ts';
 
 test('Turso operation audit executor sends statements to client in order', async () => {
   const calls = [];
