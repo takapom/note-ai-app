@@ -7,8 +7,9 @@ const root = new URL('../../', import.meta.url);
 const wranglerPath = 'wrangler.toml';
 const publicHtmlPath = 'apps/web/public/index.html';
 const browserMountPath = 'apps/web/src/browserNoteSurfaceMount.ts';
-const workerEntrypointPath = 'apps/worker/src/workerEntrypoint.ts';
-const workerAuthBoundaryPath = 'apps/worker/src/workerAuthBoundary.ts';
+const workerEntrypointPath = 'apps/worker/src/runtime/http/workerEntrypoint.ts';
+const workerEntrypointEnvPath = 'apps/worker/src/runtime/composition/workerEntrypointEnv.ts';
+const workerAuthBoundaryPath = 'apps/worker/src/runtime/http/workerAuthBoundary.ts';
 
 const trackedRuntimeValueNames = [
   'TURSO',
@@ -73,9 +74,9 @@ test('browser mount adapter only reads deployment-owned dataset keys', async () 
 });
 
 test('Worker env interfaces declare optional deployment-supplied bindings without values', async () => {
-  const entrypointSource = await readText(workerEntrypointPath);
+  const entrypointEnvSource = await readText(workerEntrypointEnvPath);
   const authBoundarySource = await readText(workerAuthBoundaryPath);
-  const entrypointEnv = interfaceBody(entrypointSource, 'WorkerEntrypointEnv');
+  const entrypointEnv = interfaceBody(entrypointEnvSource, 'WorkerEntrypointEnv');
   const authBoundaryEnv = interfaceBody(authBoundarySource, 'WorkerAuthBoundaryEnv');
 
   for (const key of ['WORKSPACE_ID', 'USER_ID', 'WORKER_AUTH_SHARED_SECRET', 'AUTH_SHARED_SECRET']) {
