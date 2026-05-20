@@ -5,48 +5,48 @@ import {
   mapLocalPreviousStructureSnapshotLookupToSql,
   mapLocalSectionSummariesLookupToSql,
   mapLocalSemanticUnitsLookupToSql,
-} from '../../apps/worker/src/contextAssemblyLocalStructureSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyLocalStructureSqlAdapter.ts';
 import {
   mapMemoryContextCandidatesLookupToSql,
-} from '../../apps/worker/src/contextAssemblyMemoryContextSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyMemoryContextSqlAdapter.ts';
 import {
   mapRelatedNotesLookupToSql,
   mapRelatedSemanticUnitsLookupToSql,
   mapRelatedSourceBlockExcerptsLookupToSql,
-} from '../../apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyRelatedContextSqlAdapter.ts';
 import {
   mapTargetBlocksLookupToSql,
   mapTargetNoteLookupToSql,
   mapTargetOutlineLookupToSql,
-} from '../../apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyTargetSnapshotSqlAdapter.ts';
 import {
   mapMemoryCandidateWriteIntentToSql,
-} from '../../apps/worker/src/memoryCandidateProposalBoundary.ts';
+} from '../../apps/worker/src/memory/memoryCandidateProposalBoundary.ts';
 import {
   mapMemoryReviewContentUpdateToSql,
   mapMemoryReviewLookupToSql,
   mapMemoryReviewStatusUpdateToSql,
-} from '../../apps/worker/src/memoryReviewPort.ts';
+} from '../../apps/worker/src/memory/memoryReviewPort.ts';
 import {
   mapBlocksLookupToSql,
   mapNoteDocumentToSql,
   mapNoteLookupToSql,
   mapSectionsLookupToSql,
-} from '../../apps/worker/src/noteDocumentSqlAdapter.ts';
+} from '../../apps/worker/src/note-model/noteDocumentSqlAdapter.ts';
 import {
   mapOperationAuditRecordToSql,
-} from '../../apps/worker/src/operationAuditSqlAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditSqlAdapter.ts';
 import {
   mapOperationProposalInsertToSql,
   mapOperationProposalLookupToSql,
   mapOperationProposalStateUpdateToSql,
-} from '../../apps/worker/src/operationProposalSqlAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationProposalSqlAdapter.ts';
 import {
   mapProvenanceSourceLookupToSql,
-} from '../../apps/worker/src/provenanceLookupPort.ts';
+} from '../../apps/worker/src/note-model/provenanceLookupPort.ts';
 import {
   mapSectionSnapshotLookupToSql,
-} from '../../apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts';
+} from '../../apps/worker/src/scheduler/schedulerNoteSnapshotSqlAdapter.ts';
 import {
   blockFixtures,
   noteDocumentFixture,

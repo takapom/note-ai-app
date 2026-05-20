@@ -2,21 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/operationAuditPort.ts';
-import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/operationGenerationProviderFlow.ts';
+import { InMemoryOperationAuditPersistencePort } from '../../apps/worker/src/ai-operations/operationAuditPort.ts';
+import { createStaticOperationGenerationProviderRegistry } from '../../apps/worker/src/ai-operations/operationGenerationProviderFlow.ts';
 import {
   runOperationProjectionPersistenceFlow,
-} from '../../apps/worker/src/operationProjectionPersistenceFlow.ts';
-import { InMemoryOperationProjectionPersistencePort } from '../../apps/worker/src/operationProjectionPort.ts';
-import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/operationProposalPort.ts';
-import { runOperationRoutingFlow } from '../../apps/worker/src/operationRoutingFlow.ts';
+} from '../../apps/worker/src/ai-operations/operationProjectionPersistenceFlow.ts';
+import { InMemoryOperationProjectionPersistencePort } from '../../apps/worker/src/ai-operations/operationProjectionPort.ts';
+import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
+import { runOperationRoutingFlow } from '../../apps/worker/src/ai-operations/operationRoutingFlow.ts';
 import {
   runNoteStructureRouteHandler,
-} from '../../apps/worker/src/noteStructureRuntimeHandlers.ts';
+} from '../../apps/worker/src/scheduler/noteStructureRouteHandler.ts';
 import {
   runStructureJobProcessorFlow,
-} from '../../apps/worker/src/structureJobProcessorFlow.ts';
-import { InMemoryStructureJobWorkQueue } from '../../apps/worker/src/structureJobWorkQueuePort.ts';
+} from '../../apps/worker/src/ai-operations/structure-job/structureJobProcessorFlow.ts';
+import { InMemoryStructureJobWorkQueue } from '../../apps/worker/src/scheduler/structureJobWorkQueuePort.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
 import {
   forbiddenRewriteOperationFixture,
@@ -223,17 +223,17 @@ test('end-to-end context failure does not persist projections or mutate SoT', as
 
 test('worker runtime source guard forbids canonical note section block write SQL in AI paths', async () => {
   const aiRuntimeFiles = [
-    'apps/worker/src/noteStructureRuntimeHandlers.ts',
-    'apps/worker/src/structureJobProcessorFlow.ts',
-    'apps/worker/src/operationGenerationProviderFlow.ts',
-    'apps/worker/src/structureJobOperationOrchestrationFlow.ts',
-    'apps/worker/src/structureJobOperationFlow.ts',
-    'apps/worker/src/operationRoutingAdapter.ts',
-    'apps/worker/src/operationRoutingFlow.ts',
-    'apps/worker/src/operationProjectionPersistenceFlow.ts',
-    'apps/worker/src/operationProjectionPort.ts',
-    'apps/worker/src/operationProposalPort.ts',
-    'apps/worker/src/operationApprovalRuntimeHandlers.ts',
+    'apps/worker/src/scheduler/noteStructureRouteHandler.ts',
+    'apps/worker/src/ai-operations/structure-job/structureJobProcessorFlow.ts',
+    'apps/worker/src/ai-operations/operationGenerationProviderFlow.ts',
+    'apps/worker/src/ai-operations/structure-job/structureJobOperationOrchestrationFlow.ts',
+    'apps/worker/src/ai-operations/structure-job/structureJobOperationFlow.ts',
+    'apps/worker/src/ai-operations/operationRoutingAdapter.ts',
+    'apps/worker/src/ai-operations/operationRoutingFlow.ts',
+    'apps/worker/src/ai-operations/operationProjectionPersistenceFlow.ts',
+    'apps/worker/src/ai-operations/operationProjectionPort.ts',
+    'apps/worker/src/ai-operations/operationProposalPort.ts',
+    'apps/worker/src/ai-operations/operationApprovalRuntimeHandlers.ts',
   ];
   const canonicalWriteSql = /\b(?:insert\s+into|replace\s+into|update|delete\s+from|upsert)\s+[`"]?(?:notes|sections|blocks)[`"]?\b/i;
 
@@ -243,15 +243,15 @@ test('worker runtime source guard forbids canonical note section block write SQL
   }
 
   const targetSnapshot = await readFile(
-    new URL('apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts', root),
+    new URL('apps/worker/src/context-assembly/contextAssemblyTargetSnapshotSqlAdapter.ts', root),
     'utf8',
   );
   const relatedContext = await readFile(
-    new URL('apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts', root),
+    new URL('apps/worker/src/context-assembly/contextAssemblyRelatedContextSqlAdapter.ts', root),
     'utf8',
   );
   const schedulerSnapshot = await readFile(
-    new URL('apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts', root),
+    new URL('apps/worker/src/scheduler/schedulerNoteSnapshotSqlAdapter.ts', root),
     'utf8',
   );
 

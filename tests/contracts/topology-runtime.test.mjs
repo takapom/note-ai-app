@@ -143,7 +143,7 @@ test('runtime topology excludes direct AI-to-SoT write edges', () => {
 });
 
 test('worker operation generation provider flow stops before operation routing and audit persistence', async () => {
-  const source = await readFile(new URL('apps/worker/src/operationGenerationProviderFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/ai-operations/operationGenerationProviderFlow.ts', root), 'utf8');
 
   assert.match(source, /validateContextEnvelope/);
   assert.match(source, /OperationGenerationProviderRegistry/);
@@ -160,7 +160,7 @@ test('worker operation generation provider flow stops before operation routing a
 });
 
 test('worker structure job operation orchestration flow only connects provider generation to structure job operation flow', async () => {
-  const source = await readFile(new URL('apps/worker/src/structureJobOperationOrchestrationFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/ai-operations/structure-job/structureJobOperationOrchestrationFlow.ts', root), 'utf8');
 
   assert.match(source, /runOperationGenerationProviderFlow/);
   assert.match(source, /runStructureJobOperationFlow/);
@@ -175,7 +175,7 @@ test('worker structure job operation orchestration flow only connects provider g
 });
 
 test('worker structure job operation flow owns completed job routing only', async () => {
-  const source = await readFile(new URL('apps/worker/src/structureJobOperationFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/ai-operations/structure-job/structureJobOperationFlow.ts', root), 'utf8');
 
   assert.match(source, /runOperationRoutingFlow/);
   assert.doesNotMatch(source, /providerError|provider_failed|OperationGenerationProvider/);
@@ -208,9 +208,9 @@ test('worker runtime adapters depend on contracts, not generated projections or 
 
 test('worker HTTP and fetch entrypoint boundaries stay route/auth/response adapters only', async () => {
   const routeBoundaryFiles = [
-    'apps/worker/src/workerEntrypoint.ts',
-    'apps/worker/src/workerHttpRouter.ts',
-    'apps/worker/src/cloudflareWorkerEntrypoint.ts',
+    'apps/worker/src/runtime/http/workerEntrypoint.ts',
+    'apps/worker/src/runtime/http/workerHttpRouter.ts',
+    'apps/worker/src/runtime/cloudflare/cloudflareWorkerEntrypoint.ts',
   ];
   const sqlAdapterImportPattern =
     /(?:from\s+['"][^'"]*|import\s*\(\s*['"][^'"]*|require\s*\(\s*['"][^'"]*)(?:SqlAdapter|tursoOperationAuditExecutor|schedulerAgentLocalSqlAdapter|noteDocumentSqlAdapter|operationProposalSqlAdapter)/;
@@ -231,7 +231,7 @@ test('worker HTTP and fetch entrypoint boundaries stay route/auth/response adapt
 });
 
 test('worker runtime port wiring does not own HTTP auth provider or Operation Router policy', async () => {
-  const source = await readFile(new URL('apps/worker/src/workerRuntimePorts.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/composition/workerRuntimePorts.ts', root), 'utf8');
 
   assert.match(source, /createWorkerRuntimePorts/);
   assert.doesNotMatch(source, generatedProjectionImportPattern);
@@ -244,7 +244,7 @@ test('worker runtime port wiring does not own HTTP auth provider or Operation Ro
 });
 
 test('worker scheduler runtime flow does not call provider, operation routing, or audit persistence boundaries', async () => {
-  const source = await readFile(new URL('apps/worker/src/structureSchedulerRuntimeFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/scheduler/structureSchedulerRuntimeFlow.ts', root), 'utf8');
 
   assert.doesNotMatch(source, /contextAssembly|ContextEnvelope|assembleContextEnvelope/i);
   assert.doesNotMatch(source, /from\s+['"][^'"]*operationRoutingFlow\.ts['"]/);
@@ -257,7 +257,7 @@ test('worker scheduler runtime flow does not call provider, operation routing, o
 });
 
 test('worker context assembly runtime flow uses Context Assembly contract and no provider or operation boundaries', async () => {
-  const source = await readFile(new URL('apps/worker/src/contextAssemblyRuntimeFlow.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/context-assembly/contextAssemblyRuntimeFlow.ts', root), 'utf8');
 
   assert.match(source, /assembleContextEnvelope/);
   assert.match(source, /validateContextEnvelope/);
@@ -273,7 +273,7 @@ test('worker context assembly runtime flow uses Context Assembly contract and no
 });
 
 test('scheduler note snapshot SQL adapter only reads sections and dirty marks', async () => {
-  const source = await readFile(new URL('apps/worker/src/schedulerNoteSnapshotSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/scheduler/schedulerNoteSnapshotSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /SectionContract/);
   assert.match(source, /SchedulerNoteSnapshotPort/);
@@ -289,7 +289,7 @@ test('scheduler note snapshot SQL adapter only reads sections and dirty marks', 
 });
 
 test('context assembly target snapshot SQL adapter only reads canonical note target data', async () => {
-  const source = await readFile(new URL('apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/context-assembly/contextAssemblyTargetSnapshotSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /ContextAssemblyTargetSnapshotPort/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
@@ -305,7 +305,7 @@ test('context assembly target snapshot SQL adapter only reads canonical note tar
 });
 
 test('context assembly local structure SQL adapter only reads semantic unit projections', async () => {
-  const source = await readFile(new URL('apps/worker/src/contextAssemblyLocalStructureSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/context-assembly/contextAssemblyLocalStructureSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /ContextAssemblyLocalStructurePort/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
@@ -320,7 +320,7 @@ test('context assembly local structure SQL adapter only reads semantic unit proj
 });
 
 test('context assembly related context SQL adapter only reads related candidates and bounded excerpts', async () => {
-  const source = await readFile(new URL('apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/context-assembly/contextAssemblyRelatedContextSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /ContextAssemblyRelatedContextRetrievalPort/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
@@ -337,7 +337,7 @@ test('context assembly related context SQL adapter only reads related candidates
 });
 
 test('context assembly memory context SQL adapter only reads user-scoped memory candidates', async () => {
-  const source = await readFile(new URL('apps/worker/src/contextAssemblyMemoryContextSqlAdapter.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/context-assembly/contextAssemblyMemoryContextSqlAdapter.ts', root), 'utf8');
 
   assert.match(source, /ContextAssemblyMemoryRetrievalPort/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*docs\/generated\//);
