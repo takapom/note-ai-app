@@ -1,0 +1,4 @@
+interface:
+  display_name: "Academic Prose Polisher"
+  short_description: "研究文章の密度と論理性と具体性を改善する支援を行う"
+  default_prompt: "Use $academic-prose-polisher to make this research paragraph more precise and less generic."

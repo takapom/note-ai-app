@@ -105,13 +105,16 @@ function startWrangler({ wrangler, config, stdio }) {
     String(config.port),
     '--persist-to',
     config.persistTo,
+    '--var',
+    `LOCAL_AGENT_SMOKE_ENABLED:${process.env.LOCAL_AGENT_SMOKE_ENABLED ?? '1'}`,
   ];
+  if (config.authSecret !== undefined) {
+    args.push('--var', `WORKER_AUTH_SHARED_SECRET:${config.authSecret}`);
+  }
   const child = spawn(wrangler, args, {
     cwd: process.cwd(),
     env: {
       ...process.env,
-      ...(config.authSecret === undefined ? {} : { WORKER_AUTH_SHARED_SECRET: config.authSecret }),
-      LOCAL_AGENT_SMOKE_ENABLED: process.env.LOCAL_AGENT_SMOKE_ENABLED ?? '1',
       NO_COLOR: process.env.NO_COLOR ?? '1',
     },
     stdio: stdio === 'inherit' ? 'inherit' : ['ignore', 'pipe', 'pipe'],
@@ -233,7 +236,7 @@ async function runSmoke(config) {
     await runSmokeCase(config, smokeCase);
   }
 
-  await runSmokeCase(config, {
+  await runBlockerCase(config, {
     label: 'workspace brain process trigger',
     method: 'POST',
     path: config.workspaceBrainPath,
@@ -243,8 +246,8 @@ async function runSmoke(config) {
       now: Date.now(),
     },
     expectStatus: 202,
-    validateBody(body) {
-      assertEqual(body.ok, true, 'body.ok');
+    validateBody(body, FailureClass) {
+      assertEqual(body.ok, true, 'body.ok', FailureClass);
     },
   });
 
@@ -268,10 +271,10 @@ async function seedLocalSmokeRuntime(config) {
     method: 'POST',
     path: '/__local/smoke/reset',
     body: { noteId: config.noteId },
-    validateBody(body) {
-      assertEqual(body.ok, true, 'body.ok');
-      assertEqual(body.reset, true, 'body.reset');
-      assertLocalAgentSetup(body);
+    validateBody(body, FailureClass) {
+      assertEqual(body.ok, true, 'body.ok', FailureClass);
+      assertEqual(body.reset, true, 'body.reset', FailureClass);
+      assertLocalAgentSetup(body, FailureClass);
     },
   });
   await runSetupCase(config, {
@@ -279,13 +282,18 @@ async function seedLocalSmokeRuntime(config) {
     method: 'POST',
     path: '/__local/smoke/seed',
     body: { document, nextOpenDigest },
-    validateBody(body) {
-      assertEqual(body.ok, true, 'body.ok');
-      assertEqual(body.seeded?.workspaceId, config.workspaceId, 'body.seeded.workspaceId');
-      assertEqual(body.seeded?.noteId, config.noteId, 'body.seeded.noteId');
-      assertLocalAgentSetup(body);
+    validateBody(body, FailureClass) {
+      assertEqual(body.ok, true, 'body.ok', FailureClass);
+      assertEqual(body.seeded?.workspaceId, config.workspaceId, 'body.seeded.workspaceId', FailureClass);
+      assertEqual(body.seeded?.noteId, config.noteId, 'body.seeded.noteId', FailureClass);
+      assertLocalAgentSetup(body, FailureClass);
       if (body.localAgents?.noteAgentSchedulerSnapshot !== undefined) {
-        assertEqual(body.localAgents.noteAgentSchedulerSnapshot.ok, true, 'body.localAgents.noteAgentSchedulerSnapshot.ok');
+        assertEqual(
+          body.localAgents.noteAgentSchedulerSnapshot.ok,
+          true,
+          'body.localAgents.noteAgentSchedulerSnapshot.ok',
+          FailureClass,
+        );
       }
     },
   });
@@ -310,8 +318,8 @@ async function runSetupCase(config, setupCase) {
     throw new SetupFailure(`${setupCase.label} expected HTTP 200 but received ${response.status}`);
   }
 
-  const body = parseJsonResponse(text, setupCase.label);
-  setupCase.validateBody(body);
+  const body = parseJsonResponse(text, setupCase.label, SetupFailure);
+  setupCase.validateBody(body, SetupFailure);
 }
 
 async function runSmokeCase(config, smokeCase) {
@@ -344,6 +352,36 @@ async function runSmokeCase(config, smokeCase) {
   smokeCase.validateBody(body);
 }
 
+async function runBlockerCase(config, blockerCase) {
+  const url = new URL(blockerCase.path, config.baseUrl);
+  const headers = {
+    'x-workspace-id': config.workspaceId,
+    'x-user-id': config.userId,
+    'x-worker-auth-secret': blockerCase.authSecret ?? config.authSecret,
+  };
+  let requestBody;
+  if (blockerCase.body !== undefined) {
+    headers['content-type'] = 'application/json';
+    requestBody = JSON.stringify(blockerCase.body);
+  }
+
+  process.stdout.write(`\n# ${blockerCase.label}\n${formatCurl(blockerCase, config)}\n`);
+  const response = await fetchWithTimeout(url, {
+    method: blockerCase.method,
+    headers,
+    body: requestBody,
+  });
+  const text = await response.text();
+  process.stdout.write(`status: ${response.status}\nbody: ${truncateBody(text)}\n`);
+
+  if (response.status !== blockerCase.expectStatus) {
+    throw new BlockerFailure(`${blockerCase.label} expected HTTP ${blockerCase.expectStatus} but received ${response.status}`);
+  }
+
+  const body = parseJsonResponse(text, blockerCase.label, BlockerFailure);
+  blockerCase.validateBody(body, BlockerFailure);
+}
+
 async function fetchWithTimeout(url, init) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
@@ -357,11 +395,11 @@ async function fetchWithTimeout(url, init) {
   }
 }
 
-function parseJsonResponse(text, label) {
+function parseJsonResponse(text, label, FailureClass = SmokeFailure) {
   try {
     return JSON.parse(text);
   } catch {
-    throw new SmokeFailure(`${label} response body must be JSON`);
+    throw new FailureClass(`${label} response body must be JSON`);
   }
 }
 
@@ -391,21 +429,26 @@ function formatCurl(smokeCase, config) {
   return parts.join(' ');
 }
 
-function assertEqual(actual, expected, path) {
+function assertEqual(actual, expected, path, FailureClass = SmokeFailure) {
   if (actual !== expected) {
-    throw new SmokeFailure(`${path} expected ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}`);
+    throw new FailureClass(`${path} expected ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}`);
   }
 }
 
-function assertArrayIncludes(actual, expected, path) {
+function assertArrayIncludes(actual, expected, path, FailureClass = SmokeFailure) {
   if (!Array.isArray(actual) || !actual.includes(expected)) {
-    throw new SmokeFailure(`${path} expected to include ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}`);
+    throw new FailureClass(`${path} expected to include ${JSON.stringify(expected)} but received ${JSON.stringify(actual)}`);
   }
 }
 
-function assertLocalAgentSetup(body) {
-  assertEqual(body.localAgents?.noteAgentSchema?.ok, true, 'body.localAgents.noteAgentSchema.ok');
-  assertEqual(body.localAgents?.workspaceBrainSchema?.ok, true, 'body.localAgents.workspaceBrainSchema.ok');
+function assertLocalAgentSetup(body, FailureClass = SmokeFailure) {
+  assertEqual(body.localAgents?.noteAgentSchema?.ok, true, 'body.localAgents.noteAgentSchema.ok', FailureClass);
+  assertEqual(
+    body.localAgents?.workspaceBrainSchema?.ok,
+    true,
+    'body.localAgents.workspaceBrainSchema.ok',
+    FailureClass,
+  );
 }
 
 function createLocalSmokeDocument(config) {

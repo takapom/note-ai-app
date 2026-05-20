@@ -314,8 +314,9 @@ export async function invokeSerializableAgentRpc<Result = any>(
   }
 
   try {
-    const method = stub[input.methodName] as (command: unknown) => Result | Promise<Result>;
-    const result = await method.call(stub, input.command);
+    const result = await (stub as Record<string, (command: unknown) => Result | Promise<Result>>)[input.methodName](
+      input.command,
+    );
     return {
       ok: true,
       binding: input.binding,

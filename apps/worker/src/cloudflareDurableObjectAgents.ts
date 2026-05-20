@@ -71,23 +71,29 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   readonly descriptor = noteAgentBindingDescriptor;
   private readonly runtimeDelegate = new NoteAgentRuntimeDelegate();
   private readonly workerEnv: WorkerEntrypointEnv;
-  private readonly agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor;
+  private readonly storage: unknown;
+  private agentLocalSql?: CloudflareDurableObjectAgentLocalSqlExecutor;
   private readonly localSmokeSectionsByNoteId = new Map<string, readonly SectionContract[]>();
 
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
     this.workerEnv = env;
-    this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(ctx.storage);
+    this.storage = ctx.storage;
   }
 
   async scheduleNoteStructure(
     input: NoteAgentScheduleStructureCommand,
   ): Promise<CloudflareAgentRpcResult> {
+    const agentLocalSql = this.readAgentLocalSql();
+    if (!agentLocalSql.ok) {
+      return rejectedRpcResult('agent_local_sql_not_configured', agentLocalSql.errors);
+    }
+
     const ports = this.localSmokeSectionsByNoteId.has(input.noteId)
       ? this.createLocalSmokeNoteStructurePorts(input.noteId)
       : createWorkerRuntimePorts({
           env: this.workerEnv,
-          agentLocalSql: this.agentLocalSql,
+          agentLocalSql: agentLocalSql.executor,
         }).noteStructure;
     if (ports === undefined) {
       return rejectedRpcResult('note_structure_ports_not_configured', [
@@ -117,8 +123,13 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   async applyAgentLocalSchemaCommand(
     input: DurableObjectAgentLocalSchemaCommand,
   ): Promise<DurableObjectAgentLocalSchemaResult> {
+    const agentLocalSql = this.readAgentLocalSql();
+    if (!agentLocalSql.ok) {
+      return rejectedSchemaCommandResult(input, agentLocalSql.errors);
+    }
+
     return runDurableObjectAgentLocalSchemaCommand({
-      executor: this.agentLocalSql,
+      executor: agentLocalSql.executor,
       command: input,
       localVerificationEnabled: isLocalAgentSmokeEnabled(this.workerEnv),
     });
@@ -143,13 +154,33 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   }
 
   private createLocalSmokeNoteStructurePorts(noteId: string) {
+    const agentLocalSql = this.readAgentLocalSql();
+    if (!agentLocalSql.ok) {
+      throw new Error('Agent-local SQL storage is not configured');
+    }
+
     return {
       noteSnapshot: {
         loadSections: async () => [...structuredClone(this.localSmokeSectionsByNoteId.get(noteId) ?? [])],
       },
-      structureJobQueue: new AgentLocalStructureJobQueueAdapter(this.agentLocalSql),
-      nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(this.agentLocalSql),
+      structureJobQueue: new AgentLocalStructureJobQueueAdapter(agentLocalSql.executor),
+      nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(agentLocalSql.executor),
     };
+  }
+
+  private readAgentLocalSql():
+    | { ok: true; executor: CloudflareDurableObjectAgentLocalSqlExecutor }
+    | { ok: false; errors: string[] } {
+    if (this.agentLocalSql !== undefined) {
+      return { ok: true, executor: this.agentLocalSql };
+    }
+
+    try {
+      this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(this.storage);
+      return { ok: true, executor: this.agentLocalSql };
+    } catch {
+      return { ok: false, errors: ['Agent-local SQL storage is not configured'] };
+    }
   }
 }
 
@@ -157,18 +188,24 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   readonly descriptor = workspaceBrainAgentBindingDescriptor;
   private readonly runtimeDelegate = new WorkspaceBrainAgentRuntimeDelegate();
   private readonly workerEnv: WorkerEntrypointEnv;
-  private readonly agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor;
+  private readonly storage: unknown;
+  private agentLocalSql?: CloudflareDurableObjectAgentLocalSqlExecutor;
 
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
     this.workerEnv = env;
-    this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(ctx.storage);
+    this.storage = ctx.storage;
   }
 
   async processNextQueuedStructureJob(
     input: WorkspaceBrainProcessNextStructureJobCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input, this.agentLocalSql);
+    const agentLocalSql = this.readAgentLocalSql();
+    if (!agentLocalSql.ok) {
+      return rejectedRpcResult('agent_local_sql_not_configured', agentLocalSql.errors);
+    }
+
+    const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input, agentLocalSql.executor);
     if (!options.ok) {
       if (isLocalAgentSmokeEnabled(this.workerEnv)) {
         return {
@@ -207,11 +244,31 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   async applyAgentLocalSchemaCommand(
     input: DurableObjectAgentLocalSchemaCommand,
   ): Promise<DurableObjectAgentLocalSchemaResult> {
+    const agentLocalSql = this.readAgentLocalSql();
+    if (!agentLocalSql.ok) {
+      return rejectedSchemaCommandResult(input, agentLocalSql.errors);
+    }
+
     return runDurableObjectAgentLocalSchemaCommand({
-      executor: this.agentLocalSql,
+      executor: agentLocalSql.executor,
       command: input,
       localVerificationEnabled: isLocalAgentSmokeEnabled(this.workerEnv),
     });
+  }
+
+  private readAgentLocalSql():
+    | { ok: true; executor: CloudflareDurableObjectAgentLocalSqlExecutor }
+    | { ok: false; errors: string[] } {
+    if (this.agentLocalSql !== undefined) {
+      return { ok: true, executor: this.agentLocalSql };
+    }
+
+    try {
+      this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(this.storage);
+      return { ok: true, executor: this.agentLocalSql };
+    } catch {
+      return { ok: false, errors: ['Agent-local SQL storage is not configured'] };
+    }
   }
 }
 
@@ -231,6 +288,26 @@ function rejectedRpcResult(reason: string, errors: string[]): CloudflareAgentRpc
     noteSotMutations: [],
     errors,
   };
+}
+
+function rejectedSchemaCommandResult(
+  command: unknown,
+  errors: string[],
+): DurableObjectAgentLocalSchemaResult {
+  return {
+    ok: false,
+    action: isResetSchemaCommand(command) ? 'reset' : 'initialize',
+    initializedTables: [],
+    droppedTables: [],
+    errors,
+  };
+}
+
+function isResetSchemaCommand(command: unknown): boolean {
+  return typeof command === 'object'
+    && command !== null
+    && !Array.isArray(command)
+    && (command as { action?: unknown }).action === 'reset';
 }
 
 async function readWorkspaceBrainProcessorOptions(

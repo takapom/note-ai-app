@@ -1,0 +1,4 @@
+interface:
+  display_name: "Academic Review Response Writer"
+  short_description: "査読コメントへの応答文と本文修正説明の作成を支援する"
+  default_prompt: "Use $academic-review-response-writer to draft a precise response to these reviewer comments."

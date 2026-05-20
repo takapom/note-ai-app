@@ -447,6 +447,18 @@ LCWA-01〜07 の実装後、DDD / bounded context / runtime topology / local Clo
 - `docs/generated/register.md` が current。
 - full verification と local smoke が pass。
 
+### Status notes, review closure slice 2026-05-20
+
+- Independent DDD / bounded-context review found no blocking runtime-boundary issues: `WorkerHttpRouter` remains Cloudflare-free, Durable Object classes remain adapter boundaries, Agent-local SQL remains limited to `agent_local_*`, and AI structuring paths still do not directly mutate canonical Note / Section / Block SoT.
+- Smoke/test review found failure classification drift in `scripts/smoke-worker-local-runtime.mjs`: local-only WorkspaceBrain trigger failures and seed/reset setup body validation could be reported as product route smoke failures.
+- Fixed the classification drift so seed/reset setup validation reports `setup failure` and the local-only WorkspaceBrain trigger reports `blocked`; product route checks still report `smoke failure`.
+- Added `tests/contracts/worker-local-smoke-script-failure-classification.test.mjs` to protect those CLI exit-code / prefix semantics without requiring Wrangler.
+- Local Wrangler smoke initially exposed setup/runtime gaps that Node contract tests did not cover: script-launched Wrangler did not receive local verification env values, DO RPC was invoked through a call shape that fails in workerd, and the Durable Object SQL adapter assumed a narrower storage shape than the local runtime provides.
+- Fixed local runtime wiring so `scripts/smoke-worker-local-runtime.mjs` injects only required local Worker vars through `wrangler dev --var`, the Cloudflare Agent RPC boundary invokes public DO RPC methods directly, and DO-local SQL construction is lazy with stable local failure meanings.
+- `npm run worker:local:smoke` passed on 2026-05-20 using Wrangler 4.93.0, local Durable Object bindings for `NOTE_AGENT` / `WORKSPACE_BRAIN_AGENT`, operator-supplied smoke IDs/secrets, and a fresh `WORKER_LOCAL_PERSIST_TO=/private/tmp/ai-native-note-worker-smoke-state-*` path. Observed route coverage included local reset/seed, note read, block patch, note leave, manual structure, digest read, invalid auth, and local-only WorkspaceBrain process trigger.
+- Subagent review found one blocking verification issue after the local smoke pass: `tsc -p tsconfig.json --noEmit` failed on the DO SQL adapter union narrowing. The issue was fixed by narrowing through record-shaped values, and a low-severity schema-command failure robustness issue was fixed by making the fallback action read tolerate malformed direct RPC input.
+- Verification after review fixes: `tsc -p tsconfig.json --noEmit`, `node scripts/verify-contracts.mjs --lint`, `node --test tests/**/*.test.mjs`, `node scripts/generate-doc-register.mjs --check`, focused changed-path contract tests, and `git diff --check` passed. `npm run verify` could not be executed in the current Codex sandbox because npm script execution was rejected before startup, so the equivalent direct commands were used for evidence.
+
 ### 検証コマンド
 
 - `npm run worker:local:smoke`

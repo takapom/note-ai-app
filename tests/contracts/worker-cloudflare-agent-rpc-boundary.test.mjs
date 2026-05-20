@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -8,6 +9,15 @@ import {
   scheduleNoteStructureThroughAgent,
   processWorkspaceBrainThroughAgent,
 } from '../../apps/worker/src/cloudflareAgentRpcBoundary.ts';
+
+const root = new URL('../../', import.meta.url);
+
+test('Cloudflare Agent RPC boundary invokes stub methods through direct RPC call shape', async () => {
+  const source = await readFile(new URL('apps/worker/src/cloudflareAgentRpcBoundary.ts', root), 'utf8');
+
+  assert.doesNotMatch(source, /\.call\(stub/);
+  assert.match(source, /\[input\.methodName\]\(\s*input\.command,\s*\)/s);
+});
 
 test('Cloudflare Agent RPC boundary derives stable object names without runtime values in config', () => {
   assert.deepEqual(

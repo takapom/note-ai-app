@@ -55,9 +55,11 @@
 - `docs/records/ADR-0004-bounded-context-map.md`
 - `docs/records/MVP-acceptance-gap-review-2026-05-18.md`
 - `docs/records/README.md`
+- `docs/records/backend-architecture-refactor-plan-2026-05-20.md`
 - `docs/records/backend-ddd-hardening-issues-2026-05-19.md`
 - `docs/records/backend-readiness-review-2026-05-19.md`
 - `docs/records/local-cloudworker-agents-issues-2026-05-19.md`
+- `docs/records/local-cloudworker-agents-smoke-handoff-2026-05-20.md`
 
 ## スキル
 

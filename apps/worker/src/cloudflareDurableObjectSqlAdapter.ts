@@ -101,25 +101,29 @@ function readSqlStorageFromInput(
 
 function normalizeExecutorInput(input: CloudflareDurableObjectSqlExecutorInput | unknown): CloudflareDurableObjectSqlExecutorInput {
   if (isRecord(input)) {
-    if ('state' in input || 'storage' in input || 'sql' in input) {
-      return input as CloudflareDurableObjectSqlExecutorInput;
-    }
     if (isSqlStorage(input)) {
       return { sql: input };
     }
+    if (isRecord(input.state) || isRecord(input.storage) || isSqlStorage(input.sql)) {
+      return input as CloudflareDurableObjectSqlExecutorInput;
+    }
+    return { storage: input as CloudflareDurableObjectSqlStorageContainer };
   }
 
   return { storage: {} };
 }
 
 function readSqlCandidate(input: CloudflareDurableObjectSqlExecutorInput): unknown {
-  if ('sql' in input) {
-    return input.sql;
+  const record = input as Record<string, unknown>;
+  if (isSqlStorage(record.sql)) {
+    return record.sql;
   }
-  if ('storage' in input) {
-    return input.storage.sql;
+  if (isRecord(record.storage)) {
+    return record.storage.sql;
   }
-  return isRecord(input.state.storage) ? input.state.storage.sql : undefined;
+  return isRecord(record.state) && isRecord(record.state.storage)
+    ? record.state.storage.sql
+    : undefined;
 }
 
 function validateStatement(statement: SchedulerAgentLocalSqlStatement): SchedulerAgentLocalSqlStatement {

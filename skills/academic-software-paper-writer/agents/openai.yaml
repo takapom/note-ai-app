@@ -1,0 +1,4 @@
+interface:
+  display_name: "Academic Software Paper Writer"
+  short_description: "ソフトウェア研究の論文本文と予稿の文章化を支援する"
+  default_prompt: "Use $academic-software-paper-writer to draft an academic abstract from my software research notes."

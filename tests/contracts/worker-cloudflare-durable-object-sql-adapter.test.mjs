@@ -48,6 +48,29 @@ test('Durable Object Agent-local SQL executor accepts direct sql storage and row
   });
 });
 
+test('Durable Object Agent-local SQL executor accepts storage-like objects with proxied sql access', async () => {
+  const storage = new Proxy({}, {
+    has(_target, key) {
+      return key !== 'sql';
+    },
+    get(_target, key) {
+      if (key !== 'sql') return undefined;
+      return {
+        exec() {
+          return {
+            rows: [{ id: 'proxied_sql_storage' }],
+          };
+        },
+      };
+    },
+  });
+  const executor = new CloudflareDurableObjectAgentLocalSqlExecutor(storage);
+
+  assert.deepEqual(await executor.query({ sql: 'select * from agent_local_structure_jobs', args: [] }), [
+    { id: 'proxied_sql_storage' },
+  ]);
+});
+
 test('Durable Object Agent-local SQL executor rejects missing SQL storage', () => {
   assert.throws(
     () => new CloudflareDurableObjectAgentLocalSqlExecutor({}),

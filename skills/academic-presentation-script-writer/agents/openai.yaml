@@ -1,0 +1,4 @@
+interface:
+  display_name: "Academic Presentation Script Writer"
+  short_description: "学会発表スライド構成と口頭発表原稿の作成を支援する"
+  default_prompt: "Use $academic-presentation-script-writer to create a concise conference talk script from my paper outline."
