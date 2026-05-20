@@ -2,9 +2,11 @@
 // Authority: docs/contracts/cloudflare-agents-turso.md
 
 import type {
-  SchedulerAgentLocalSqlExecutor,
-  SchedulerAgentLocalSqlStatement,
-} from './schedulerAgentLocalSqlAdapter.ts';
+  CloudflareAgentLocalSqlExecutor,
+  CloudflareAgentLocalSqlExecutionResult,
+  CloudflareAgentLocalSqlStatement,
+  CloudflareAgentLocalSqlWriteResult,
+} from './cloudflareAgentLocalSqlExecutor.ts';
 
 export interface CloudflareDurableObjectSqlStorage {
   exec(query: string, ...bindings: unknown[]): unknown;
@@ -23,19 +25,9 @@ export type CloudflareDurableObjectSqlExecutorInput =
   | { readonly storage: CloudflareDurableObjectSqlStorageContainer }
   | { readonly sql: CloudflareDurableObjectSqlStorage };
 
-export interface CloudflareDurableObjectSqlExecutionResult {
-  rows: readonly Record<string, unknown>[];
-  rowsRead?: number;
-  rowsWritten?: number;
-  changes?: number;
-}
+export type { CloudflareAgentLocalSqlExecutionResult, CloudflareAgentLocalSqlWriteResult } from './cloudflareAgentLocalSqlExecutor.ts';
 
-export interface CloudflareDurableObjectSqlWriteResult {
-  rowsAffected?: number;
-  changes?: number;
-}
-
-export class CloudflareDurableObjectSqlExecutor implements SchedulerAgentLocalSqlExecutor {
+export class CloudflareDurableObjectSqlExecutor implements CloudflareAgentLocalSqlExecutor {
   private readonly sql: CloudflareDurableObjectSqlStorage;
 
   constructor(input: CloudflareDurableObjectSqlExecutorInput) {
@@ -43,8 +35,8 @@ export class CloudflareDurableObjectSqlExecutor implements SchedulerAgentLocalSq
   }
 
   async execute(
-    statement: SchedulerAgentLocalSqlStatement,
-  ): Promise<CloudflareDurableObjectSqlExecutionResult> {
+    statement: CloudflareAgentLocalSqlStatement,
+  ): Promise<CloudflareAgentLocalSqlExecutionResult> {
     const checked = validateStatement(statement);
 
     try {
@@ -55,12 +47,12 @@ export class CloudflareDurableObjectSqlExecutor implements SchedulerAgentLocalSq
     }
   }
 
-  async query(statement: SchedulerAgentLocalSqlStatement): Promise<readonly Record<string, unknown>[]> {
+  async query(statement: CloudflareAgentLocalSqlStatement): Promise<readonly Record<string, unknown>[]> {
     const result = await this.execute(statement);
     return result.rows;
   }
 
-  async write(statement: SchedulerAgentLocalSqlStatement): Promise<CloudflareDurableObjectSqlWriteResult> {
+  async write(statement: CloudflareAgentLocalSqlStatement): Promise<CloudflareAgentLocalSqlWriteResult> {
     const result = await this.execute(statement);
     return readWriteResult(result);
   }
@@ -126,7 +118,7 @@ function readSqlCandidate(input: CloudflareDurableObjectSqlExecutorInput): unkno
     : undefined;
 }
 
-function validateStatement(statement: SchedulerAgentLocalSqlStatement): SchedulerAgentLocalSqlStatement {
+function validateStatement(statement: CloudflareAgentLocalSqlStatement): CloudflareAgentLocalSqlStatement {
   if (typeof statement.sql !== 'string' || statement.sql.trim().length === 0) {
     throw new Error('Durable Object Agent-local SQL statement.sql must be a non-empty string');
   }
@@ -137,7 +129,7 @@ function validateStatement(statement: SchedulerAgentLocalSqlStatement): Schedule
   return statement;
 }
 
-function normalizeSqlExecutionResult(result: unknown): CloudflareDurableObjectSqlExecutionResult {
+function normalizeSqlExecutionResult(result: unknown): CloudflareAgentLocalSqlExecutionResult {
   const rows = readRows(result);
   return {
     rows,
@@ -209,13 +201,13 @@ function readColumnNames(value: unknown): readonly string[] | undefined {
 }
 
 function readWriteResult(
-  result: CloudflareDurableObjectSqlExecutionResult,
-): CloudflareDurableObjectSqlWriteResult {
+  result: CloudflareAgentLocalSqlExecutionResult,
+): CloudflareAgentLocalSqlWriteResult {
   if (result.rowsWritten === undefined && result.changes === undefined) {
     return {};
   }
 
-  const writeResult: CloudflareDurableObjectSqlWriteResult = {};
+  const writeResult: CloudflareAgentLocalSqlWriteResult = {};
   if (result.rowsWritten !== undefined) {
     writeResult.rowsAffected = result.rowsWritten;
   }

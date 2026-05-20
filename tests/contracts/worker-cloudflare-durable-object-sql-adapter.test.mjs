@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import {
   CloudflareDurableObjectAgentLocalSqlExecutor,
-} from '../../apps/worker/src/cloudflareDurableObjectSqlAdapter.ts';
+} from '../../apps/worker/src/runtime/cloudflare/cloudflareDurableObjectSqlAdapter.ts';
 
 test('Durable Object Agent-local SQL executor maps cursor rows and write counts', async () => {
   const calls = [];

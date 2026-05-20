@@ -3,18 +3,15 @@
 // Companion: docs/contracts/backend-runtime.md
 
 import {
-  runNoteStructureRouteHandler,
-  runStructureJobAgentHandler,
+  defaultNoteAgentRuntimeDelegates,
+  defaultWorkspaceBrainAgentRuntimeDelegates,
   type NoteStructureRouteHandlerInput,
   type NoteStructureRouteHandlerResult,
   type StructureJobAgentHandlerInput,
   type StructureJobAgentHandlerResult,
-} from './noteStructureRuntimeHandlers.ts';
-import {
-  runStructureJobProcessorFlow,
   type StructureJobProcessorFlowInput,
   type StructureJobProcessorFlowResult,
-} from './structureJobProcessorFlow.ts';
+} from '../composition/agentDelegates.ts';
 
 export const NOTE_AGENT_CLASS_NAME = 'NoteAgent';
 export const NOTE_AGENT_DEPLOYMENT_BINDING = 'NOTE_AGENT';
@@ -136,7 +133,7 @@ export class NoteAgent {
 
   constructor(delegates: Partial<NoteAgentRuntimeDelegates> = {}) {
     this.delegates = {
-      runNoteStructureRouteHandler,
+      ...defaultNoteAgentRuntimeDelegates,
       ...delegates,
     };
   }
@@ -154,8 +151,7 @@ export class WorkspaceBrainAgent {
 
   constructor(delegates: Partial<WorkspaceBrainAgentRuntimeDelegates> = {}) {
     this.delegates = {
-      runStructureJobAgentHandler,
-      runStructureJobProcessorFlow,
+      ...defaultWorkspaceBrainAgentRuntimeDelegates,
       ...delegates,
     };
   }

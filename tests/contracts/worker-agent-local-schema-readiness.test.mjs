@@ -5,23 +5,23 @@ import {
   mapBlockChangedOutputToAgentLocalSql,
   mapNextOpenDigestPreparationToAgentLocalSql,
   mapStructureJobsToAgentLocalSql,
-} from '../../apps/worker/src/schedulerAgentLocalSqlAdapter.ts';
+} from '../../apps/worker/src/scheduler/schedulerAgentLocalSqlAdapter.ts';
 import {
   mapClaimedStructureJobToAgentLocalSql,
   mapCompletedStructureJobToAgentLocalSql,
   mapFailedStructureJobToAgentLocalSql,
   mapNextQueuedStructureJobLookupToAgentLocalSql,
   mapStructureJobLookupByIdToAgentLocalSql,
-} from '../../apps/worker/src/structureJobWorkQueueAgentLocalSqlAdapter.ts';
+} from '../../apps/worker/src/scheduler/structureJobWorkQueueAgentLocalSqlAdapter.ts';
 import {
   mapNextOpenDigestReadToAgentLocalSql,
-} from '../../apps/worker/src/nextOpenDigestReadPort.ts';
+} from '../../apps/worker/src/scheduler/nextOpenDigestReadPort.ts';
 import {
   mapOperationAuditRecoveryPayloadToAgentLocalSql,
-} from '../../apps/worker/src/operationAuditRecoveryAgentLocalSqlAdapter.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditRecoveryAgentLocalSqlAdapter.ts';
 import {
   validateOperationAuditRecoveryPayload,
-} from '../../apps/worker/src/operationAuditRecoveryQueue.ts';
+} from '../../apps/worker/src/ai-operations/operationAuditRecoveryQueue.ts';
 import { noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import { handleBlockChanged } from '../../contexts/scheduler/src/contract/structureSchedulerContract.ts';
 import {

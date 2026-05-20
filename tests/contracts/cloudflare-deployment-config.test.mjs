@@ -6,16 +6,16 @@ import {
   NOTE_AGENT_CLASS_NAME,
   WORKSPACE_BRAIN_AGENT_CLASS_NAME,
   createCloudflareDurableObjectBindingDescriptors,
-} from '../../apps/worker/src/cloudflareAgentBindings.ts';
+} from '../../apps/worker/src/runtime/cloudflare/cloudflareAgentBindings.ts';
 
 const wranglerUrl = new URL('../../wrangler.toml', import.meta.url);
-const cloudflareWorkerEntrypointUrl = new URL('../../apps/worker/src/cloudflareWorkerEntrypoint.ts', import.meta.url);
+const cloudflareWorkerEntrypointUrl = new URL('../../apps/worker/src/runtime/cloudflare/cloudflareWorkerEntrypoint.ts', import.meta.url);
 
 test('wrangler config serves web build artifacts through the Worker deployment', async () => {
   const source = await readFile(wranglerUrl, 'utf8');
   const config = parseWranglerConfig(source);
 
-  assert.equal(config.main, 'apps/worker/src/cloudflareWorkerEntrypoint.ts');
+  assert.equal(config.main, 'apps/worker/src/runtime/cloudflare/cloudflareWorkerEntrypoint.ts');
   assert.equal(config.compatibility_date, '2026-05-19');
   assert.equal(config.assets?.directory, './dist/web');
   assert.deepEqual(config.assets?.run_worker_first, [

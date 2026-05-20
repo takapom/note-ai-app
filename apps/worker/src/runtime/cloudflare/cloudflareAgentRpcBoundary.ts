@@ -10,7 +10,7 @@ import {
 import type {
   NoteLeaveCause,
   NoteStructureRouteKind,
-} from './noteStructureRuntimeHandlers.ts';
+} from './noteStructureRouteRpcTypes.ts';
 
 export const NOTE_AGENT_SCHEDULE_STRUCTURE_RPC_METHOD = 'scheduleNoteStructure';
 export const WORKSPACE_BRAIN_PROCESS_NEXT_QUEUED_STRUCTURE_JOB_RPC_METHOD =

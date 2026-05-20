@@ -1,5 +1,5 @@
 name = "ai-native-note"
-main = "apps/worker/src/cloudflareWorkerEntrypoint.ts"
+main = "apps/worker/src/runtime/cloudflare/cloudflareWorkerEntrypoint.ts"
 compatibility_date = "2026-05-19"
 
 [assets]

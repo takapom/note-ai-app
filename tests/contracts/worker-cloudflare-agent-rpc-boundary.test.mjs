@@ -8,12 +8,12 @@ import {
   readDurableObjectNamespace,
   scheduleNoteStructureThroughAgent,
   processWorkspaceBrainThroughAgent,
-} from '../../apps/worker/src/cloudflareAgentRpcBoundary.ts';
+} from '../../apps/worker/src/runtime/cloudflare/cloudflareAgentRpcBoundary.ts';
 
 const root = new URL('../../', import.meta.url);
 
 test('Cloudflare Agent RPC boundary invokes stub methods through direct RPC call shape', async () => {
-  const source = await readFile(new URL('apps/worker/src/cloudflareAgentRpcBoundary.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/cloudflare/cloudflareAgentRpcBoundary.ts', root), 'utf8');
 
   assert.doesNotMatch(source, /\.call\(stub/);
   assert.match(source, /\[input\.methodName\]\(\s*input\.command,\s*\)/s);

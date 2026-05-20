@@ -8,7 +8,7 @@ import {
   durableObjectAgentLocalSchemaTableNames,
   runDurableObjectAgentLocalSchemaCommand,
   validateDurableObjectAgentLocalSchemaCommand,
-} from '../../apps/worker/src/durableObjectAgentLocalSchema.ts';
+} from '../../apps/worker/src/runtime/cloudflare/durableObjectAgentLocalSchema.ts';
 import {
   agentLocalTableNames,
   agentLocalTemporarySchema,
@@ -136,7 +136,7 @@ test('Durable Object Agent-local schema reset reports stable result and hides SQ
 });
 
 test('Durable Object classes expose schema command only as local-gated RPC DTO surface', async () => {
-  const source = await readFile(new URL('apps/worker/src/cloudflareDurableObjectAgents.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/cloudflare/cloudflareDurableObjectAgents.ts', root), 'utf8');
 
   assert.match(source, /applyAgentLocalSchemaCommand\(\s*input:\s*DurableObjectAgentLocalSchemaCommand/s);
   assert.match(source, /Promise<DurableObjectAgentLocalSchemaResult>/);

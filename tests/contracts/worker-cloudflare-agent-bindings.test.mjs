@@ -17,10 +17,10 @@ import {
   noteAgentBindingDescriptor,
   toCloudflareDurableObjectBindingDescriptor,
   workspaceBrainAgentBindingDescriptor,
-} from '../../apps/worker/src/cloudflareAgentBindings.ts';
+} from '../../apps/worker/src/runtime/cloudflare/cloudflareAgentBindings.ts';
 import {
   createWorkspaceBrainStructureJobProcessorOptions,
-} from '../../apps/worker/src/workerRuntimePorts.ts';
+} from '../../apps/worker/src/runtime/composition/workerRuntimePorts.ts';
 import { operationRouterSnapshotFixture } from '../../contexts/ai-operations/src/contract/operationRouterFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -334,7 +334,7 @@ test('binding factory returns framework-neutral NoteAgent and WorkspaceBrainAgen
 });
 
 test('Cloudflare Agent binding source avoids SDK imports and direct persistence shortcuts', async () => {
-  const source = await readFile(new URL('apps/worker/src/cloudflareAgentBindings.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/cloudflare/cloudflareAgentBindings.ts', root), 'utf8');
 
   assert.match(source, /class NoteAgent/);
   assert.match(source, /class WorkspaceBrainAgent/);
@@ -356,7 +356,7 @@ test('Cloudflare Agent binding source avoids SDK imports and direct persistence 
 });
 
 test('Cloudflare Durable Object adapter is deployable and only delegates to framework-neutral agents', async () => {
-  const source = await readFile(new URL('apps/worker/src/cloudflareDurableObjectAgents.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/runtime/cloudflare/cloudflareDurableObjectAgents.ts', root), 'utf8');
 
   assert.match(source, /from\s+['"]cloudflare:workers['"]/);
   assert.match(source, /class\s+NoteAgent\s+extends\s+DurableObject/);

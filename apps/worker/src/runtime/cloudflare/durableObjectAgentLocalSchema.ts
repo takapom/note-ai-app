@@ -2,9 +2,9 @@
 // Authority: docs/contracts/cloudflare-agents-turso.md
 
 import type {
-  SchedulerAgentLocalSqlExecutor,
-  SchedulerAgentLocalSqlStatement,
-} from './schedulerAgentLocalSqlAdapter.ts';
+  CloudflareAgentLocalSqlExecutor,
+  CloudflareAgentLocalSqlStatement,
+} from './cloudflareAgentLocalSqlExecutor.ts';
 
 export type DurableObjectAgentLocalSchemaAction = 'initialize' | 'reset';
 
@@ -120,14 +120,14 @@ export const durableObjectAgentLocalSchemaTableNames: readonly string[] = Object
   AGENT_LOCAL_TABLES.map((table) => table.name),
 );
 
-export function createDurableObjectAgentLocalSchemaInitializeStatements(): readonly SchedulerAgentLocalSqlStatement[] {
+export function createDurableObjectAgentLocalSchemaInitializeStatements(): readonly CloudflareAgentLocalSqlStatement[] {
   return AGENT_LOCAL_TABLES.map((table) => ({
     sql: `create table if not exists ${table.name} (${table.columns.join(', ')})`,
     args: [],
   }));
 }
 
-export function createDurableObjectAgentLocalSchemaResetStatements(): readonly SchedulerAgentLocalSqlStatement[] {
+export function createDurableObjectAgentLocalSchemaResetStatements(): readonly CloudflareAgentLocalSqlStatement[] {
   return [
     ...[...AGENT_LOCAL_TABLES].reverse().map((table) => ({
       sql: `drop table if exists ${table.name}`,
@@ -163,7 +163,7 @@ export function validateDurableObjectAgentLocalSchemaCommand(
 }
 
 export async function runDurableObjectAgentLocalSchemaCommand(input: {
-  executor: SchedulerAgentLocalSqlExecutor;
+  executor: CloudflareAgentLocalSqlExecutor;
   command: unknown;
   localVerificationEnabled: boolean;
 }): Promise<DurableObjectAgentLocalSchemaResult> {

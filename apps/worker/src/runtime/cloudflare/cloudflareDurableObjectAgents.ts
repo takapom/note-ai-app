@@ -10,28 +10,37 @@ import {
   noteAgentBindingDescriptor,
   workspaceBrainAgentBindingDescriptor,
 } from './cloudflareAgentBindings.ts';
-import {
-  CloudflareDurableObjectAgentLocalSqlExecutor,
-} from './cloudflareDurableObjectSqlAdapter.ts';
+import { readAgentLocalSqlLifecycle } from './agentLocalSqlLifecycle.ts';
+import { CloudflareDurableObjectAgentLocalSqlExecutor } from './cloudflareDurableObjectSqlAdapter.ts';
 import {
   runDurableObjectAgentLocalSchemaCommand,
   type DurableObjectAgentLocalSchemaCommand,
   type DurableObjectAgentLocalSchemaResult,
 } from './durableObjectAgentLocalSchema.ts';
 import {
-  AgentLocalNextOpenDigestPreparationAdapter,
-  AgentLocalStructureJobQueueAdapter,
-} from './schedulerAgentLocalSqlAdapter.ts';
+  rejectedRpcResult,
+  rejectedSchemaCommandResult,
+  type CloudflareAgentRpcResult,
+} from './agentRpcResults.ts';
 import {
   type NoteLeaveCause,
   type NoteStructureRouteKind,
-} from './noteStructureRuntimeHandlers.ts';
-import type { SectionContract } from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from './noteStructureRouteRpcTypes.ts';
 import {
   createWorkerRuntimePorts,
   createWorkspaceBrainStructureJobProcessorOptions,
-} from './workerRuntimePorts.ts';
-import { type WorkerEntrypointEnv } from './workerEntrypoint.ts';
+} from '../composition/workerRuntimePorts.ts';
+import { type WorkerEntrypointEnv } from '../composition/workerEntrypointEnv.ts';
+import {
+  LocalSmokeSchedulerSnapshotStore,
+  type LocalSmokeSchedulerSnapshotCommand,
+} from '../local-verification/localSmokeSchedulerPorts.ts';
+
+export type {
+  NoteLeaveCause,
+  NoteStructureRouteKind,
+  LocalSmokeSchedulerSnapshotCommand,
+};
 
 export interface NoteAgentScheduleStructureCommand {
   workspaceId: string;
@@ -41,24 +50,7 @@ export interface NoteAgentScheduleStructureCommand {
   now: number;
 }
 
-export interface LocalSmokeSchedulerSnapshotCommand {
-  purpose: 'local_verification';
-  noteId: string;
-  sections: readonly SectionContract[];
-}
-
-export interface CloudflareAgentRpcResult {
-  ok: boolean;
-  accepted: boolean;
-  reason: string;
-  scheduledJobIds: readonly string[];
-  scheduledJobs?: Awaited<ReturnType<NoteAgentRuntimeDelegate['handleNoteStructureRoute']>>['scheduledJobs'];
-  providerCalls: readonly { providerId: string; structureJobId: string }[];
-  operationRoutingCalls: readonly { structureJobId: string }[];
-  auditWrites: readonly { structureJobId: string; savedCount: number }[];
-  noteSotMutations: [];
-  errors: string[];
-}
+export type { CloudflareAgentRpcResult } from './agentRpcResults.ts';
 
 export const WORKSPACE_BRAIN_PROCESSOR_OPTIONS_ENV_KEY = 'WORKSPACE_BRAIN_STRUCTURE_JOB_PROCESSOR_OPTIONS';
 
@@ -73,7 +65,7 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   private readonly workerEnv: WorkerEntrypointEnv;
   private readonly storage: unknown;
   private agentLocalSql?: CloudflareDurableObjectAgentLocalSqlExecutor;
-  private readonly localSmokeSectionsByNoteId = new Map<string, readonly SectionContract[]>();
+  private readonly localSmokeSchedulerSnapshotStore = new LocalSmokeSchedulerSnapshotStore();
 
   constructor(ctx: DurableObjectState, env: WorkerEntrypointEnv) {
     super(ctx, env);
@@ -84,13 +76,17 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   async scheduleNoteStructure(
     input: NoteAgentScheduleStructureCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    const agentLocalSql = this.readAgentLocalSql();
+    const agentLocalSql = readAgentLocalSqlLifecycle({
+      storage: this.storage,
+      ...(this.agentLocalSql === undefined ? {} : { cachedExecutor: this.agentLocalSql }),
+    });
     if (!agentLocalSql.ok) {
       return rejectedRpcResult('agent_local_sql_not_configured', agentLocalSql.errors);
     }
+    this.agentLocalSql = agentLocalSql.executor;
 
-    const ports = this.localSmokeSectionsByNoteId.has(input.noteId)
-      ? this.createLocalSmokeNoteStructurePorts(input.noteId)
+    const ports = this.localSmokeSchedulerSnapshotStore.hasSnapshot(input.noteId)
+      ? this.localSmokeSchedulerSnapshotStore.createNoteStructurePorts(input.noteId, agentLocalSql.executor)
       : createWorkerRuntimePorts({
           env: this.workerEnv,
           agentLocalSql: agentLocalSql.executor,
@@ -123,10 +119,14 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
   async applyAgentLocalSchemaCommand(
     input: DurableObjectAgentLocalSchemaCommand,
   ): Promise<DurableObjectAgentLocalSchemaResult> {
-    const agentLocalSql = this.readAgentLocalSql();
+    const agentLocalSql = readAgentLocalSqlLifecycle({
+      storage: this.storage,
+      ...(this.agentLocalSql === undefined ? {} : { cachedExecutor: this.agentLocalSql }),
+    });
     if (!agentLocalSql.ok) {
       return rejectedSchemaCommandResult(input, agentLocalSql.errors);
     }
+    this.agentLocalSql = agentLocalSql.executor;
 
     return runDurableObjectAgentLocalSchemaCommand({
       executor: agentLocalSql.executor,
@@ -141,46 +141,8 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
     if (!isLocalAgentSmokeEnabled(this.workerEnv)) {
       return { ok: false, errors: ['local smoke scheduler snapshot is available only for local verification'] };
     }
-    if (
-      input.purpose !== 'local_verification' ||
-      typeof input.noteId !== 'string' ||
-      !Array.isArray(input.sections)
-    ) {
-      return { ok: false, errors: ['local smoke scheduler snapshot command is invalid'] };
-    }
 
-    this.localSmokeSectionsByNoteId.set(input.noteId, structuredClone(input.sections));
-    return { ok: true, errors: [] };
-  }
-
-  private createLocalSmokeNoteStructurePorts(noteId: string) {
-    const agentLocalSql = this.readAgentLocalSql();
-    if (!agentLocalSql.ok) {
-      throw new Error('Agent-local SQL storage is not configured');
-    }
-
-    return {
-      noteSnapshot: {
-        loadSections: async () => [...structuredClone(this.localSmokeSectionsByNoteId.get(noteId) ?? [])],
-      },
-      structureJobQueue: new AgentLocalStructureJobQueueAdapter(agentLocalSql.executor),
-      nextOpenDigestPreparation: new AgentLocalNextOpenDigestPreparationAdapter(agentLocalSql.executor),
-    };
-  }
-
-  private readAgentLocalSql():
-    | { ok: true; executor: CloudflareDurableObjectAgentLocalSqlExecutor }
-    | { ok: false; errors: string[] } {
-    if (this.agentLocalSql !== undefined) {
-      return { ok: true, executor: this.agentLocalSql };
-    }
-
-    try {
-      this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(this.storage);
-      return { ok: true, executor: this.agentLocalSql };
-    } catch {
-      return { ok: false, errors: ['Agent-local SQL storage is not configured'] };
-    }
+    return this.localSmokeSchedulerSnapshotStore.applySnapshot(input);
   }
 }
 
@@ -200,10 +162,14 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   async processNextQueuedStructureJob(
     input: WorkspaceBrainProcessNextStructureJobCommand,
   ): Promise<CloudflareAgentRpcResult> {
-    const agentLocalSql = this.readAgentLocalSql();
+    const agentLocalSql = readAgentLocalSqlLifecycle({
+      storage: this.storage,
+      ...(this.agentLocalSql === undefined ? {} : { cachedExecutor: this.agentLocalSql }),
+    });
     if (!agentLocalSql.ok) {
       return rejectedRpcResult('agent_local_sql_not_configured', agentLocalSql.errors);
     }
+    this.agentLocalSql = agentLocalSql.executor;
 
     const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input, agentLocalSql.executor);
     if (!options.ok) {
@@ -244,10 +210,14 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
   async applyAgentLocalSchemaCommand(
     input: DurableObjectAgentLocalSchemaCommand,
   ): Promise<DurableObjectAgentLocalSchemaResult> {
-    const agentLocalSql = this.readAgentLocalSql();
+    const agentLocalSql = readAgentLocalSqlLifecycle({
+      storage: this.storage,
+      ...(this.agentLocalSql === undefined ? {} : { cachedExecutor: this.agentLocalSql }),
+    });
     if (!agentLocalSql.ok) {
       return rejectedSchemaCommandResult(input, agentLocalSql.errors);
     }
+    this.agentLocalSql = agentLocalSql.executor;
 
     return runDurableObjectAgentLocalSchemaCommand({
       executor: agentLocalSql.executor,
@@ -255,59 +225,10 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
       localVerificationEnabled: isLocalAgentSmokeEnabled(this.workerEnv),
     });
   }
-
-  private readAgentLocalSql():
-    | { ok: true; executor: CloudflareDurableObjectAgentLocalSqlExecutor }
-    | { ok: false; errors: string[] } {
-    if (this.agentLocalSql !== undefined) {
-      return { ok: true, executor: this.agentLocalSql };
-    }
-
-    try {
-      this.agentLocalSql = new CloudflareDurableObjectAgentLocalSqlExecutor(this.storage);
-      return { ok: true, executor: this.agentLocalSql };
-    } catch {
-      return { ok: false, errors: ['Agent-local SQL storage is not configured'] };
-    }
-  }
 }
 
 function isLocalAgentSmokeEnabled(env: WorkerEntrypointEnv): boolean {
   return env.LOCAL_AGENT_SMOKE_ENABLED === '1';
-}
-
-function rejectedRpcResult(reason: string, errors: string[]): CloudflareAgentRpcResult {
-  return {
-    ok: false,
-    accepted: false,
-    reason,
-    scheduledJobIds: [],
-    providerCalls: [],
-    operationRoutingCalls: [],
-    auditWrites: [],
-    noteSotMutations: [],
-    errors,
-  };
-}
-
-function rejectedSchemaCommandResult(
-  command: unknown,
-  errors: string[],
-): DurableObjectAgentLocalSchemaResult {
-  return {
-    ok: false,
-    action: isResetSchemaCommand(command) ? 'reset' : 'initialize',
-    initializedTables: [],
-    droppedTables: [],
-    errors,
-  };
-}
-
-function isResetSchemaCommand(command: unknown): boolean {
-  return typeof command === 'object'
-    && command !== null
-    && !Array.isArray(command)
-    && (command as { action?: unknown }).action === 'reset';
 }
 
 async function readWorkspaceBrainProcessorOptions(
@@ -355,8 +276,7 @@ async function readWorkspaceBrainProcessorOptions(
       ok: true,
       options: options as WorkspaceBrainStructureJobProcessorOptions,
     };
-  } catch (error) {
-    void error;
+  } catch {
     return {
       ok: false,
       reason: 'workspace_brain_ports_not_configured',
