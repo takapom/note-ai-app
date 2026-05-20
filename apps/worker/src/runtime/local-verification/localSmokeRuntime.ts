@@ -1,14 +1,14 @@
 // Local verification-only seed/reset support for Worker smoke runs.
 // Authority: docs/contracts/backend-runtime.md
 
-import { NoteDocumentBlockCommandPort } from './noteBlockCommandPort.ts';
+import { NoteDocumentBlockCommandPort } from '../../note-model/noteBlockCommandPort.ts';
 import {
   InMemoryNoteDocumentPersistencePort,
   type NoteDocumentPersistencePort,
-} from './noteDocumentPersistencePort.ts';
-import type { NoteDocumentContract } from '../../../contexts/note-model/src/contract/noteContract.ts';
-import type { DigestReadPort, NextOpenDigestReadModel } from './nextOpenDigestReadPort.ts';
-import type { WorkerHttpRequest, WorkerHttpResponse, WorkerHttpRouterPorts } from './workerHttpRouter.ts';
+} from '../../note-model/noteDocumentPersistencePort.ts';
+import type { NoteDocumentContract } from '../../../../../contexts/note-model/src/contract/noteContract.ts';
+import type { DigestReadPort, NextOpenDigestReadModel } from '../../scheduler/nextOpenDigestReadPort.ts';
+import type { WorkerHttpRequest, WorkerHttpResponse, WorkerHttpRouterPorts } from '../http/workerHttpRouter.ts';
 
 export const LOCAL_SMOKE_SEED_PATH = '/__local/smoke/seed';
 export const LOCAL_SMOKE_RESET_PATH = '/__local/smoke/reset';

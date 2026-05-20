@@ -1,6 +1,6 @@
 import {
   mapNoteDocumentToSql,
-} from '../../apps/worker/src/noteDocumentSqlAdapter.ts';
+} from '../../apps/worker/src/note-model/noteDocumentSqlAdapter.ts';
 import {
   noteDocumentFixture,
 } from '../../contexts/note-model/src/contract/noteFixtures.ts';

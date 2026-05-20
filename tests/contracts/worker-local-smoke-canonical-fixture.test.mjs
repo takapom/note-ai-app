@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/noteBlockCommandPort.ts';
-import { TursoNoteDocumentPersistenceAdapter } from '../../apps/worker/src/noteDocumentSqlAdapter.ts';
-import { WorkerTursoSqlExecutor } from '../../apps/worker/src/workerRuntimePorts.ts';
+import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/note-model/noteBlockCommandPort.ts';
+import { TursoNoteDocumentPersistenceAdapter } from '../../apps/worker/src/note-model/noteDocumentSqlAdapter.ts';
+import { WorkerTursoSqlExecutor } from '../../apps/worker/src/runtime/composition/workerTursoSqlExecutor.ts';
 import {
   blockFixtures,
   noteDocumentFixture,
