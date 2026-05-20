@@ -152,10 +152,10 @@ Note document persistence、memory review、operation proposals、provenance loo
 想定 ownership files:
 - `tests/contracts/worker-schema-readiness.test.mjs`
 - `tests/fixtures/worker-canonical-schema-fixture.mjs` if needed
-- `apps/worker/src/noteDocumentSqlAdapter.ts`
-- `apps/worker/src/operationAuditSqlAdapter.ts`
-- `apps/worker/src/operationProposalSqlAdapter.ts`
-- `apps/worker/src/memoryReviewPort.ts`
+- `apps/worker/src/note-model/noteDocumentSqlAdapter.ts`
+- `apps/worker/src/ai-operations/operationAuditSqlAdapter.ts`
+- `apps/worker/src/ai-operations/operationProposalSqlAdapter.ts`
+- `apps/worker/src/memory/memoryReviewPort.ts`
 - `docs/contracts/data-model.md`
 - `docs/contracts/verification-lanes.md`
 
@@ -202,10 +202,10 @@ Agent-local SQL は canonical data ではなく temporary state / job / session 
 想定 ownership files:
 - `tests/contracts/worker-agent-local-schema-readiness.test.mjs`
 - `tests/fixtures/worker-agent-local-schema-fixture.mjs` if needed
-- `apps/worker/src/schedulerAgentLocalSqlAdapter.ts`
-- `apps/worker/src/structureJobWorkQueueAgentLocalSqlAdapter.ts`
-- `apps/worker/src/nextOpenDigestReadPort.ts`
-- `apps/worker/src/operationAuditRecoveryQueue.ts`
+- `apps/worker/src/scheduler/schedulerAgentLocalSqlAdapter.ts`
+- `apps/worker/src/scheduler/structureJobWorkQueueAgentLocalSqlAdapter.ts`
+- `apps/worker/src/scheduler/nextOpenDigestReadPort.ts`
+- `apps/worker/src/ai-operations/operationAuditRecoveryQueue.ts`
 - `docs/contracts/cloudflare-agents-turso.md`
 - `docs/contracts/verification-lanes.md`
 
@@ -248,11 +248,11 @@ StructureJob processor flow、work queue port、Agent-local SQL adapter、Contex
 - `tsc -p tsconfig.json --noEmit`
 
 想定 ownership files:
-- `apps/worker/src/cloudflareDurableObjectAgents.ts`
-- `apps/worker/src/cloudflareAgentBindings.ts`
-- `apps/worker/src/structureJobProcessorFlow.ts`
-- `apps/worker/src/structureJobWorkQueuePort.ts`
-- `apps/worker/src/structureJobWorkQueueAgentLocalSqlAdapter.ts`
+- `apps/worker/src/runtime/cloudflare/cloudflareDurableObjectAgents.ts`
+- `apps/worker/src/runtime/cloudflare/cloudflareAgentBindings.ts`
+- `apps/worker/src/ai-operations/structure-job/structureJobProcessorFlow.ts`
+- `apps/worker/src/scheduler/structureJobWorkQueuePort.ts`
+- `apps/worker/src/scheduler/structureJobWorkQueueAgentLocalSqlAdapter.ts`
 - `tests/contracts/worker-cloudflare-agent-bindings.test.mjs`
 - `tests/contracts/worker-structure-job-processor-flow.test.mjs`
 
@@ -304,12 +304,12 @@ audit persistence failure は recovery queue intent。provider/context failure �
 - `tsc -p tsconfig.json --noEmit`
 
 想定 ownership files:
-- `apps/worker/src/operationRoutingFlow.ts`
-- `apps/worker/src/operationAuditPersistenceFlow.ts`
-- `apps/worker/src/operationAuditRecoveryQueue.ts`
-- `apps/worker/src/operationAuditRecoveryAgentLocalSqlAdapter.ts`, if added
-- `apps/worker/src/operationProjectionPersistenceFlow.ts`
-- `apps/worker/src/workerHttpRouter.ts`
+- `apps/worker/src/ai-operations/operationRoutingFlow.ts`
+- `apps/worker/src/ai-operations/operationAuditPersistenceFlow.ts`
+- `apps/worker/src/ai-operations/operationAuditRecoveryQueue.ts`
+- `apps/worker/src/ai-operations/operationAuditRecoveryAgentLocalSqlAdapter.ts`, if added
+- `apps/worker/src/ai-operations/operationProjectionPersistenceFlow.ts`
+- `apps/worker/src/runtime/http/workerHttpRouter.ts`
 - `tests/contracts/worker-operation-audit-recovery-agent-local-sql-adapter.test.mjs`, if adapter is added
 - `tests/contracts/worker-http-error-responses.test.mjs`
 - `docs/contracts/backend-runtime.md`
@@ -365,9 +365,9 @@ UI polish 前に Worker API が backend 単体で起動・到達・失敗観測�
 - `tests/contracts/backend-runtime-smoke.test.mjs`
 - `scripts/smoke-worker-runtime.mjs` if needed
 - `docs/contracts/verification-lanes.md`
-- `apps/worker/src/workerEntrypoint.ts`
-- `apps/worker/src/workerHttpRouter.ts`
-- `apps/worker/src/workerRuntimePorts.ts`
+- `apps/worker/src/runtime/http/workerEntrypoint.ts`
+- `apps/worker/src/runtime/http/workerHttpRouter.ts`
+- `apps/worker/src/runtime/composition/workerRuntimePorts.ts`
 
 サブエージェント注意点:
 - backend route smoke を担当する。schema/migration や provider runtime hardening を同じ slice に混ぜない。

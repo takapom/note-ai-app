@@ -33,8 +33,8 @@ UI 実装前の backend readiness は満たしている。ただし GitHub issue
 
 修正:
 
-- `apps/worker/src/workerRuntimePorts.ts` に `createWorkspaceBrainStructureJobProcessorOptions` を追加し、Turso / Agent-local SQL / provider registry / Operation Router snapshot から processor options を構成。
-- `apps/worker/src/cloudflareDurableObjectAgents.ts` は ad-hoc test seam がない場合、Worker runtime port wiring へ fallback。
+- `apps/worker/src/runtime/composition/workerRuntimePorts.ts` に `createWorkspaceBrainStructureJobProcessorOptions` を追加し、Turso / Agent-local SQL / provider registry / Operation Router snapshot から processor options を構成。
+- `apps/worker/src/runtime/cloudflare/cloudflareDurableObjectAgents.ts` は ad-hoc test seam がない場合、Worker runtime port wiring へ fallback。
 - DO/RPC options failure は stable `workspace brain processor ports are not configured` に正規化。
 - `docs/contracts/backend-runtime.md` と `docs/contracts/cloudflare-agents-turso.md` に決定事項を反映。
 
