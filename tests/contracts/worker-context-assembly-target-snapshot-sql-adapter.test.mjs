@@ -12,7 +12,7 @@ import {
   mapTargetNoteLookupToSql,
   mapTargetOutlineLookupToSql,
   TursoContextAssemblyTargetSnapshotAdapter,
-} from '../../apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyTargetSnapshotSqlAdapter.ts';
 import { blockFixtures, noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const runtimeInput = {
@@ -310,7 +310,7 @@ test('context assembly target snapshot adapter requires section targetId and rej
 test('context assembly target snapshot SQL adapter stays read-only and avoids unrelated runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/contextAssemblyTargetSnapshotSqlAdapter.ts',
+    '../../apps/worker/src/context-assembly/contextAssemblyTargetSnapshotSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

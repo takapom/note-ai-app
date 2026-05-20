@@ -8,8 +8,8 @@ import {
   type ContextAssemblyInput,
   type RelatedContextRetrievalReason,
   type TargetScopeKind,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
-import { userAuthoredBlockOrigin } from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+import { userAuthoredBlockOrigin } from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import type {
   ContextAssemblyRelatedContextRetrievalPort,
   ContextAssemblyRuntimeRequest,

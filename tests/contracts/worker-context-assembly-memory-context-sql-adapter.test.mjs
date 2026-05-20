@@ -12,7 +12,7 @@ import {
   mapMemoryContextCandidatesLookupToSql,
   mapMemoryContextRowsToMemoryContext,
   TursoContextAssemblyMemoryContextSqlAdapter,
-} from '../../apps/worker/src/contextAssemblyMemoryContextSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyMemoryContextSqlAdapter.ts';
 import { noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const runtimeInput = {
@@ -441,7 +441,7 @@ test('context assembly memory context adapter requires userId for scoped memory 
 test('context assembly memory context SQL adapter stays read-only and avoids forbidden boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/contextAssemblyMemoryContextSqlAdapter.ts',
+    '../../apps/worker/src/context-assembly/contextAssemblyMemoryContextSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

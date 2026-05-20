@@ -12,7 +12,7 @@ import {
   type ContextEnvelopeContract,
   type ContextEnvelopeValidationResult,
   type TargetScopeKind,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 
 export interface ContextAssemblyRuntimeRequest {
   workspaceId: string;

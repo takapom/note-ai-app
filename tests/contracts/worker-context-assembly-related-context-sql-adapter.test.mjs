@@ -12,7 +12,7 @@ import {
   mapRelatedSourceBlockExcerptRowsToRelatedContextSourceBlockExcerpts,
   mapRelatedSourceBlockExcerptsLookupToSql,
   TursoContextAssemblyRelatedContextSqlAdapter,
-} from '../../apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyRelatedContextSqlAdapter.ts';
 import { noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const runtimeInput = {
@@ -462,7 +462,7 @@ test('context assembly related context mappers reject full dump-shaped row field
 test('context assembly related context SQL adapter stays read-only and avoids forbidden runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/contextAssemblyRelatedContextSqlAdapter.ts',
+    '../../apps/worker/src/context-assembly/contextAssemblyRelatedContextSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

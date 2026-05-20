@@ -12,7 +12,7 @@ import {
   mapSectionSummaryRowsToLocalStructureSectionSummaries,
   mapSemanticUnitRowsToLocalStructureSemanticUnits,
   TursoContextAssemblyLocalStructureSqlAdapter,
-} from '../../apps/worker/src/contextAssemblyLocalStructureSqlAdapter.ts';
+} from '../../apps/worker/src/context-assembly/contextAssemblyLocalStructureSqlAdapter.ts';
 import { noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const runtimeInput = {
@@ -420,7 +420,7 @@ test('context assembly local structure adapter requires section targetId', async
 test('context assembly local structure SQL adapter stays read-only and avoids unrelated runtime boundaries', async () => {
   const sourcePath = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
-    '../../apps/worker/src/contextAssemblyLocalStructureSqlAdapter.ts',
+    '../../apps/worker/src/context-assembly/contextAssemblyLocalStructureSqlAdapter.ts',
   );
   const source = await readFile(sourcePath, 'utf8');
 

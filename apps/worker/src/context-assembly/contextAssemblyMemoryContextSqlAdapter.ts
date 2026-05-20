@@ -5,12 +5,12 @@
 import type {
   ContextAssemblyInput,
   TargetScopeKind,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
-import { hasForbiddenContextDumpField } from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+import { hasForbiddenContextDumpField } from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import {
   isMemoryStatus,
   isMemoryType,
-} from '../../../contexts/memory/src/contract/memoryContract.ts';
+} from '../../../../contexts/memory/src/contract/memoryContract.ts';
 import type {
   ContextAssemblyMemoryRetrievalPort,
   ContextAssemblyRuntimeRequest,

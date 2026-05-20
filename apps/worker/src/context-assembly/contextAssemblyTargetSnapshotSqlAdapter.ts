@@ -6,11 +6,11 @@ import {
   userAuthoredBlockOrigin,
   userBlockTypes,
   type HeadingLevel,
-} from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import type {
   ContextAssemblyInput,
   TargetScopeKind,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import type {
   ContextAssemblyRuntimeRequest,
   ContextAssemblyTargetSnapshotPort,

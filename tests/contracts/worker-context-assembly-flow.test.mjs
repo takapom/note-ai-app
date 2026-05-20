@@ -5,7 +5,7 @@ import {
   defaultContextAssemblyLimits,
 } from '../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import { contextAssemblyInputFixture } from '../../contexts/context-assembly/src/contract/contextEnvelopeFixtures.ts';
-import { runContextEnvelopeAssemblyFlow } from '../../apps/worker/src/contextAssemblyRuntimeFlow.ts';
+import { runContextEnvelopeAssemblyFlow } from '../../apps/worker/src/context-assembly/contextAssemblyRuntimeFlow.ts';
 
 const runtimeInput = {
   workspaceId: 'workspace_001',

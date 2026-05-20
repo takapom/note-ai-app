@@ -5,7 +5,7 @@
 import type {
   ContextAssemblyInput,
   TargetScopeKind,
-} from '../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
+} from '../../../../contexts/context-assembly/src/contract/contextEnvelopeContract.ts';
 import type {
   ContextAssemblyLocalStructurePort,
   ContextAssemblyRuntimeRequest,
