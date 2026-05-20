@@ -5,7 +5,7 @@ import {
   InMemoryNoteDocumentPersistencePort,
   validateLoadRequest,
   validateNoteDocumentForPersistence,
-} from '../../apps/worker/src/noteDocumentPersistencePort.ts';
+} from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
 import {
   blockFixtures,
   noteDocumentFixture,

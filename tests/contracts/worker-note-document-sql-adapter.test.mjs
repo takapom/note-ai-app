@@ -9,7 +9,7 @@ import {
   mapRowsToNoteDocument,
   mapSectionsLookupToSql,
   TursoNoteDocumentPersistenceAdapter,
-} from '../../apps/worker/src/noteDocumentSqlAdapter.ts';
+} from '../../apps/worker/src/note-model/noteDocumentSqlAdapter.ts';
 import {
   blockFixtures,
   noteDocumentFixture,
@@ -192,8 +192,8 @@ test('note document SQL adapter rejects invalid save input before writing', asyn
 });
 
 test('note document persistence source stays in Note Model persistence boundary', async () => {
-  const source = await readFile(new URL('apps/worker/src/noteDocumentSqlAdapter.ts', root), 'utf8');
-  const portSource = await readFile(new URL('apps/worker/src/noteDocumentPersistencePort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/note-model/noteDocumentSqlAdapter.ts', root), 'utf8');
+  const portSource = await readFile(new URL('apps/worker/src/note-model/noteDocumentPersistencePort.ts', root), 'utf8');
   const combined = `${source}\n${portSource}`;
 
   assert.doesNotMatch(combined, /operationRouter|OperationRouter|provider|ai_operations|source_spans|semantic_units|memory_items|agent_local_/);

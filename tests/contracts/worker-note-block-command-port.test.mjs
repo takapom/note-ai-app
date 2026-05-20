@@ -4,10 +4,10 @@ import test from 'node:test';
 
 import {
   NoteDocumentBlockCommandPort,
-} from '../../apps/worker/src/noteBlockCommandPort.ts';
+} from '../../apps/worker/src/note-model/noteBlockCommandPort.ts';
 import {
   InMemoryNoteDocumentPersistencePort,
-} from '../../apps/worker/src/noteDocumentPersistencePort.ts';
+} from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
 import {
   blockFixtures,
   noteDocumentFixture,
@@ -377,7 +377,7 @@ test('note block command port rejects heading text updates when the section boun
 });
 
 test('note block command port source stays inside Note Model and persistence boundaries', async () => {
-  const source = await readFile(new URL('apps/worker/src/noteBlockCommandPort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/note-model/noteBlockCommandPort.ts', root), 'utf8');
 
   assert.doesNotMatch(source, /from ['"].*workerHttpRouter/);
   assert.doesNotMatch(source, /from ['"].*(scheduler|context-assembly|ai-operations|memory)/);

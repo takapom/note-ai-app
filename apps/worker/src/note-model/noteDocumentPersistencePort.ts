@@ -9,7 +9,7 @@ import {
   type NoteDocumentContract,
   type SectionContract,
   validateBlockContract,
-} from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../contexts/note-model/src/contract/noteContract.ts';
 
 export interface NoteDocumentLoadRequest {
   workspaceId: string;

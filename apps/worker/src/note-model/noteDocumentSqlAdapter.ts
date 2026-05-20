@@ -11,7 +11,7 @@ import type {
   NoteContract,
   NoteDocumentContract,
   SectionContract,
-} from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import {
   type NoteDocumentLoadRequest,
   type NoteDocumentLoadResult,

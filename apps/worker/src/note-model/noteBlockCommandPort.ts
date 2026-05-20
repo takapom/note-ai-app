@@ -9,7 +9,7 @@ import {
   isHeadingLevel,
   userAuthoredBlockOrigin,
   validateBlockContract,
-} from '../../../contexts/note-model/src/contract/noteContract.ts';
+} from '../../../../contexts/note-model/src/contract/noteContract.ts';
 import {
   type NoteDocumentPersistencePort,
   validateNoteDocumentForPersistence,

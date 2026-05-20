@@ -7,7 +7,7 @@ import {
   mapProvenanceSourceLookupToSql,
   provenanceExcerptMaxChars,
   TursoProvenanceLookupSqlAdapter,
-} from '../../apps/worker/src/provenanceLookupPort.ts';
+} from '../../apps/worker/src/note-model/provenanceLookupPort.ts';
 import { blockFixtures, noteFixture, sectionFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
 const root = new URL('../../', import.meta.url);
@@ -252,7 +252,7 @@ test('provenance lookup rejects source spans that exceed canonical block text', 
 });
 
 test('provenance lookup source guard forbids provider router audit memory activation and write SQL', async () => {
-  const source = await readFile(new URL('apps/worker/src/provenanceLookupPort.ts', root), 'utf8');
+  const source = await readFile(new URL('apps/worker/src/note-model/provenanceLookupPort.ts', root), 'utf8');
 
   assert.match(source, /ProvenanceLookupPort/);
   assert.match(source, /from source_spans/);
