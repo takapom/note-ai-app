@@ -8,7 +8,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "exactOptionalPropertyTypes": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "jsx": "preserve",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ]
   },
   "include": [
     "apps/**/*.ts",

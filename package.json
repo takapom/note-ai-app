@@ -8,8 +8,12 @@
     "contexts/*"
   ],
   "scripts": {
+    "dev": "npm run web:dev",
+    "web:dev": "WATCHPACK_POLLING=true next dev apps/web -p 3000 --webpack",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:web": "node scripts/build-web.mjs",
+    "preview:ui": "node scripts/preview-ui.mjs",
+    "preview:ui:static": "node scripts/preview-ui-static.mjs --serve",
     "worker:local": "node scripts/smoke-worker-local-runtime.mjs --serve-only",
     "worker:local:smoke": "node scripts/smoke-worker-local-runtime.mjs",
     "lint": "npm run lint:ts && npm run contracts:verify -- --lint",

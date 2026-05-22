@@ -4,6 +4,9 @@ dist/
 build/
 coverage/
 .turbo/
+.next/
+.next-*/
+*.tsbuildinfo
 .wrangler/
 .serena/
 repomix-output.xml

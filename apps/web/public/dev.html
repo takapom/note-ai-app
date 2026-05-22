@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Native Note — ローカルプレビュー</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ann-canvas: #f7f4ee;
+        --ann-surface: #fffcf7;
+        --ann-surface-subtle: #f1eee7;
+        --ann-surface-raised: rgba(255, 252, 247, 0.92);
+        --ann-ink: #211e1a;
+        --ann-ink-muted: #6e675f;
+        --ann-ink-faint: #9a9288;
+        --ann-hairline: rgba(33, 30, 26, 0.1);
+        --ann-hairline-strong: rgba(33, 30, 26, 0.18);
+        --ann-accent: #9b7a44;
+        --ann-accent-soft: #f4e9d6;
+        --ann-focus: #3f6e8f;
+        --ann-danger: #9f3a32;
+        --ann-success: #4e6f4e;
+        --ann-warning: #9c6b1f;
+        --ann-thin-rail-width: 12.5rem;
+        --ann-note-max-width: 52rem;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--ann-canvas);
+        color: var(--ann-ink);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .ann-app--quiet-writing {
+        display: grid;
+        grid-template-columns: var(--ann-thin-rail-width) minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .ann-thin-rail {
+        background: var(--ann-surface-subtle);
+        border-right: 1px solid var(--ann-hairline);
+        padding: 1.25rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .ann-thin-rail__mark {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: var(--ann-ink-faint);
+      }
+
+      .ann-thin-rail__label {
+        margin: 0 0 0.5rem;
+        font-size: 0.6875rem;
+        color: var(--ann-ink-faint);
+      }
+
+      .ann-thin-rail__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.375rem;
+      }
+
+      .ann-thin-rail__thought {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 0.5rem 0.625rem;
+        border-radius: 0.5rem;
+        display: grid;
+        gap: 0.125rem;
+      }
+
+      .ann-thin-rail__thought[aria-current="true"] {
+        background: var(--ann-surface);
+        box-shadow: inset 0 0 0 1px var(--ann-hairline);
+      }
+
+      .ann-thin-rail__thought-title {
+        font-size: 0.8125rem;
+        line-height: 1.4;
+      }
+
+      .ann-thin-rail__thought-meta {
+        font-size: 0.6875rem;
+        color: var(--ann-ink-faint);
+      }
+
+      .ann-thin-rail__tools {
+        margin-top: auto;
+        display: flex;
+        gap: 0.375rem;
+      }
+
+      .ann-icon-button,
+      .ann-text-button {
+        min-height: 2rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--ann-hairline);
+        background: var(--ann-surface);
+        color: var(--ann-ink);
+        padding: 0 0.75rem;
+        font-size: 0.8125rem;
+      }
+
+      .ann-icon-button {
+        padding: 0 0.5rem;
+      }
+
+      .ann-text-button:focus-visible,
+      .ann-icon-button:focus-visible,
+      .ann-thin-rail__thought:focus-visible {
+        outline: 2px solid var(--ann-focus);
+        outline-offset: 2px;
+      }
+
+      .ann-main {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        min-width: 0;
+      }
+
+      .ann-writing-chrome {
+        padding: 1rem 1.5rem 0;
+      }
+
+      .ann-writing-chrome__status {
+        display: flex;
+        gap: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-writing-chrome__return-status {
+        color: var(--ann-accent);
+      }
+
+      .ann-writing-chrome__digest-status {
+        margin: 0 0 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        background: var(--ann-accent-soft);
+        color: var(--ann-ink);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+      }
+
+      .ann-writing-chrome__digest-status[data-digest-status-kind='load_failed'],
+      .ann-writing-chrome__digest-status[data-digest-status-kind='invalid_body'] {
+        background: #f6e8e8;
+        color: #6d3b3b;
+      }
+
+      .ann-note-surface {
+        position: relative;
+        width: min(100%, var(--ann-note-max-width));
+        margin: 0 auto;
+        padding: 3.5rem 1.5rem 2rem;
+      }
+
+      .ann-note-header h1 {
+        margin: 0 0 0.75rem;
+        font-size: 2rem;
+        font-weight: 500;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .ann-note-header p {
+        margin: 0 0 2rem;
+        color: var(--ann-ink-muted);
+        font-size: 0.9375rem;
+        line-height: 1.75;
+      }
+
+      .ann-re-entry {
+        margin-bottom: 2rem;
+        padding: 1rem 1.125rem;
+        border-radius: 0.75rem;
+        background: var(--ann-surface-subtle);
+        border: 1px solid var(--ann-hairline);
+      }
+
+      .ann-re-entry__heading {
+        margin: 0 0 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-re-entry__directions {
+        list-style: none;
+        margin: 0 0 1rem;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .ann-re-entry__direction-button {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 0.5rem 0;
+        display: grid;
+        gap: 0.125rem;
+      }
+
+      .ann-re-entry__direction-title {
+        font-size: 0.9375rem;
+        font-weight: 500;
+      }
+
+      .ann-re-entry__direction-summary {
+        font-size: 0.8125rem;
+        color: var(--ann-ink-muted);
+        line-height: 1.5;
+      }
+
+      .ann-re-entry__primary {
+        border-color: var(--ann-accent);
+        color: var(--ann-ink);
+      }
+
+      .ann-block-editor {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .ann-block {
+        display: grid;
+        gap: 0.375rem;
+        padding: 0.25rem 0;
+      }
+
+      .ann-block-text,
+      .ann-heading {
+        min-height: 1.75rem;
+        font-size: 1rem;
+        line-height: 1.8;
+        outline: none;
+        overflow-wrap: anywhere;
+      }
+
+      .ann-heading {
+        font-weight: 500;
+      }
+
+      .ann-block-text:focus,
+      .ann-heading:focus {
+        box-shadow: inset 0 -2px 0 var(--ann-focus);
+      }
+
+      .ann-block-controls {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.375rem;
+        min-height: 2rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+      }
+
+      .ann-block:hover .ann-block-controls,
+      .ann-block:focus-within .ann-block-controls {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .ann-block-status {
+        min-height: 1.5rem;
+        font-size: 0.75rem;
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-ai-assist-block {
+        border-left: 3px solid var(--ann-accent);
+        background: var(--ann-accent-soft);
+        border-radius: 0.5rem;
+        padding: 0.875rem 1rem;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .ann-inline-label {
+        font-size: 0.6875rem;
+        color: var(--ann-accent);
+        font-weight: 500;
+      }
+
+      .ann-inline-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+      }
+
+      .ann-return-layer--inline {
+        margin: 0 0 1.25rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--ann-hairline);
+        background: var(--ann-surface-subtle);
+      }
+
+      .ann-return-layer__toggle {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        align-items: center;
+        gap: 0.5rem 0.75rem;
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
+        color: inherit;
+        font: inherit;
+      }
+
+      .ann-return-layer__toggle-summary {
+        color: var(--ann-ink-muted);
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .ann-return-layer__count {
+        font-size: 0.75rem;
+        color: var(--ann-accent);
+      }
+
+      .ann-return-layer__chevron {
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-return-layer--expanded {
+        padding: 1rem 1.125rem 1.125rem;
+        background: var(--ann-surface-raised);
+        border-color: var(--ann-hairline-strong);
+        box-shadow: 0 4px 16px rgba(33, 30, 26, 0.04);
+      }
+
+      .ann-return-layer__header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.25rem 0.75rem;
+        align-items: start;
+        margin-bottom: 0.75rem;
+      }
+
+      .ann-return-layer__toggle--expanded {
+        width: auto;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        border: 1px solid var(--ann-hairline);
+        background: var(--ann-surface);
+      }
+
+      .ann-return-layer__label {
+        margin: 0;
+        font-size: 0.6875rem;
+        color: var(--ann-accent);
+      }
+
+      .ann-return-layer__summary {
+        margin: 0.375rem 0 0.75rem;
+        font-size: 1.125rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+
+      .ann-return-layer__points {
+        list-style: none;
+        margin: 0 0 1rem;
+        padding: 0;
+        display: grid;
+        gap: 0.625rem;
+      }
+
+      .ann-return-layer__point {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.25rem 0.625rem;
+      }
+
+      .ann-return-layer__point-index {
+        color: var(--ann-accent);
+        font-size: 0.75rem;
+      }
+
+      .ann-return-layer__point-title {
+        font-size: 0.875rem;
+        font-weight: 500;
+        grid-column: 2;
+      }
+
+      .ann-return-layer__point-explanation {
+        font-size: 0.8125rem;
+        color: var(--ann-ink-muted);
+        line-height: 1.5;
+        grid-column: 2;
+      }
+
+      .ann-return-layer__source {
+        grid-column: 2;
+        justify-self: start;
+        font-size: 0.75rem;
+      }
+
+      .ann-return-layer__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .ann-return-layer__primary {
+        border-color: var(--ann-accent);
+      }
+
+      .ann-carried-context-tray {
+        border-top: 1px solid var(--ann-hairline);
+        background: var(--ann-surface-subtle);
+        padding: 0.875rem 1.5rem 1.25rem;
+      }
+
+      .ann-carried-context-tray__label {
+        margin: 0 0 0.625rem;
+        font-size: 0.75rem;
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-carried-context-tray__count {
+        color: var(--ann-accent);
+      }
+
+      .ann-carried-context-tray__items {
+        display: grid;
+        gap: 0.625rem;
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+      }
+
+      .ann-carried-context-tray__item {
+        background: var(--ann-surface);
+        border: 1px solid var(--ann-hairline);
+        border-radius: 0.625rem;
+        padding: 0.75rem;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .ann-carried-context-tray__statement {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .ann-provenance-popover[data-open="true"] {
+        position: fixed;
+        right: 1.5rem;
+        bottom: 6rem;
+        width: min(22.5rem, calc(100vw - 2rem));
+        background: var(--ann-surface-raised);
+        border: 1px solid var(--ann-hairline-strong);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        box-shadow: 0 8px 24px rgba(33, 30, 26, 0.1);
+        z-index: 20;
+      }
+
+      .ann-next-open-digest--hidden {
+        display: none;
+      }
+
+      @media (max-width: 48rem) {
+        .ann-app--quiet-writing {
+          grid-template-columns: 1fr;
+        }
+
+        .ann-thin-rail {
+          border-right: 0;
+          border-bottom: 1px solid var(--ann-hairline);
+          flex-direction: row;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .ann-thin-rail__nav {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .ann-return-layer--inline {
+          margin-top: 0.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ローカルプレビュー: npm run preview:ui -->
+    <main
+      data-note-surface-root
+      data-api-base-url="http://127.0.0.1:8787"
+      data-workspace-id="workspace_local_preview"
+      data-user-id="user_local_preview"
+      data-note-id="note_local_preview"
+      data-workspace-name="ローカルプレビュー"
+      data-expanded-digest="true"
+      data-projection-maps-json='{"operationIdByBlockId":{"block_ai_question_001":"operation_preview_001"},"memoryIdByBlockId":{"block_ai_memory_preview_001":"memory_preview_001"}}'
+    ></main>
+    <script type="module">
+      import { startBrowserNoteSurfaceApp } from '/assets/apps/web/src/browserNoteSurfaceAppEntry.js';
+
+      await startBrowserNoteSurfaceApp(
+        {
+          documentReadyState: () => document.readyState,
+          addEventListener: globalThis.addEventListener.bind(globalThis),
+        },
+        {},
+      );
+    </script>
+  </body>
+</html>

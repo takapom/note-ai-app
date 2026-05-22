@@ -1,0 +1,19 @@
+{
+  "name": "@ai-native-note/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "WATCHPACK_POLLING=true next dev -p 3000 --webpack"
+  },
+  "dependencies": {
+    "next": "^16.1.6",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3"
+  }
+}
