@@ -19,6 +19,8 @@ test('web note surface exposes one AppShell with one note surface', () => {
   assert.equal(model.sidebar.kind, 'Sidebar');
   assert.deepEqual(model.sidebar.items.map((item) => item.id), ['notes', 'recent', 'search']);
   assert.equal(model.topBar.workspaceName, 'MVP Workspace');
+  assert.equal(model.quietWriting.kind, 'QuietWritingSurface');
+  assert.equal(model.quietWriting.thinRail.recentThoughts.length > 0, true);
   assert.equal(model.noteSurface.kind, 'NoteSurface');
   assert.equal(model.noteSurface.noteHeader.title, noteDocumentFixture.note.title);
   assert.equal(model.noteSurface.blockEditor.emitsAiProviderCall, false);
@@ -59,34 +61,47 @@ test('block editing actions remain available when AI status is failed', () => {
   const editingBlock = model.noteSurface.blocks.find((block) => block.id === editingBlockId);
   assert.equal(editingBlock?.editor.state, 'editing');
   assert.equal(editingBlock?.editor.saveStatus, 'dirty');
-  assert.equal(editingBlock?.editor.statusMessage, 'Unsaved changes');
+  assert.equal(editingBlock?.editor.statusMessage, '未保存の変更');
   assert.deepEqual(editingBlock?.editor.actions, ['edit_block', 'save_block', 'cancel_edit']);
 });
 
 test('AI assist blocks expose inline action intents without direct user block mutation', () => {
-  const model = createNoteSurfaceViewModel(noteDocumentFixture);
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    sourceSpanIdByBlockId: {
+      block_ai_question_001: 'source_span_ai_question_001',
+    },
+  });
   const aiBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_question');
 
   assert.equal(aiBlock?.aiAssist?.sourceInspectable, true);
   assert.equal(aiBlock?.aiAssist?.emitsAiProviderCall, false);
   assert.equal(aiBlock?.aiAssist?.mutatesUserAuthoredBlock, false);
+  assert.equal(aiBlock?.aiAssist?.editable, true);
   assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.id), [
-    'edit',
-    'adopt',
-    'delete',
     'inspect_source',
+    'edit',
+    'delete',
   ]);
   assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.apiIntent), [
-    'none',
-    'POST /ai-operations/:operationId/accept',
-    'POST /ai-operations/:operationId/dismiss',
     'provenance.lookup',
+    'none',
+    'POST /ai-operations/:operationId/dismiss',
   ]);
   assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.emitsAiProviderCall), [
     false,
     false,
     false,
-    false,
+  ]);
+});
+
+test('AI assist source action is only exposed when caller supplied provenance mapping can support it', () => {
+  const model = createNoteSurfaceViewModel(noteDocumentFixture);
+  const aiBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_question');
+
+  assert.equal(aiBlock?.aiAssist?.sourceInspectable, false);
+  assert.deepEqual(aiBlock?.aiAssist?.actions.map((action) => action.id), [
+    'edit',
+    'delete',
   ]);
 });
 
@@ -94,7 +109,7 @@ test('memory candidate blocks expose review actions without hidden activation', 
   const model = createNoteSurfaceViewModel(createMemoryCandidateDocument());
   const memoryBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_memory_candidate');
 
-  assert.equal(memoryBlock?.memoryCandidate?.label, 'Memory candidate');
+  assert.equal(memoryBlock?.memoryCandidate?.label, '持ち越す文脈');
   assert.equal(memoryBlock?.memoryCandidate?.hiddenProfiling, false);
   assert.equal(memoryBlock?.memoryCandidate?.automaticActiveMemory, false);
   assert.equal(memoryBlock?.memoryCandidate?.emitsAiProviderCall, false);
@@ -126,6 +141,14 @@ test('next open digest is compact, expandable, and does not invent unavailable c
   assert.equal(unavailable.expanded, false);
   assert.equal(unavailable.emptyState, 'unavailable');
   assert.deepEqual(unavailable.sections, []);
+
+  const loadFailed = createNoteSurfaceViewModel(noteDocumentFixture, {
+    nextOpenDigest: { available: false, loadState: 'transport_failed' },
+    expandedDigest: true,
+  }).noteSurface.nextOpenDigest;
+
+  assert.equal(loadFailed.emptyState, 'load_failed');
+  assert.equal(loadFailed.loadState, 'transport_failed');
 
   const empty = createNoteSurfaceViewModel(noteDocumentFixture, {
     nextOpenDigest: { available: true },

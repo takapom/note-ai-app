@@ -13,6 +13,7 @@ const expectedHttpProductProviderPath = 'apps/web/src/noteSurfaceHttpProductProv
 const expectedHttpDigestProductProviderPath = 'apps/web/src/noteSurfaceHttpDigestProductProvider.ts';
 const expectedHttpProductAppPath = 'apps/web/src/noteSurfaceHttpProductApp.ts';
 const expectedHttpDigestProductAppPath = 'apps/web/src/noteSurfaceHttpDigestProductApp.ts';
+const expectedSessionLifecyclePath = 'apps/web/src/noteSurfaceSessionLifecycle.ts';
 
 const guardedSourcePaths = [
   'apps/web/src/noteSurface.ts',
@@ -23,12 +24,14 @@ const guardedSourcePaths = [
   'apps/web/src/noteSurfaceDomHost.ts',
   'apps/web/src/noteSurfaceEventController.ts',
   'apps/web/src/noteSurfaceHtmlRenderer.ts',
+  'apps/web/src/noteSurfaceAuthoringShortcuts.ts',
   expectedProductStatePath,
   expectedResolverOptionsFromDocumentPath,
   expectedHttpProductProviderPath,
   expectedHttpDigestProductProviderPath,
   expectedHttpProductAppPath,
   expectedHttpDigestProductAppPath,
+  expectedSessionLifecyclePath,
   expectedProductAppPath,
   expectedBootstrapPath,
 ];
@@ -139,6 +142,7 @@ test('web note surface integration guard watches expected bootstrap product app 
     expectedHttpDigestProductProviderPath,
     expectedHttpProductAppPath,
     expectedHttpDigestProductAppPath,
+    expectedSessionLifecyclePath,
   ];
   const missingRequiredPaths = guardedSourcePaths
     .filter((path) => !expectedOptionalPaths.includes(path))

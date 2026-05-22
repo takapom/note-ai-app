@@ -76,7 +76,7 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
   ]);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -85,7 +85,7 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/dismiss'],
   ]);
 });
 
@@ -161,7 +161,8 @@ test('HTTP digest product app still mounts when digest projection is unavailable
   assert.equal(mounted.ok, true);
   assert.equal(mounted.status, 'mounted');
   assert.match(root.innerHTML, /data-component="next-open-digest" data-available="false"/);
-  assert.match(root.innerHTML, /Digest unavailable/);
+  assert.match(root.innerHTML, /ann-writing-chrome__digest-status/);
+  assert.match(root.innerHTML, /整理の取得に失敗しました/);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],

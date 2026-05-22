@@ -69,7 +69,7 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
   ]);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -78,7 +78,7 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_browser_mount/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_browser_mount/dismiss'],
   ]);
 });
 
@@ -142,7 +142,7 @@ test('browser note surface mount reads deployment metadata from the root dataset
   ]);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -151,7 +151,7 @@ test('browser note surface mount reads deployment metadata from the root dataset
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset'],
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset/digest'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_dataset/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_dataset/dismiss'],
   ]);
 });
 
@@ -223,7 +223,7 @@ test('browser note surface mount explicit options override root dataset metadata
   ]);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -232,7 +232,7 @@ test('browser note surface mount explicit options override root dataset metadata
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_options'],
     ['GET', 'https://worker.example.test/api/notes/note_from_options/digest'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_options/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_options/dismiss'],
   ]);
 });
 

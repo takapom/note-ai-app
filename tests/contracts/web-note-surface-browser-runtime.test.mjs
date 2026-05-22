@@ -45,7 +45,7 @@ test('browser runtime mounts escaped HTML and binds render events through an inj
   assert.doesNotMatch(host.html, /<script>alert/);
   assert.ok(host.events);
   assert.equal(host.events, mounted.events);
-  assert.equal(host.events.some((event) => event.target === 'ai_assist_block' && event.action === 'adopt'), true);
+  assert.equal(host.events.some((event) => event.target === 'ai_assist_block' && event.action === 'delete'), true);
   assert.equal(host.events.some((event) => event.target === 'memory_candidate_block' && event.action === 'remember'), true);
   assert.equal(typeof host.handler, 'function');
 });
@@ -54,14 +54,18 @@ test('browser runtime dispatches AI memory digest and provenance actions through
   const calls = [];
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
-    model: createNoteSurfaceViewModel(createMemoryCandidateDocument()),
+    model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      sourceSpanIdByBlockId: {
+        block_ai_question_001: 'source_span_ai_question_001',
+      },
+    }),
     eventController: createController(calls),
     host,
   });
   const mounted = await runtime.mount();
   assert.equal(mounted.ok, true);
 
-  const aiEvent = host.events.find((event) => event.target === 'ai_assist_block' && event.action === 'adopt');
+  const aiEvent = host.events.find((event) => event.target === 'ai_assist_block' && event.action === 'delete');
   const provenanceEvent = host.events.find((event) => (
     event.target === 'ai_assist_block'
     && event.action === 'inspect_source'
@@ -73,6 +77,9 @@ test('browser runtime dispatches AI memory digest and provenance actions through
   assert.ok(memoryEvent);
 
   const ai = await host.handler(aiEvent);
+  assert.doesNotMatch(host.html, /data-block-id="block_ai_question_001"/);
+  assert.doesNotMatch(host.html, /data-action-state="pending"/);
+
   const memory = await host.handler(memoryEvent);
   assert.match(host.html, /data-block-id="block_ai_memory_candidate_001"/);
   const digest = await host.handler({
@@ -98,7 +105,7 @@ test('browser runtime dispatches AI memory digest and provenance actions through
     ],
   );
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
     ['POST', 'https://worker.example.test/api/memory/memory_001/accept'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
     ['POST', 'https://worker.example.test/api/provenance/source'],
@@ -314,7 +321,7 @@ test('browser runtime keeps editing projection when save transport fails', async
   assert.match(host.html, /data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="error" data-retry-available="true" data-retry-action="save_block" aria-live="polite" aria-atomic="true"/);
   assert.match(host.html, /request failed with status 503/);
   assert.match(host.html, /Unsaved text should stay local to the DOM editor\./);
-  assert.match(host.html, /data-action="save_block" data-target="block_editor" data-block-id="block_paragraph_001">Retry<\/button>/);
+  assert.match(host.html, /data-action="save_block" data-target="block_editor" data-block-id="block_paragraph_001" data-action-state="idle">再試行<\/button>/);
 });
 
 test('browser runtime does not dispatch block save while input composition is active or pending', async () => {
@@ -423,13 +430,13 @@ test('browser runtime applies digest and provenance UI-only actions as local pro
   assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="true"/);
   assert.match(host.html, /Follow up on editor projection state\./);
 
-  const collapseEvent = host.events.find((event) => event.target === 'next_open_digest');
+  const collapseEvent = host.events.find((event) => event.target === 'return_layer' && event.action === 'close_return_layer');
   assert.ok(collapseEvent);
-  assert.equal(collapseEvent.action, 'collapse_digest');
   const collapse = await host.handler(collapseEvent);
   assert.equal(collapse.ok, true);
   assert.equal(collapse.controllerResult, undefined);
   assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="false"/);
+  assert.match(host.html, /data-component="return-layer" data-open="false"/);
 
   const closeEvent = host.events.find((event) => event.target === 'provenance_popover');
   assert.ok(closeEvent);
@@ -440,6 +447,82 @@ test('browser runtime applies digest and provenance UI-only actions as local pro
   assert.match(host.html, /data-component="provenance-popover" data-open="false"/);
   assert.equal(calls.length, 0);
   assert.ok(host.renderCount >= 4);
+});
+
+test('browser runtime focuses the writing surface after continue_writing', async () => {
+  const focusedBlockIds = [];
+  const host = {
+    ...createHost(),
+    focusWritingBlock(blockId) {
+      focusedBlockIds.push(blockId);
+    },
+  };
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      expandedDigest: false,
+      nextOpenDigest: {
+        available: true,
+        unresolvedQuestions: [
+          {
+            id: 'question_001',
+            text: 'Resume from digest point.',
+            sourceBlockId: 'block_paragraph_001',
+          },
+        ],
+      },
+    }),
+    eventController: createController([]),
+    host,
+  });
+
+  const mounted = await runtime.mount();
+  assert.equal(mounted.ok, true);
+
+  const continueEvent = host.events.find((event) => (
+    event.target === 're_entry_surface' && event.action === 'continue_writing'
+  ));
+  assert.ok(continueEvent);
+
+  const result = await host.handler(continueEvent);
+  assert.equal(result.ok, true);
+  assert.deepEqual(focusedBlockIds, ['block_paragraph_001']);
+});
+
+test('browser runtime toggles AI assist projection editing locally without dispatching transport', async () => {
+  const calls = [];
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    eventController: createController(calls),
+    host,
+  });
+  await runtime.mount();
+
+  const edit = await host.handler({
+    action: 'edit',
+    target: 'ai_assist_block',
+    apiIntent: 'none',
+    blockId: 'block_ai_question_001',
+  });
+
+  assert.equal(edit.ok, true);
+  assert.equal(edit.controllerResult, undefined);
+  assert.match(host.html, /data-inline-ai-block="true"[\s\S]*data-editing="true"[\s\S]*contenteditable="true"/);
+  assert.match(host.html, /data-action="edit" data-target="ai_assist_block" data-block-id="block_ai_question_001"[^>]*>完了</);
+
+  const finish = await host.handler({
+    action: 'edit',
+    target: 'ai_assist_block',
+    apiIntent: 'none',
+    blockId: 'block_ai_question_001',
+    content: 'Keep the digest collapsed on first open.',
+  });
+
+  assert.equal(finish.ok, true);
+  assert.match(host.html, /data-editing="false"/);
+  assert.match(host.html, /Keep the digest collapsed on first open\./);
+  assert.match(host.html, /data-inline-ai-block="true"[^>]*>[\s\S]*role="document" aria-readonly="true"/);
+  assert.deepEqual(calls, []);
 });
 
 test('browser runtime applies successful API response projections without owning canonical note state', async () => {
@@ -536,6 +619,9 @@ test('browser runtime applies successful API response projections without owning
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
       expandedDigest: true,
+      sourceSpanIdByBlockId: {
+        block_ai_question_001: 'source_span_ai_question_001',
+      },
       nextOpenDigest: { available: true },
       provenancePopover: { open: false },
     }),
@@ -640,9 +726,76 @@ test('browser runtime preserves projection state when API action transport fails
   assert.equal(result.ok, false);
   assert.equal(result.status, 'controller_error');
   assert.match(result.errors.join('\n'), /projection unavailable/);
-  assert.equal(host.html, before);
+  assert.notEqual(host.html, before);
   assert.match(host.html, /data-block-id="block_ai_memory_candidate_001"/);
+  assert.match(host.html, /data-action-state="failed"/);
+  assert.match(host.html, /失敗しました/);
   assert.match(host.html, /Existing digest item remains visible\./);
+});
+
+test('browser runtime renders digest read transport and invalid-body failures honestly', async () => {
+  const invalidHost = createHost();
+  const invalidRuntime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    eventController: createQueuedController([
+      {
+        ok: true,
+        status: 'sent',
+        transportResult: {
+          ok: true,
+          status: 200,
+          body: { ok: true, result: { available: true, unresolvedQuestions: [{ content: 'missing id' }] } },
+          errors: [],
+        },
+        errors: [],
+      },
+    ]),
+    host: invalidHost,
+  });
+  await invalidRuntime.mount();
+
+  const invalid = await invalidHost.handler({
+    action: 'read_digest',
+    target: 'next_open_digest',
+    apiIntent: 'GET /notes/:noteId/digest',
+    noteId: 'note_001',
+  });
+
+  assert.deepEqual([invalid.ok, invalid.status, invalid.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(invalidHost.html, /整理データを読み取れませんでした/);
+  assert.match(invalidHost.html, /data-digest-status-kind="invalid_body"/);
+
+  const transportHost = createHost();
+  const transportRuntime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    eventController: createQueuedController([
+      {
+        ok: false,
+        status: 'transport_error',
+        transportResult: {
+          ok: false,
+          status: 503,
+          body: { ok: false, errors: ['digest unavailable'] },
+          errors: ['digest unavailable'],
+        },
+        errors: ['digest unavailable'],
+      },
+    ]),
+    host: transportHost,
+  });
+  await transportRuntime.mount();
+
+  const transport = await transportHost.handler({
+    action: 'read_digest',
+    target: 'next_open_digest',
+    apiIntent: 'GET /notes/:noteId/digest',
+    noteId: 'note_001',
+  });
+
+  assert.equal(transport.ok, false);
+  assert.equal(transport.status, 'controller_error');
+  assert.match(transportHost.html, /整理の取得に失敗しました/);
+  assert.match(transportHost.html, /data-digest-status-kind="load_failed"/);
 });
 
 test('browser runtime closes render and event controller failures into boundary results', async () => {
@@ -673,9 +826,9 @@ test('browser runtime closes render and event controller failures into boundary 
     host: createHost(),
   });
   const controllerFailure = await controllerFailureRuntime.handleAction({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
-    apiIntent: 'POST /ai-operations/:operationId/accept',
+    apiIntent: 'POST /ai-operations/:operationId/dismiss',
   });
 
   assert.deepEqual(controllerFailure, {

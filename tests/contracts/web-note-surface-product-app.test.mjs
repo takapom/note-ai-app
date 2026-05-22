@@ -41,18 +41,18 @@ test('product app loads provider snapshot then mounts and dispatches clicks thro
   assert.equal(mounted.status, 'mounted');
   assert.equal(root.innerHTML, mounted.html);
   assert.match(root.innerHTML, /Research Workspace/);
-  assert.match(root.innerHTML, /data-action="adopt" data-target="ai_assist_block"/);
+  assert.match(root.innerHTML, /data-action="delete" data-target="ai_assist_block"/);
   assert.equal(root.listeners.click.length, 1);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
 
   await waitFor(() => calls.length === 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
   ]);
 });
 

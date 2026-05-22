@@ -43,7 +43,7 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
   ]);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -51,7 +51,7 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
   await waitFor(() => calls.length === 2);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
   ]);
 });
 
@@ -124,7 +124,7 @@ test('HTTP product app passes caller supplied view state and projection maps thr
   assert.doesNotMatch(root.innerHTML, /Response Workspace/);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
@@ -132,7 +132,7 @@ test('HTTP product app passes caller supplied view state and projection maps thr
   await waitFor(() => calls.length === 2);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/dismiss'],
   ]);
 });
 

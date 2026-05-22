@@ -31,20 +31,20 @@ test('app bootstrap mounts the note surface and dispatches delegated clicks thro
   assert.equal(mounted.ok, true);
   assert.equal(mounted.status, 'mounted');
   assert.equal(root.innerHTML, mounted.html);
-  assert.match(root.innerHTML, /class="ann-app-shell"/);
-  assert.match(root.innerHTML, /data-action="adopt" data-target="ai_assist_block"/);
+  assert.match(root.innerHTML, /ann-app-shell/);
+  assert.match(root.innerHTML, /data-action="delete" data-target="ai_assist_block"/);
   assert.equal(root.listeners.click.length, 1);
-  assert.equal(mounted.events.some((event) => event.target === 'ai_assist_block' && event.action === 'adopt'), true);
+  assert.equal(mounted.events.some((event) => event.target === 'ai_assist_block' && event.action === 'delete'), true);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
 
   await waitFor(() => calls.length === 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
   ]);
 });
 

@@ -82,6 +82,7 @@ test('resolver options mapper creates action lookup inputs from AI blocks memory
       endOffset: 18,
     },
   });
+  assert.equal(result.options.provenanceBySourceBlockId, undefined);
 
   const resolveActionInput = createNoteSurfaceActionInputResolver(result.options);
   assert.deepEqual(resolveActionInput({

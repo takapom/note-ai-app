@@ -19,17 +19,17 @@ test('DOM host delegates click actions and enriches missing apiIntent from rende
   const handled = [];
 
   host.bindActionEvents([createRenderEvent({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
-    apiIntent: 'POST /ai-operations/:operationId/accept',
+    apiIntent: 'POST /ai-operations/:operationId/dismiss',
   })], async (descriptor) => {
     handled.push(descriptor);
     return { ok: true, status: 'handled', errors: [] };
   });
 
   const button = createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   });
@@ -44,13 +44,13 @@ test('DOM host delegates click actions and enriches missing apiIntent from rende
 
   assert.equal(root.listeners.click.length, 1);
   assert.equal(handled.length, 1);
-  assert.equal(handled[0].action, 'adopt');
+  assert.equal(handled[0].action, 'delete');
   assert.equal(handled[0].target, 'ai_assist_block');
   assert.equal(handled[0].blockId, 'block_ai_question_001');
-  assert.equal(handled[0].apiIntent, 'POST /ai-operations/:operationId/accept');
+  assert.equal(handled[0].apiIntent, 'POST /ai-operations/:operationId/dismiss');
   assert.equal(handled[0].emitsAiProviderCall, false);
   assert.deepEqual(handled[0].dataset, {
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   });
@@ -110,6 +110,31 @@ test('DOM host enriches save block clicks with same-block plain text content', (
   assert.equal(handled.length, 1);
   assert.equal(handled[0].apiIntent, 'block.update');
   assert.equal(handled[0].content, 'Updated user-authored block text.');
+});
+
+test('DOM host preserves markdown-like shortcut text for backend-owned block update semantics', () => {
+  const root = createFakeRoot();
+  const host = createNoteSurfaceDomHost(root);
+  const handled = [];
+
+  host.bindActionEvents([createRenderEvent({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'block.update',
+  })], async (descriptor) => {
+    handled.push(descriptor);
+    return { ok: true, status: 'handled', errors: [] };
+  });
+
+  root.click(createSaveActionElement({
+    action: 'save_block',
+    target: 'block_editor',
+    blockId: 'block_paragraph_001',
+  }, '## Backend owns structural conversion'));
+
+  assert.equal(handled.length, 1);
+  assert.equal(handled[0].content, '## Backend owns structural conversion');
 });
 
 test('DOM host marks save descriptors while block input composition is active or pending', () => {

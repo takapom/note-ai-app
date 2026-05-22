@@ -54,6 +54,9 @@ test('product state composes bootstrap options from caller supplied document vie
     workspaceName: 'Research Workspace',
     aiStatus: 'updated',
     editingBlockIds: ['block_paragraph_001'],
+    sourceSpanIdByBlockId: {
+      block_ai_question_001: 'source_span_001',
+    },
     nextOpenDigest: {
       available: true,
       unresolvedQuestions: [
@@ -91,17 +94,17 @@ test('product state composes bootstrap options from caller supplied document vie
 
   assert.equal(mounted.ok, true);
   assert.match(root.innerHTML, /Research Workspace/);
-  assert.match(root.innerHTML, /data-action="adopt" data-target="ai_assist_block"/);
+  assert.match(root.innerHTML, /data-action="delete" data-target="ai_assist_block"/);
 
   root.click(createActionElement({
-    action: 'adopt',
+    action: 'delete',
     target: 'ai_assist_block',
     blockId: 'block_ai_question_001',
   }));
 
   await waitFor(() => calls.length === 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
-    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
   ]);
 });
 

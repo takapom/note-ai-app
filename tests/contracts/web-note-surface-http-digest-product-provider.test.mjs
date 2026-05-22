@@ -50,6 +50,7 @@ test('HTTP digest product provider merges unavailable digest projection into pro
     workspaceName: 'Research Workspace',
     nextOpenDigest: {
       available: false,
+      loadState: 'provided',
     },
   });
 });
@@ -122,6 +123,7 @@ test('HTTP digest product provider copies only plain digest arrays from wrapped 
     viewState: {
       nextOpenDigest: {
         available: true,
+        loadState: 'provided',
         ...digestItems,
       },
     },
@@ -179,28 +181,40 @@ test('HTTP digest product provider skips digest GET when base snapshot already h
   });
 });
 
-test('HTTP digest product provider treats digest HTTP and invalid body failures as unavailable', async () => {
-  const failureResponses = [
+test('HTTP digest product provider preserves digest load failures without inventing unavailable content', async () => {
+  const failureCases = [
     {
-      ok: false,
-      status: 503,
-      body: {
-        errors: ['digest projection unavailable'],
+      digestResponse: {
+        ok: false,
+        status: 503,
+        body: {
+          errors: ['digest projection unavailable'],
+        },
+      },
+      expected: {
+        available: false,
+        loadState: 'transport_failed',
       },
     },
     {
-      ok: true,
-      status: 200,
-      body: {
+      digestResponse: {
         ok: true,
-        result: {
-          items: [{ content: 'generic items must not be inferred' }],
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            items: [{ content: 'generic items must not be inferred' }],
+          },
         },
+      },
+      expected: {
+        available: false,
+        loadState: 'invalid_body',
       },
     },
   ];
 
-  for (const digestResponse of failureResponses) {
+  for (const failureCase of failureCases) {
     const provider = createNoteSurfaceHttpDigestProductProvider({
       apiBaseUrl: 'https://worker.example.test/api/',
       fetchLike: createFetchLike([], [
@@ -211,7 +225,7 @@ test('HTTP digest product provider treats digest HTTP and invalid body failures 
             document: structuredClone(noteDocumentFixture),
           },
         },
-        digestResponse,
+        failureCase.digestResponse,
       ]),
       workspaceId: 'workspace_001',
       noteId: 'note_001',
@@ -220,11 +234,46 @@ test('HTTP digest product provider treats digest HTTP and invalid body failures 
     const snapshot = await provider.loadInitialState();
 
     assert.deepEqual(snapshot.viewState, {
-      nextOpenDigest: {
-        available: false,
-      },
+      nextOpenDigest: failureCase.expected,
     });
   }
+});
+
+test('HTTP digest product provider treats malformed digest items as invalid body', async () => {
+  const provider = createNoteSurfaceHttpDigestProductProvider({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike([], [
+      {
+        ok: true,
+        status: 200,
+        body: {
+          document: structuredClone(noteDocumentFixture),
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          ok: true,
+          result: {
+            available: true,
+            unresolvedQuestions: [{ content: 'missing id and text fields' }],
+          },
+        },
+      },
+    ]),
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+  });
+
+  const snapshot = await provider.loadInitialState();
+
+  assert.deepEqual(snapshot.viewState, {
+    nextOpenDigest: {
+      available: false,
+      loadState: 'invalid_body',
+    },
+  });
 });
 
 test('HTTP digest product provider preserves base provider structured errors for invalid runtime ids', async () => {

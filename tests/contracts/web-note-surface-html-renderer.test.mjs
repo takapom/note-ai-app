@@ -13,6 +13,10 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   const model = createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
     workspaceName: 'MVP Workspace',
     editingBlockIds: ['block_paragraph_001'],
+    sourceSpanIdByBlockId: {
+      block_ai_question_001: 'source_span_ai_question_001',
+      block_ai_memory_candidate_001: 'source_span_memory_candidate_001',
+    },
     expandedDigest: true,
     nextOpenDigest: {
       available: true,
@@ -41,8 +45,15 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   const { html, events } = renderNoteSurfaceHtml(model);
 
   assert.match(html, /data-layout="single_note_surface"/);
+  assert.match(html, /ann-app--quiet-writing/);
+  assert.match(html, /data-region="thinRail"/);
   assert.match(html, /data-surface="single-note"/);
   assert.match(html, /data-component="block-editor"/);
+  assert.match(html, /data-component="return-layer"/);
+  assert.match(html, /整理された文脈/);
+  assert.match(html, /編集/);
+  assert.match(html, /削除/);
+  assert.match(html, /持ち越す文脈/);
   assert.match(html, /<h2 class="ann-block-text ann-heading" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="2" data-section-title="MVP scope">MVP scope<\/h2>/);
   assert.match(html, /data-block-id="block_paragraph_001"/);
   assert.match(html, /data-block-id="block_paragraph_001"[^>]*data-editor-layout-stability="block-identity"/);
@@ -51,11 +62,19 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-editor-status-region="fixed" data-editor-layout-stability="status-reserved" data-editor-save-status="dirty" data-retry-available="false" aria-live="polite" aria-atomic="true"/);
   assert.match(html, /data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true"/);
   assert.match(html, /data-inline-ai-block="true"/);
-  assert.match(html, /data-action="adopt" data-target="ai_assist_block" data-block-id="block_ai_question_001"/);
+  assert.match(html, /data-action="edit" data-target="ai_assist_block" data-block-id="block_ai_question_001"/);
+  assert.match(html, /data-action="delete" data-target="ai_assist_block" data-block-id="block_ai_question_001"/);
+  assert.match(html, /ann-return-layer--inline/);
   assert.match(html, /data-inline-memory-candidate="true"/);
   assert.match(html, /data-action="remember" data-target="memory_candidate_block" data-block-id="block_ai_memory_candidate_001"/);
   assert.match(html, /data-component="next-open-digest" data-available="true" data-expanded="true"/);
-  assert.match(html, /data-digest-section-id="unresolved_questions"/);
+  assert.match(html, /前回からの整理/);
+  assert.doesNotMatch(html, /本文に反映/);
+  assert.match(html, /data-action="defer_return_layer"/);
+  const aiAssistHtml = html.match(/<section class="ann-ai-assist-block"[\s\S]*?<\/section>/)?.[0] ?? '';
+  assert.match(aiAssistHtml, /role="document" aria-readonly="true"/);
+  assert.doesNotMatch(aiAssistHtml, /contenteditable="true"/);
+  assert.match(html, /data-block-id="block_ai_memory_candidate_001"/);
   assert.match(html, /data-component="provenance-popover" data-open="true"/);
   assert.match(html, /data-action="close_provenance" data-target="provenance_popover"/);
 
@@ -77,12 +96,34 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
     && event.apiIntent === 'provenance.lookup'
   )), true);
   assert.equal(events.some((event) => event.target === 'memory_candidate_block' && event.action === 'remember'), true);
-  assert.equal(events.some((event) => event.target === 'next_open_digest' && event.action === 'collapse_digest'), true);
+  assert.equal(events.some((event) => event.target === 'return_layer' && event.action === 'close_return_layer'), true);
   assert.equal(events.some((event) => event.target === 'provenance_popover' && event.action === 'close_provenance'), true);
   assert.equal(events.every((event) => event.emitsAiProviderCall === false), true);
   assert.equal(events.every((event) => event.mutatesUserAuthoredBlock === false), true);
   assert.equal(events.every((event) => event.hiddenProfiling === false), true);
   assert.equal(events.every((event) => event.automaticActiveMemory === false), true);
+});
+
+test('HTML renderer renders AI proposal edit mode as projection editing without source-of-truth mutation', () => {
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    editingBlockIds: ['block_ai_question_001'],
+  });
+
+  const { html, events } = renderNoteSurfaceHtml(model);
+
+  assert.match(html, /data-inline-ai-block="true"[\s\S]*data-editing="true"[\s\S]*contenteditable="true"/);
+  assert.match(html, /data-action="edit" data-target="ai_assist_block" data-block-id="block_ai_question_001"[^>]*>完了</);
+  assert.match(html, /data-source-available="false">出典なし/);
+  assert.equal(events.some((event) => (
+    event.target === 'ai_assist_block'
+    && event.action === 'edit'
+    && event.blockId === 'block_ai_question_001'
+    && event.apiIntent === 'none'
+  )), true);
+  assert.equal(events.some((event) => (
+    event.target === 'block_editor'
+    && event.blockId === 'block_ai_question_001'
+  )), false);
 });
 
 test('HTML renderer escapes note, block, digest, and provenance text', () => {
@@ -136,11 +177,13 @@ test('HTML renderer rejects MVP-excluded surfaces and render-unsafe action flags
   );
 
   const unsafeActionModel = structuredClone(model);
-  unsafeActionModel.noteSurface.blocks[2].aiAssist.actions[0].mutatesUserAuthoredBlock = true;
+  const deleteAction = unsafeActionModel.noteSurface.blocks[2].aiAssist.actions.find((action) => action.id === 'delete');
+  assert.ok(deleteAction);
+  deleteAction.mutatesUserAuthoredBlock = true;
 
   assert.throws(
     () => renderNoteSurfaceHtml(unsafeActionModel),
-    /AI assist action edit on block block_ai_question_001 is not render-safe/,
+    /AI assist action delete on block block_ai_question_001 is not render-safe/,
   );
 });
 
