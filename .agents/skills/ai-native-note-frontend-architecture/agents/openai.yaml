@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI Native Note Frontend Architecture"
+  short_description: "frontend module 境界と topology"
+  default_prompt: "$ai-native-note-frontend-architecture を使って AI Native Note frontend の次の slice を実装してください。"
+policy:
+  allow_implicit_invocation: true

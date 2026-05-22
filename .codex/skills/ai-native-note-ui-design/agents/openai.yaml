@@ -1,0 +1,7 @@
+interface:
+  display_name: "AI Native Note UI Design"
+  short_description: "Quiet note-first UI design rules"
+  default_prompt: "Use $ai-native-note-ui-design to design or review an AI Native Note frontend surface."
+policy:
+  allow_implicit_invocation: true
+

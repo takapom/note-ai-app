@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI Native Note Frontend State API"
+  short_description: "API client、presenter、UI state のルール"
+  default_prompt: "$ai-native-note-frontend-state-api を使って frontend API call と local UI state を接続してください。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "AI Native Note Frontend State API"
+  short_description: "API client, presenter, and UI state rules"
+  default_prompt: "Use $ai-native-note-frontend-state-api to wire frontend API calls and local UI state."
+policy:
+  allow_implicit_invocation: true
+

@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI Native Note UI Design"
+  short_description: "静かな note-first UI 設計ルール"
+  default_prompt: "$ai-native-note-ui-design を使って AI Native Note の frontend surface を設計またはレビューしてください。"
+policy:
+  allow_implicit_invocation: true

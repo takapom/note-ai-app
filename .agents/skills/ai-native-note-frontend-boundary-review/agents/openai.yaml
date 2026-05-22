@@ -1,0 +1,7 @@
+interface:
+  display_name: "AI Native Note Frontend Boundary Review"
+  short_description: "Review frontend semantic boundaries"
+  default_prompt: "Use $ai-native-note-frontend-boundary-review to review this AI Native Note frontend diff."
+policy:
+  allow_implicit_invocation: true
+
