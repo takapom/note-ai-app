@@ -5,6 +5,13 @@
 ## ローカルで所有するもの
 
 - 統一ノートサーフェスの Web コンポーネント配置。
+- NoteSurface frontend module topology。互換用 facade は `apps/web/src/noteSurface*.ts` として維持し、実装本体は `apps/web/src/note-surface/**`、`apps/web/src/runtime/browser/**`、`apps/web/src/runtime/dom/**`、`apps/web/src/digest/**`、`apps/web/src/provenance/**`、`apps/web/src/shared-ui/**` に置く。facade は既存 import path と source guard の互換境界であり、product semantics の owner ではない。
+- `note-surface/**` は view model、presenter、block / chrome rendering、HTML render event composition を所有する。backend-owned document semantics、AI operation policy、memory lifecycle、canonical mutation は所有しない。
+- `runtime/browser/**` は browser runtime projection、ephemeral editing/digest/provenance UI state、action dispatch coordination を所有する。実 DOM API、global fetch、Worker internals、backend policy は所有しない。
+- `runtime/dom/**` は DOM host adapter、selection/focus preservation、composition state observation、render event descriptor enrichment を所有する。transport、event controller、backend policy、canonical mutation は所有しない。
+- `digest/**` は next-open digest parser / presenter を所有する。missing digest から fake content を作らず、digest item の backend semantics を再定義しない。
+- `provenance/**` は bounded source lookup result の popover presenter を所有する。full note / full workspace dump を持たせない。
+- `shared-ui/**` は HTML escaping など product-independent visual / string primitives だけを所有する。NoteSurface、memory、AI assist、runtime module を import しない。
 - framework-neutral な NoteSurface HTML renderer と render event descriptor。
 - framework-neutral な NoteSurface event controller。render event descriptor と caller supplied mapping から API intent input を組み立て、API transport に渡す接続境界。
 - framework-neutral な NoteSurface action input resolver。render event descriptor の target/action/API intent と caller supplied lookup から、operationId / memoryId / noteId / provenance / memory edit content だけを取り出して event controller に渡す境界。
