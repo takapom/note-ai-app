@@ -49,15 +49,17 @@
 
 ## 記録
 
-- `docs/records/ADR-0001-ai-native-note-target-model.md`
-- `docs/records/ADR-0002-ai-structuring-trigger.md`
-- `docs/records/ADR-0003-block-section-document-model.md`
-- `docs/records/ADR-0004-bounded-context-map.md`
+- `docs/records/ADR/ADR-0001-ai-native-note-target-model.md`
+- `docs/records/ADR/ADR-0002-ai-structuring-trigger.md`
+- `docs/records/ADR/ADR-0003-block-section-document-model.md`
+- `docs/records/ADR/ADR-0004-bounded-context-map.md`
 - `docs/records/MVP-acceptance-gap-review-2026-05-18.md`
 - `docs/records/README.md`
 - `docs/records/backend-architecture-refactor-plan-2026-05-20.md`
 - `docs/records/backend-ddd-hardening-issues-2026-05-19.md`
 - `docs/records/backend-readiness-review-2026-05-19.md`
+- `docs/records/frontend-architecture-implementation-plan-2026-05-20.md`
+- `docs/records/frontend-ui-visual-direction-2026-05-21.md`
 - `docs/records/local-cloudworker-agents-issues-2026-05-19.md`
 - `docs/records/local-cloudworker-agents-smoke-handoff-2026-05-20.md`
 

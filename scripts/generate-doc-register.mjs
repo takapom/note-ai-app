@@ -12,10 +12,17 @@ const args = new Set(process.argv.slice(2));
 
 async function listMarkdown(dir) {
   const entries = await readdir(join(root, dir), { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
-    .map((entry) => `${dir}/${entry.name}`)
-    .sort();
+  const paths = [];
+  for (const entry of entries) {
+    const relative = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      paths.push(...(await listMarkdown(relative)));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      paths.push(relative);
+    }
+  }
+
+  return paths.sort();
 }
 
 function section(title, paths) {
