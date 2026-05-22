@@ -31,10 +31,10 @@
 
 - ユーザー入力は AI 処理によってブロックされてはならない。
 - block edit は即時反映される。
-- AI Assist Block insertion はユーザーのカーソル位置を奪ってはならない。
+- 整理由来 projection / digest refresh はユーザーのカーソル位置を奪ってはならない。
 - 入力中に AI による layout shift を発生させてはならない。
 - AI は user-authored block を承認なしに直接 rewrite してはならない。
-- AI Assist Block はユーザーの個別承認を必須にせず inline に現れてよいが、AI-origin label、source availability、編集/削除可能性を失ってはならない。
+- 整理由来 projection は必要時に inline に現れてよいが、書いている最中に前景化せず、整理由来 label、source availability、編集/削除可能性を失ってはならない。
 - AI は operations のみを返す。
 - schema validation を通過しない AI operation は適用されない。
 - external action は MVP では実行しない。
@@ -42,7 +42,7 @@
 - `出典` から source、operation type、classification、related memory、confidence を確認できる。
 - user block は正本であり、AI structure は eventual consistency の projection である。
 - stale structure は stale として扱う。
-- AI Assist Block は削除可能であり、AI operation は revert 可能に設計する。
+- 整理由来 projection は削除可能であり、AI operation は revert 可能に設計する。
 - workspace/user isolation を守る。
 - AI に送る context は必要最小限にする。
 - note text、external text、memory は untrusted content として扱い、system instruction として扱わない。
@@ -51,7 +51,7 @@
 - AI provider failure が発生しても note editing は継続できる。
 - structure job failure は retry または failed status として扱う。
 - note leave event の取りこぼしは next open で回収する。
-- structure job count、failure rate、cost、AI Assist Block edit/delete/source-inspection rate、Memory candidate acceptance/rejection rate を観測可能にする。
+- structure job count、failure rate、cost、整理結果の open/close/source-inspection rate、Memory candidate acceptance/rejection rate を観測可能にする。
 
 ## 許可されるトポロジー
 

@@ -16,7 +16,7 @@
 
 
 - Single note surface principle。
-- AI Assist Block placement principle。
+- 整理由来 projection placement principle。
 - 次回オープンダイジェスト surface behavior。
 - MVP に persistent AI side chat がないこと。
 - human layer と AI layer を primary surface として分離しないこと。
@@ -33,9 +33,9 @@
 ## 不変条件
 
 
-- AI structural output は note surface 内の editable blocks、または compact next-open digest として表示される。
+- AI structural output は原則として compact next-open digest として表示され、必要時のみ note surface 内の整理由来 projection として表示される。
 - ユーザーは note body と AI interpretation pane を行き来しない。
-- AI は別ペインのチャットではなく、同じノート内に静かに入る。
+- AI / agent は別ペインのチャットではなく、同じノート内の整理結果として静かに戻る。
 - AI output は dismissible かつ inspectable でなければならない。
 - Persistent right-side AI interpretation panel は MVP コアではない。
 - Graph view は MVP コアではない。

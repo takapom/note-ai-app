@@ -22,8 +22,8 @@ MVP に含まれるもの:
 - Markdown-compatible authoring shortcuts。ただし Markdown は内部 SoT ではなく、入力を Block / Section model へ変換する UI affordance である。
 - note ごとの title と description。
 - H1/H2/H3 section boundary semantics。
-- AI Assist Block。
-- Memory candidate block。
+- バックグラウンド整理結果としての次回オープン整理。
+- 必要時にだけ表示される整理由来の context / memory candidate projection。
 - Note close / tab switch / app leave structuring trigger。
 - Dirty section tracking。
 - Context Assembly。
@@ -60,7 +60,9 @@ MVP から除外されるもの:
 ## 不変条件
 
 
-- MVP は core loop を実証しなければならない: write -> leave note -> background structure -> next open digest -> editable AI assist blocks.
+- MVP は core loop を実証しなければならない: write -> leave note -> background organize -> next open organized digest -> continue writing.
+- AI / agent はユーザーが書いている最中に前景化せず、整理結果は次回オープン時の digest / context projection として静かに返す。
+- Inline AI-origin blocks は MVP の主体験ではなく、必要な整理結果がある場合の secondary projection として扱う。
 - MVP への追加はすべて、この loop を直接支援しなければならない。
 - Future candidates は Google Docs export、Google Calendar action candidate、Slack action candidate、Graph/cluster view、Memory dashboard、Team workspace、External content ingestion であり、MVP scope ではない。
 - 外部連携は第一思想ではなく、整理された思考を外へ運ぶための extension として扱う。

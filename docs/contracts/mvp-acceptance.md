@@ -37,10 +37,10 @@ MVP は次を満たすまで完了とみなさない。
 6. Context Assembly が title、description、target section、related units、memory を使う。
 7. AI は operation schema に従って返す。
 8. Operation Router が unsafe operation を reject する。
-9. AI Assist Block が同じノート内に表示される。
-10. AI Assist Block はユーザーの個別承認を必須にせず、AI-origin として識別でき、編集・削除・source 確認ができる。
-11. Next Open Digest が表示できる。
-12. Memory candidate をノート内で承認または拒否できる。
+9. 書いている最中に AI / agent UI が前景化せず、note editing が中断されない。
+10. Next Open Digest が次回オープン時の整理結果として表示できる。
+11. 整理結果は source を確認でき、必要に応じて閉じられる。
+12. Memory candidate がある場合は、整理結果の secondary projection として承認または拒否できる。
 13. Provenance Popover で source を確認できる。
 14. Markdown-compatible authoring shortcuts で書ける。ただし Markdown は内部 SoT ではない。
 15. AI provider failure が発生しても note editing は継続できる。

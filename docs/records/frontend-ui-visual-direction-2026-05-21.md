@@ -821,3 +821,14 @@ Markdown-compatible shortcuts は presenter / editor adapter が user intent と
 - source / provenance が常時表示されすぎて writing を邪魔する。
 - information density は高いが、first meaningful input が遅くなる。
 - UI が backend に presentation-only field を要求する。
+
+## 2026-05-22 Revision: Background Organization First
+
+この UI 方針は、MVP では AI 補助を前景化しない方向へ更新する。ユーザーは AI を操作するのではなく、ただ書く。Agent は note leave / tab switch / app leave 後にバックグラウンドで思考を整理し、次回オープン時に compact な「前回からの整理」として返す。
+
+- 書いている最中は AI 補助、memory candidate、整理結果を割り込ませない。
+- Top bar は原則として保存状態だけを静かに示し、AI が走っている感を強く出さない。
+- Primary surface は Notion-like な writing surface であり、整理結果は next-open digest として本文冒頭に控えめに出す。
+- Inline projection が必要な場合も label は `AI補助` ではなく `整理された文脈` / `続きの入口` / `持ち越された文脈` とする。
+- Memory candidate は入力直後に出さず、整理結果の secondary projection として digest / tray に控えめに出す。
+- Provenance は「AI を信用させる」ためではなく、整理結果の出典を確認してユーザーが判断を取り戻すために置く。
