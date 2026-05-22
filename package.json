@@ -12,7 +12,8 @@
     "build:web": "node scripts/build-web.mjs",
     "worker:local": "node scripts/smoke-worker-local-runtime.mjs --serve-only",
     "worker:local:smoke": "node scripts/smoke-worker-local-runtime.mjs",
-    "lint": "node scripts/verify-contracts.mjs --lint",
+    "lint": "npm run lint:ts && npm run contracts:verify -- --lint",
+    "lint:ts": "eslint apps contexts",
     "test": "node --test tests/**/*.test.mjs",
     "verify": "npm run typecheck && npm run lint && npm run test",
     "docs:register": "node scripts/generate-doc-register.mjs",
@@ -20,6 +21,9 @@
     "contracts:verify": "node scripts/verify-contracts.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.9.2"
+    "eslint": "^10.4.0",
+    "eslint-plugin-import-x": "^4.16.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.59.4"
   }
 }
