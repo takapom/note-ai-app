@@ -11,7 +11,7 @@ import {
   workspaceBrainAgentBindingDescriptor,
 } from './cloudflareAgentBindings.ts';
 import { readAgentLocalSqlLifecycle } from './agentLocalSqlLifecycle.ts';
-import { CloudflareDurableObjectAgentLocalSqlExecutor } from './cloudflareDurableObjectSqlAdapter.ts';
+import type { CloudflareDurableObjectAgentLocalSqlExecutor } from './cloudflareDurableObjectSqlAdapter.ts';
 import {
   runDurableObjectAgentLocalSchemaCommand,
   type DurableObjectAgentLocalSchemaCommand,
