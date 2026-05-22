@@ -38,12 +38,14 @@ MVP は次を満たすまで完了とみなさない。
 7. AI は operation schema に従って返す。
 8. Operation Router が unsafe operation を reject する。
 9. AI Assist Block が同じノート内に表示される。
-10. Next Open Digest が表示できる。
-11. Memory candidate をノート内で承認または拒否できる。
-12. Provenance Popover で source を確認できる。
-13. AI provider failure が発生しても note editing は継続できる。
-14. MVP に AI chat panel、AI mode switcher、external integration が入っていない。
-15. Codex task、Superset workspace、docs contract の traceability が維持される。
+10. AI Assist Block はユーザーの個別承認を必須にせず、AI-origin として識別でき、編集・削除・source 確認ができる。
+11. Next Open Digest が表示できる。
+12. Memory candidate をノート内で承認または拒否できる。
+13. Provenance Popover で source を確認できる。
+14. Markdown-compatible authoring shortcuts で書ける。ただし Markdown は内部 SoT ではない。
+15. AI provider failure が発生しても note editing は継続できる。
+16. MVP に AI chat panel、AI mode switcher、external integration が入っていない。
+17. Codex task、Superset workspace、docs contract の traceability が維持される。
 
 ## 許可されるトポロジー
 
@@ -59,4 +61,4 @@ acceptance criteria を満たさないまま MVP complete と宣言する releas
 
 ## ガード / 検証
 
-MVP review はこの契約の 15 項目を checklist として実行し、未達項目を follow-up task ではなく blocking gap として扱わなければならない。
+MVP review はこの契約の 17 項目を checklist として実行し、未達項目を follow-up task ではなく blocking gap として扱わなければならない。

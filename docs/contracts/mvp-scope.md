@@ -18,6 +18,8 @@ MVP に含まれるものと除外されるものを正確に定義する。
 MVP に含まれるもの:
 - 統一ノートサーフェス。
 - アプリ固有の Block / Section document model。
+- Notion-like な block editor writing surface。
+- Markdown-compatible authoring shortcuts。ただし Markdown は内部 SoT ではなく、入力を Block / Section model へ変換する UI affordance である。
 - note ごとの title と description。
 - H1/H2/H3 section boundary semantics。
 - AI Assist Block。
@@ -51,6 +53,7 @@ MVP から除外されるもの:
 - Persistent AI chat panel。
 - 毎 keystroke AI structuring。
 - Markdown を内部 SoT にすること。
+- Markdown file / Markdown string を canonical note storage として扱うこと。
 - AI による user text の rewrite。
 
 

@@ -39,14 +39,17 @@ multi-panel AI UX に逸脱せず、MVP UI composition を定義する。
 - Sidebar MVP は Notes、Recent、Search に限る。Unresolved Questions、Decisions、Memory Dashboard、Graph View は MVP 外である。
 - TopBar は workspace name、search、command palette、saved/sync status を扱う。AI 状態は Saved、Structuring...、Updated のように控えめに表示する。
 - NoteSurface は Note Header、Block Editor、user blocks、heading blocks、AI assist blocks、memory candidate blocks を含む。
+- Block Editor は Notion-like な document writing surface として見えなければならない。ユーザーが書く場所は中央の editable block list であり、AI / digest / memory の UI より視覚的に優先される。
+- MVP の writing surface は Markdown-compatible authoring shortcuts を持ってよい。ただし Markdown string を内部 SoT にせず、`#`, `##`, `-`, `>`, fenced code などの入力は Note / Section / Block model へ変換される UI 入力 affordance である。
 - Note Header は title、description_user、description_ai、description_effective を扱う。AI-generated description は薄く表示し、AI suggested として識別し、編集可能にする。
 - ユーザーが AI-generated description を編集した場合、それは user description として扱う。
-- AI Assist Blocks は note 内にレンダリングされ、薄い背景、控えめな AI ラベル、折りたたみ、編集、削除、source 確認を持つ。
-- MVP の AI Assist Block actions は 編集、採用、削除、なぜ？ である。
+- AI Assist Blocks は note 内に自動でレンダリングされ、ユーザーの個別承認を必須にしない。薄い背景、控えめな AI ラベル、折りたたみ、編集、削除、source 確認を持つ。
+- MVP の AI Assist Block actions は 出典、編集、削除 である。`採用` は AI output を本文に出すための必須 action ではない。
 - Memory candidate block actions は 覚える、編集、違う、削除、保留 である。
 - 次回オープンダイジェスト は compact で expandable であり、未解決の問い、決定事項、関連する過去ノート、このノートから覚える候補を提示できる。
 - Manual Organize は command palette から、このセクションを整理、このノートを整理、未解決の問いを抽出、決定事項を抽出、関連ノートを探す、この内容を覚える、を最小実装として提供してよい。
 - AI blocks は editable、dismissible、source-inspectable である。
+- AI blocks は AI-origin projection として visible note surface に存在できるが、user-authored blocks と同化してはならない。AI は既存 user-authored block を直接 rewrite / delete / mutate しない。
 - Writing flow は background structuring によって中断されてはならない。
 
 

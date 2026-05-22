@@ -34,11 +34,12 @@
 - AI Assist Block insertion はユーザーのカーソル位置を奪ってはならない。
 - 入力中に AI による layout shift を発生させてはならない。
 - AI は user-authored block を承認なしに直接 rewrite してはならない。
+- AI Assist Block はユーザーの個別承認を必須にせず inline に現れてよいが、AI-origin label、source availability、編集/削除可能性を失ってはならない。
 - AI は operations のみを返す。
 - schema validation を通過しない AI operation は適用されない。
 - external action は MVP では実行しない。
 - AI-generated block と memory は source を持つ。
-- `なぜ？` から source、operation type、classification、related memory、confidence を確認できる。
+- `出典` から source、operation type、classification、related memory、confidence を確認できる。
 - user block は正本であり、AI structure は eventual consistency の projection である。
 - stale structure は stale として扱う。
 - AI Assist Block は削除可能であり、AI operation は revert 可能に設計する。
@@ -50,7 +51,7 @@
 - AI provider failure が発生しても note editing は継続できる。
 - structure job failure は retry または failed status として扱う。
 - note leave event の取りこぼしは next open で回収する。
-- structure job count、failure rate、cost、AI Assist Block acceptance/dismiss/edit rate、Memory candidate acceptance/rejection rate を観測可能にする。
+- structure job count、failure rate、cost、AI Assist Block edit/delete/source-inspection rate、Memory candidate acceptance/rejection rate を観測可能にする。
 
 ## 許可されるトポロジー
 

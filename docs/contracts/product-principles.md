@@ -37,9 +37,11 @@
 
 - Vision target は広く使える「思考の外部脳」だが、MVP の initial target は知的作業をする個人である。
 - 初期ユーザーの課題は、アイデアが散らばる、ノートを見返さない、判断理由を忘れる、未解決の問いが埋もれる、自分の考えを説明しづらい、AI を使いたいが自分の思考まで失いたくない、である。
-- Human responsibilities: 自然に書く、違和感を持つ、何を大切にするか判断する、AI の整理を自分の言葉に直す、最終意思決定を引き受ける、承認する、削除する。
+- Human responsibilities: 自然に書く、違和感を持つ、何を大切にするか判断する、AI の整理を自分の言葉に直す、最終意思決定を引き受ける、編集する、削除する。
 - AI responsibilities: 覚える候補を作る、探す、つなげる、構造化する、過去の文脈を連れてくる、未整理の問いを提示する、関連するノートや意味単位を見つける。
 - App responsibilities: 書き心地を守る、AI の発火タイミングを制御する、AI の操作を安全に適用する、由来と取り消し可能性を保持する、AI とユーザー本文の boundary を守る。
+- Writing surface は Notion-like な直接編集体験を持ってよいが、Notion clone にはしない。database/property/relation 設計ではなく、自然に書ける block editor と AI による非同期整理が差別化軸である。
+- Markdown-compatible authoring は入力体験であり、内部 SoT は app-specific Note / Section / Block model である。
 - MVP には AI モード切り替えがない。
 - MVP には persistent AI chat panel がない。
 - MVP external integrations は延期される。
@@ -47,7 +49,7 @@
 - Notion との差別化は、ユーザーに database/property/relation 設計を強要せず、AI が裏側で構造を作る点にある。
 - Apple Notes との差別化は、軽い書き心地を保ちながら、後から AI が思考を整理する点にある。
 - Obsidian + 外部 AI との差別化は、AI 構造化前提の document model、operation-based editing、source span、memory、provenance が最初から統合されている点にある。
-- Mem / mymind との差別化は、AI が覚えるだけでなく、覚える候補を同じノート内に返し、ユーザーが編集・承認できる点にある。
+- Mem / mymind との差別化は、AI が覚えるだけでなく、覚える候補を同じノート内に返し、ユーザーが編集・保留・削除でき、sensitive/profile-like memory は明示的に扱える点にある。
 
 
 ## 許可されるトポロジー

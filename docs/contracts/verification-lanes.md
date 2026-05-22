@@ -42,7 +42,7 @@
 - security lane: source spans、context minimization、untrusted instruction leakage なし。
 - api/event lane: UI events、backend events、route handlers が `api-events.md` に沿っていること。
 - NFR lane: writing flow、layout stability、AI failure tolerance、observability event が `non-functional-requirements.md` に沿っていること。
-- acceptance lane: `mvp-acceptance.md` の 15 項目を MVP complete 判定に使うこと。
+- acceptance lane: `mvp-acceptance.md` の 17 項目を MVP complete 判定に使うこと。
 
 ## 現在のコマンド
 

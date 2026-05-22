@@ -47,6 +47,8 @@
 - NoteSurface view model は Note Model semantics を所有せず、`contexts/note-model` の document validation を消費してください。
 - AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングされます。
 - AI Assist / Memory candidate actions は user intent と API intent の model に留め、provider call や user-authored block の直接 mutation を持たせないでください。
+- AI Assist Blocks はユーザーの個別承認を必須にせず、AI-origin projection として note surface 内に表示されます。必須 controls は `出典`（source がある場合）、`編集`、`削除` であり、`採用` は AI block を表示するための必須 action ではありません。
+- Markdown-compatible authoring shortcuts は UI 入力 affordance です。Web は Markdown string を canonical note storage として扱わず、入力を backend-owned Block / Section model へ渡す意図に留めてください。
 - API intent mapping は dependency-free request descriptor に留め、Worker 実装、generated OpenAPI、provider call、auth policy を import しないでください。
 - API transport は request descriptor を注入された fetch-like binding に渡すだけに留め、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
 - HTML renderer は dependency-free な文字列レンダリングと `data-action` / `data-block-id` などの event descriptor に留め、Worker 実装、generated OpenAPI、provider call、fetch、auth policy、user-authored block の直接 mutation を持たせないでください。
