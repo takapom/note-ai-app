@@ -101,7 +101,7 @@ function renderAiAssistBlock(block: NoteBlockViewModel): string {
 
   return [
     `<section class="ann-ai-assist-block" data-inline-ai-block="true" data-ai-assist-kind="${escapeAttribute(aiAssist.kind)}" data-block-origin="ai" data-editing="${aiAssist.editing}">`,
-    `<div class="ann-inline-label" aria-label="AI由来">${escapeHtml(aiAssist.label)}</div>`,
+    `<div class="ann-inline-label" aria-label="整理由来">${escapeHtml(aiAssist.label)}</div>`,
     body,
     sourceAvailability,
     `<div class="ann-inline-actions" data-action-group="ai_assist">${controls}</div>`,
@@ -131,7 +131,7 @@ function renderMemoryCandidateBlock(block: NoteBlockViewModel): string {
 
   return [
     '<section class="ann-memory-candidate-block" data-inline-memory-candidate="true" data-block-origin="ai">',
-    `<div class="ann-inline-label" aria-label="AI由来">${escapeHtml(memoryCandidate.label)}</div>`,
+    `<div class="ann-inline-label" aria-label="整理由来">${escapeHtml(memoryCandidate.label)}</div>`,
     `<div class="ann-block-text" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(block.text)}</div>`,
     block.sourcePreview === undefined
       ? ''

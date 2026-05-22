@@ -19,10 +19,10 @@ export default function Page() {
 function createStoryboardPanels(): string[] {
   return [
     renderPanel('1 書く面', createWriteModel(), { variant: 'write' }),
-    renderPanel('2 戻ってきた整理', createReturnLayerModel(), { variant: 'return' }),
-    renderPanel('3 執筆中', createWritingModel(), { variant: 'writing' }),
-    renderPanel('4 AI補助', createAiAssistModel(), { variant: 'assist' }),
-    renderPanel('5 出典確認', createProvenanceModel(), { variant: 'provenance', wide: true }),
+    renderPanel('2 静かな保存', createWritingModel(), { variant: 'writing' }),
+    renderPanel('3 戻ってきた整理', createReturnLayerModel(), { variant: 'return' }),
+    renderPanel('4 出典確認', createProvenanceModel(), { variant: 'provenance' }),
+    renderPanel('5 続きを書く', createContinueModel(), { variant: 'continue', wide: true }),
   ];
 }
 
@@ -76,41 +76,30 @@ function createWritingModel() {
   });
 }
 
-function createAiAssistModel() {
-  return createNoteSurfaceViewModel(createDocument([
-    ...userParagraphs(),
-    aiAssistBlock(),
-  ]), {
-    workspaceName: 'ANN',
-    recentThoughts: recentThoughts(),
-    sourceSpanIdByBlockId: {
-      block_ai_assist: 'source_span_ai_assist',
-    },
-    nextOpenDigest: { available: false },
-  });
-}
-
 function createProvenanceModel() {
-  return createNoteSurfaceViewModel(createDocument([
-    ...userParagraphs(),
-    aiAssistBlock(),
-  ]), {
+  return createNoteSurfaceViewModel(createDocument(userParagraphs()), {
     workspaceName: 'ANN',
     recentThoughts: recentThoughts(),
-    sourceSpanIdByBlockId: {
-      block_ai_assist: 'source_span_ai_assist',
-    },
-    nextOpenDigest: { available: false },
+    expandedDigest: true,
+    nextOpenDigest: digestInput(),
     provenancePopover: {
       open: true,
       sourceBlockId: 'block_user_002',
       sourceNoteId: 'note_product_ui_direction',
-      sourceTitle: '前回のノート',
+      sourceTitle: 'このノートの本文',
       startOffset: 0,
       endOffset: 36,
       excerpt: 'UIはその体験を静かに支える器である。',
-      reason: 'AI補助が参照した前回の文脈。',
+      reason: '整理結果が参照した本文の範囲。',
     },
+  });
+}
+
+function createContinueModel() {
+  return createNoteSurfaceViewModel(createDocument(userParagraphs()), {
+    workspaceName: 'ANN',
+    recentThoughts: recentThoughts(),
+    nextOpenDigest: { available: false },
   });
 }
 
@@ -147,32 +136,6 @@ function userParagraphs(): NoteDocumentContract['blocks'] {
   ];
 }
 
-function aiAssistBlock(): NoteDocumentContract['blocks'][number] {
-  return {
-    id: 'block_ai_assist',
-    noteId: 'note_product_ui_direction',
-    type: 'ai_summary',
-    contentJson: {
-      text: 'UIはその体験を静かに支える器である。\n書くことを妨げず、整理された思考が自然に混ざり込む面。\n特に「再入力の速さ」を最優先順位とする。',
-      annotations: [
-        {
-          kind: 'source_span',
-          sourceBlockId: 'block_user_002',
-          startOffset: 0,
-          endOffset: 36,
-          reason: 'AI assist derived from user-authored paragraph.',
-        },
-      ],
-    },
-    plainText: 'UIはその体験を静かに支える器である。\n書くことを妨げず、整理された思考が自然に混ざり込む面。\n特に「再入力の速さ」を最優先順位とする。',
-    position: 2,
-    origin: 'ai',
-    contentHash: 'hash_block_ai_assist',
-    createdAt: 1_779_248_149_000,
-    updatedAt: 1_779_248_149_000,
-  };
-}
-
 function paragraphBlock(
   id: string,
   text: string,
@@ -196,9 +159,9 @@ function digestInput() {
   return {
     available: true,
     unresolvedQuestions: [
-      { id: 'digest_001', text: 'AIはチャットではなく、書く面の中に静かに存在する' },
-      { id: 'digest_002', text: '書く体験を最優先にし、整理は後から自然に戻す' },
-      { id: 'digest_003', text: 'ユーザーの本文がSource of Truth、AIは提案として扱う' },
+      { id: 'digest_001', text: '書く面を主役にし、整理結果は戻ってきた時だけ静かに出す', sourceBlockId: 'block_user_001', sourceNoteId: 'note_product_ui_direction' },
+      { id: 'digest_002', text: '書いた思考を失わず、次に続けやすい入口として返す', sourceBlockId: 'block_user_002', sourceNoteId: 'note_product_ui_direction' },
+      { id: 'digest_003', text: 'ユーザーの本文がSource of Truth、整理結果はprojectionとして扱う', sourceBlockId: 'block_user_002', sourceNoteId: 'note_product_ui_direction' },
     ],
   };
 }
@@ -206,7 +169,7 @@ function digestInput() {
 function recentThoughts() {
   return [
     { id: 'note_product_ui_direction', title: 'プロダクトUIの方向性', updatedLabel: '昨日・更新', active: true },
-    { id: 'note_ai_assist', title: 'AI補助のあり方', updatedLabel: '2日前・更新' },
+    { id: 'note_organization', title: '整理のあり方', updatedLabel: '2日前・更新' },
     { id: 'note_memory', title: 'メモリの扱い方', updatedLabel: '3日前・更新' },
     { id: 'note_boundary', title: '構造化の境界', updatedLabel: '4日前・更新' },
     { id: 'note_design', title: '設計メモ', updatedLabel: '5日前・更新' },
