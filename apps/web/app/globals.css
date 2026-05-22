@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="ja">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AI Native Note</title>
-    <style>
-      :root {
+:root {
         color-scheme: light;
         --ann-canvas: #f7f4ee;
         --ann-surface: #fffcf7;
@@ -321,6 +314,22 @@
         font-weight: 500;
       }
 
+      .ann-memory-candidate-block {
+        border-left: 3px solid var(--ann-success);
+        background: color-mix(in srgb, var(--ann-success) 10%, var(--ann-surface));
+        border-radius: 0.5rem;
+        padding: 0.875rem 1rem;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .ann-memory-candidate-block__source {
+        margin: 0;
+        color: var(--ann-ink-muted);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+      }
+
       .ann-inline-actions {
         display: flex;
         flex-wrap: wrap;
@@ -550,21 +559,4 @@
           margin-top: 0.75rem;
         }
       }
-    </style>
-  </head>
-  <body>
-    <!-- Deployment must provide data-api-base-url, data-workspace-id, and data-note-id. -->
-    <main data-note-surface-root></main>
-    <script type="module">
-      import { startBrowserNoteSurfaceApp } from '/assets/apps/web/src/browserNoteSurfaceAppEntry.js';
-
-      await startBrowserNoteSurfaceApp(
-        {
-          documentReadyState: () => document.readyState,
-          addEventListener: globalThis.addEventListener.bind(globalThis),
-        },
-        {},
-      );
-    </script>
-  </body>
-</html>
+    

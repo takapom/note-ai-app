@@ -9,6 +9,7 @@ export type NoteSurfaceApiIntentKind =
   | 'memory.delete'
   | 'memory.snooze'
   | 'block.update'
+  | 'note.leave'
   | 'digest.read'
   | 'provenance.lookup';
 
@@ -55,6 +56,12 @@ export interface BlockUpdateApiIntentInput extends NoteSurfaceApiIntentBaseInput
   content: string;
 }
 
+export interface NoteLeaveApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'note.leave';
+  noteId: string;
+  cause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
+}
+
 export interface DigestApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   intent: 'digest.read';
   noteId: string;
@@ -77,6 +84,7 @@ export type NoteSurfaceApiIntentInput =
   | MemoryReviewApiIntentInput
   | MemoryEditApiIntentInput
   | BlockUpdateApiIntentInput
+  | NoteLeaveApiIntentInput
   | DigestApiIntentInput
   | ProvenanceApiIntentInput;
 
@@ -89,6 +97,7 @@ const supportedIntents = new Set<NoteSurfaceApiIntentKind>([
   'memory.delete',
   'memory.snooze',
   'block.update',
+  'note.leave',
   'digest.read',
   'provenance.lookup',
 ]);
@@ -180,6 +189,19 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         body: {
           noteId: getStringField(input, 'noteId'),
           content: getStringField(input, 'content'),
+        },
+      });
+    case 'note.leave':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/notes/${getStringField(input, 'noteId')}/leave`,
+        headers: {
+          ...createMetadataHeaders(input),
+          'Content-Type': 'application/json',
+        },
+        body: {
+          cause: getStringField(input, 'cause') ?? 'app_leave',
         },
       });
     case 'digest.read':

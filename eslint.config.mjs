@@ -8,10 +8,12 @@ export default tseslint.config(
       'dist/**',
       'docs/generated/**',
       'apps/workspace-api/generated/**',
+      '**/.next/**',
+      '**/.next-*/**',
     ],
   },
   {
-    files: ['apps/**/*.ts', 'contexts/**/*.ts'],
+    files: ['apps/**/*.{ts,tsx}', 'contexts/**/*.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -58,7 +60,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/**/*.ts'],
+    files: ['apps/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [

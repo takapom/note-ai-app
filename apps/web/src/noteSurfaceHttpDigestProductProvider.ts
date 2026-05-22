@@ -7,7 +7,7 @@ import type {
   NoteSurfaceProductProvider,
   NoteSurfaceProductStateInput,
 } from './noteSurfaceProductApp.ts';
-import type { NextOpenDigestInput } from './noteSurface.ts';
+import { parseNextOpenDigestInput, type NextOpenDigestInput } from './noteSurface.ts';
 
 export type NoteSurfaceHttpDigestProductProviderOptions = NoteSurfaceHttpProductProviderOptions;
 
@@ -49,10 +49,10 @@ async function loadDigestProjection(
   });
 
   if (!result.ok) {
-    return unavailableDigest();
+    return failedDigest('transport_failed');
   }
 
-  return readDigestProjection(result.body) ?? unavailableDigest();
+  return parseNextOpenDigestInput(result.body) ?? failedDigest('invalid_body');
 }
 
 function createHeaders(options: NoteSurfaceHttpDigestProductProviderOptions): Record<string, string> {
@@ -62,42 +62,9 @@ function createHeaders(options: NoteSurfaceHttpDigestProductProviderOptions): Re
   };
 }
 
-function readDigestProjection(body: unknown): NextOpenDigestInput | undefined {
-  if (!isPlainObject(body)) {
-    return undefined;
-  }
-
-  const candidate = isPlainObject(body.result) ? body.result : body;
-  if (typeof candidate.available !== 'boolean') {
-    return undefined;
-  }
-
+function failedDigest(loadState: 'transport_failed' | 'invalid_body'): NextOpenDigestInput {
   return {
-    available: candidate.available,
-    ...copyDigestArray(candidate, 'unresolvedQuestions'),
-    ...copyDigestArray(candidate, 'decisions'),
-    ...copyDigestArray(candidate, 'relatedNotes'),
-    ...copyDigestArray(candidate, 'memoryCandidates'),
+    available: false,
+    loadState,
   };
-}
-
-function copyDigestArray(
-  digest: Record<string, unknown>,
-  fieldName: 'unresolvedQuestions' | 'decisions' | 'relatedNotes' | 'memoryCandidates',
-): Partial<NextOpenDigestInput> {
-  const value = digest[fieldName];
-  return Array.isArray(value) ? { [fieldName]: value } : {};
-}
-
-function unavailableDigest(): NextOpenDigestInput {
-  return { available: false };
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    return false;
-  }
-
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }

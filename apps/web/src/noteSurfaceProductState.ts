@@ -16,6 +16,7 @@ export interface NoteSurfaceProductViewState {
   workspaceName?: string;
   aiStatus?: NoteSurfaceAiStatus;
   editingBlockIds?: readonly string[];
+  sourceSpanIdByBlockId?: Readonly<Record<string, string>>;
   nextOpenDigest?: NextOpenDigestInput;
   expandedDigest?: boolean;
   provenancePopover?: ProvenancePopoverInput;
@@ -69,7 +70,7 @@ export function createNoteSurfaceProductState(
   return {
     ok: true,
     document: input.document as NoteDocumentContract,
-    viewOptions: createViewOptions(input.viewState),
+    viewOptions: createViewOptions(input.viewState, input.projectionMaps),
     resolverOptions: resolverOptions.options,
   };
 }
@@ -97,17 +98,17 @@ function createResolverOptions(
 
 function createViewOptions(
   viewState: NoteSurfaceProductViewState | undefined,
+  projectionMaps: NoteSurfaceProductProjectionMaps | undefined,
 ): CreateNoteSurfaceViewModelOptions {
-  if (viewState === undefined) {
-    return {};
-  }
+  const sourceSpanIdByBlockId = viewState?.sourceSpanIdByBlockId ?? projectionMaps?.sourceSpanIdByBlockId;
 
   return {
-    ...(viewState.workspaceName === undefined ? {} : { workspaceName: viewState.workspaceName }),
-    ...(viewState.aiStatus === undefined ? {} : { aiStatus: viewState.aiStatus }),
-    ...(viewState.editingBlockIds === undefined ? {} : { editingBlockIds: viewState.editingBlockIds }),
-    ...(viewState.nextOpenDigest === undefined ? {} : { nextOpenDigest: viewState.nextOpenDigest }),
-    ...(viewState.expandedDigest === undefined ? {} : { expandedDigest: viewState.expandedDigest }),
-    ...(viewState.provenancePopover === undefined ? {} : { provenancePopover: viewState.provenancePopover }),
+    ...(viewState?.workspaceName === undefined ? {} : { workspaceName: viewState.workspaceName }),
+    ...(viewState?.aiStatus === undefined ? {} : { aiStatus: viewState.aiStatus }),
+    ...(viewState?.editingBlockIds === undefined ? {} : { editingBlockIds: viewState.editingBlockIds }),
+    ...(sourceSpanIdByBlockId === undefined ? {} : { sourceSpanIdByBlockId }),
+    ...(viewState?.nextOpenDigest === undefined ? {} : { nextOpenDigest: viewState.nextOpenDigest }),
+    ...(viewState?.expandedDigest === undefined ? {} : { expandedDigest: viewState.expandedDigest }),
+    ...(viewState?.provenancePopover === undefined ? {} : { provenancePopover: viewState.provenancePopover }),
   };
 }

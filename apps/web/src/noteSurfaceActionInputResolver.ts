@@ -62,7 +62,7 @@ export function createNoteSurfaceActionInputResolver(
     }
 
     if (isProvenanceLookupIntent(event.apiIntent)) {
-      return readProvenanceInput(options.provenanceByBlockId, event);
+      return readProvenanceInput(options, event);
     }
 
     return undefined;
@@ -164,10 +164,10 @@ function readActiveNoteId(
 }
 
 function readProvenanceInput(
-  lookup: NoteSurfaceBlockActionInputLookup<NoteSurfaceProvenanceActionInput> | undefined,
+  options: NoteSurfaceActionInputResolverOptions,
   event: NoteSurfaceEventControllerDescriptor,
 ): NoteSurfaceResolvedActionInput | undefined {
-  const provenance = readBlockLookup(lookup, event);
+  const provenance = readBlockLookup(options.provenanceByBlockId, event);
   return provenance === undefined ? undefined : { provenance };
 }
 

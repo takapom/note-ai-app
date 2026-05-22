@@ -126,7 +126,7 @@ function createAiAssistBlock(
 
   return {
     kind: block.type,
-    label: 'AI補助',
+    label: '整理された文脈',
     collapsible: true,
     editable: true,
     editing,

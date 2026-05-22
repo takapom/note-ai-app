@@ -242,7 +242,7 @@ export interface BlockEditorStateViewModel {
 
 export interface AiAssistBlockViewModel {
   kind: AiBlockType;
-  label: 'AI補助';
+  label: '整理された文脈';
   collapsible: true;
   editable: true;
   editing: boolean;

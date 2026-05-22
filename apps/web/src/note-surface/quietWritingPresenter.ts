@@ -141,7 +141,7 @@ function createReturnLayerPoints(
         title,
         explanation,
         sourceAvailable: item.source?.blockId !== undefined || item.source?.noteId !== undefined,
-        sourceInspectable: false,
+        sourceInspectable: item.source?.blockId !== undefined,
         ...(item.source === undefined ? {} : { source: item.source }),
       };
     });

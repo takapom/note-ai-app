@@ -18,6 +18,7 @@
   },
   "include": [
     "apps/**/*.ts",
+    "apps/**/*.tsx",
     "contexts/**/*.ts"
   ]
 }

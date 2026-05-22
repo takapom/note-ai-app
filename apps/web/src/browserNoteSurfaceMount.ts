@@ -3,6 +3,7 @@ import {
   type NoteSurfaceHttpDigestProductAppOptions,
 } from './noteSurfaceHttpDigestProductApp.ts';
 import type { NoteSurfaceApiFetchLike } from './noteSurfaceApiTransport.ts';
+import type { NoteSurfacePageLifecyclePort } from './noteSurfaceSessionLifecycle.ts';
 import type {
   NoteSurfaceProductAppMountResult,
 } from './noteSurfaceProductApp.ts';
@@ -47,6 +48,7 @@ export async function mountBrowserNoteSurface(
     };
   }
 
+  const pageLifecycle = readBrowserPageLifecyclePort();
   const appOptions: NoteSurfaceHttpDigestProductAppOptions = {
     root: validation.root,
     fetchLike: validation.fetchLike,
@@ -58,9 +60,27 @@ export async function mountBrowserNoteSurface(
     ...(validation.resolvedOptions.projectionMaps === undefined
       ? {}
       : { projectionMaps: validation.resolvedOptions.projectionMaps }),
+    ...(pageLifecycle === undefined ? {} : { pageLifecycle }),
   };
 
   return createNoteSurfaceHttpDigestProductApp(appOptions).mount();
+}
+
+function readBrowserPageLifecyclePort(): NoteSurfacePageLifecyclePort | undefined {
+  const globalCandidate = globalThis as {
+    addEventListener?: (type: string, listener: () => void) => void;
+    removeEventListener?: (type: string, listener: () => void) => void;
+  };
+  if (typeof globalCandidate.addEventListener !== 'function') {
+    return undefined;
+  }
+
+  return {
+    onPageHide(listener: () => void): () => void {
+      globalCandidate.addEventListener?.('pagehide', listener);
+      return () => globalCandidate.removeEventListener?.('pagehide', listener);
+    },
+  };
 }
 
 function validateBrowserMountOptions(

@@ -355,6 +355,20 @@ function createApiIntentInput(
         },
       };
     }
+    case 'note.leave': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      if (noteId === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
+        },
+      };
+    }
   }
 }
 
