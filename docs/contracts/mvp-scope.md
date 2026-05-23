@@ -62,7 +62,7 @@ MVP から除外されるもの:
 
 - MVP は core loop を実証しなければならない: write -> leave note -> background organize -> next open organized digest -> continue writing.
 - AI / agent はユーザーが書いている最中に前景化せず、整理結果は次回オープン時の digest / context projection として静かに返す。
-- Inline AI-origin blocks は MVP の主体験ではなく、必要な整理結果がある場合の secondary projection として扱う。
+- Inline 整理由来 projection blocks は MVP の主体験ではなく、必要な整理結果がある場合の secondary projection として扱う。
 - MVP への追加はすべて、この loop を直接支援しなければならない。
 - Future candidates は Google Docs export、Google Calendar action candidate、Slack action candidate、Graph/cluster view、Memory dashboard、Team workspace、External content ingestion であり、MVP scope ではない。
 - 外部連携は第一思想ではなく、整理された思考を外へ運ぶための extension として扱う。

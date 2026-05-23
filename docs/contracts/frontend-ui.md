@@ -37,7 +37,7 @@ multi-panel AI UX に逸脱せず、MVP UI composition を定義する。
 - Main UI は single note surface である。
 - MVP の画面構成は AppShell、Sidebar、TopBar、NoteSurface である。
 - Sidebar MVP は Notes、Recent、Search に限る。Unresolved Questions、Decisions、Memory Dashboard、Graph View は MVP 外である。
-- TopBar は workspace name、search、command palette、saved/sync status を扱う。AI 状態は Saved、Structuring...、Updated のように控えめに表示する。
+- TopBar は workspace name、search、command palette、saved/sync status を扱う。AI / agent の実行状態は書く体験の主役にしない。
 - NoteSurface は Note Header、Block Editor、user blocks、heading blocks、next-open digest、必要時の整理由来 projection blocks、memory candidate blocks を含む。
 - Block Editor は Notion-like な document writing surface として見えなければならない。ユーザーが書く場所は中央の editable block list であり、AI / digest / memory の UI より視覚的に優先される。
 - MVP の writing surface は Markdown-compatible authoring shortcuts を持ってよい。ただし Markdown string を内部 SoT にせず、`#`, `##`, `-`, `>`, fenced code などの入力は Note / Section / Block model へ変換される UI 入力 affordance である。
@@ -45,7 +45,7 @@ multi-panel AI UX に逸脱せず、MVP UI composition を定義する。
 - ユーザーが AI-generated description を編集した場合、それは user description として扱う。
 - 書いている最中、AI / agent の存在を前景化してはならない。入力直後に AI 補助 block、memory candidate、整理結果を割り込ませない。
 - 整理結果は原則として note leave / tab switch / app leave 後に backend が準備し、next open 時に compact digest として返す。
-- 必要な整理由来 projection が note 内に出る場合も、主語は `AI補助` ではなく `整理された文脈` / `続きの入口` / `持ち越された文脈` とし、整理由来であることは控えめに識別し、出典確認・編集・削除を可能にする。
+- 必要な整理由来 projection が note 内に出る場合も、主語は AI ではなく `整理された文脈` / `続きの入口` / `持ち越された文脈` とし、整理由来であることは控えめに識別し、出典確認・編集・削除を可能にする。
 - `採用` は整理結果を本文に出すための必須 action ではない。
 - Memory candidate block actions は 覚える、編集、違う、削除、保留 である。
 - 次回オープンダイジェスト は compact で expandable であり、未解決の問い、決定事項、関連する過去ノート、このノートから覚える候補を提示できる。
