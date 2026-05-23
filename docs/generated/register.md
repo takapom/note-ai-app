@@ -62,6 +62,7 @@
 - `docs/records/frontend-ui-visual-direction-2026-05-21.md`
 - `docs/records/local-cloudworker-agents-issues-2026-05-19.md`
 - `docs/records/local-cloudworker-agents-smoke-handoff-2026-05-20.md`
+- `docs/records/valibot-adoption-review-2026-05-23.md`
 
 ## スキル
 

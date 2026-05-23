@@ -1,0 +1,25 @@
+strict digraph "dependency-cruiser output"{
+    rankdir="LR" splines="true" overlap="false" nodesep="0.16" ranksep="0.18" fontname="Helvetica-bold" fontsize="9" style="rounded,bold,filled" fillcolor="#ffffff" compound="true"
+    node [shape="box" style="rounded, filled" height="0.2" color="black" fillcolor="#ffffcc" fontcolor="black" fontname="Helvetica" fontsize="9"]
+    edge [arrowhead="normal" arrowsize="0.6" penwidth="2.0" color="#00000033" fontname="Helvetica" fontsize="9"]
+
+    subgraph "cluster_apps" {label="apps" "apps/web" [label=<web> tooltip="web" URL="apps/web" shape="box3d"] }
+    "apps/web" -> "contexts/note-model" [arrowhead="onormal" penwidth="1.0"]
+    subgraph "cluster_apps" {label="apps" "apps/worker" [label=<worker> tooltip="worker" URL="apps/worker" fillcolor="#ccffcc" shape="box3d"] }
+    "apps/worker" -> "contexts/context-assembly" [arrowhead="onormal" penwidth="1.0"]
+    "apps/worker" -> "contexts/ai-operations" [arrowhead="onormal" penwidth="1.0"]
+    "apps/worker" -> "contexts/scheduler"
+    "apps/worker" -> "contexts/memory"
+    "apps/worker" -> "contexts/note-model"
+    subgraph "cluster_contexts" {label="contexts" "contexts/ai-operations" [label=<ai-operations> tooltip="ai-operations" URL="contexts/ai-operations" shape="box3d"] }
+    "contexts/ai-operations" -> "contexts/memory"
+    "contexts/ai-operations" -> "contexts/note-model"
+    subgraph "cluster_contexts" {label="contexts" "contexts/context-assembly" [label=<context-assembly> tooltip="context-assembly" URL="contexts/context-assembly" shape="box3d"] }
+    "contexts/context-assembly" -> "contexts/memory"
+    "contexts/context-assembly" -> "contexts/note-model"
+    subgraph "cluster_contexts" {label="contexts" "contexts/memory" [label=<memory> tooltip="memory" URL="contexts/memory" shape="box3d"] }
+    subgraph "cluster_contexts" {label="contexts" "contexts/note-model" [label=<note-model> tooltip="note-model" URL="contexts/note-model" shape="box3d"] }
+    subgraph "cluster_contexts" {label="contexts" "contexts/scheduler" [label=<scheduler> tooltip="scheduler" URL="contexts/scheduler" shape="box3d"] }
+    "contexts/scheduler" -> "contexts/note-model" [arrowhead="onormal" penwidth="1.0"]
+    subgraph "cluster_contexts" {label="contexts" "contexts/topology" [label=<topology> tooltip="topology" URL="contexts/topology" fillcolor="#ccffcc" shape="box3d"] }
+}

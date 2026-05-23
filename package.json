@@ -16,6 +16,11 @@
     "preview:ui:static": "node scripts/preview-ui-static.mjs --serve",
     "worker:local": "node scripts/smoke-worker-local-runtime.mjs --serve-only",
     "worker:local:smoke": "node scripts/smoke-worker-local-runtime.mjs",
+    "deps:check": "dependency-cruise apps contexts --config .dependency-cruiser.cjs --output-type err-long",
+    "deps:graph:json": "dependency-cruise apps contexts --config .dependency-cruiser.cjs --output-type json --output-to docs/generated/dependency-cruiser-observed.json",
+    "deps:graph:mermaid": "dependency-cruise apps contexts --config .dependency-cruiser.cjs --output-type json --output-to docs/generated/dependency-cruiser-observed.json && node scripts/generate-dependency-architecture-observed.mjs",
+    "deps:graph:archi": "dependency-cruise apps contexts --config .dependency-cruiser.cjs --collapse '^(apps/[^/]+|contexts/[^/]+)' --output-type archi --output-to docs/generated/dependency-cruiser-observed.dot",
+    "deps:graph:contract": "node scripts/generate-dependency-architecture-contract.mjs",
     "lint": "npm run lint:ts && npm run contracts:verify -- --lint",
     "lint:ts": "eslint apps contexts",
     "test": "node --test tests/**/*.test.mjs",
@@ -25,6 +30,7 @@
     "contracts:verify": "node scripts/verify-contracts.mjs"
   },
   "devDependencies": {
+    "dependency-cruiser": "^17.3.10",
     "eslint": "^10.4.0",
     "eslint-plugin-import-x": "^4.16.2",
     "typescript": "^5.9.2",
