@@ -13,11 +13,29 @@ export function NoteSurfaceApp() {
 
   return (
     <div className="ann-app ann-app-shell ann-app--quiet-writing" data-ann-live-app="true" data-flow-state={flow.flowState} data-layout={model.appShell.layout}>
-      <ThinRail rail={model.quietWriting.thinRail} onOpenRecentThought={flow.onOpenRecentThought} />
+      <ThinRail
+        rail={model.quietWriting.thinRail}
+        searchOpen={flow.searchOpen}
+        searchQuery={flow.searchQuery}
+        settingsOpen={flow.settingsOpen}
+        onCreateNote={flow.onCreateNote}
+        onOpenRecentThought={flow.onOpenRecentThought}
+        onToggleSearch={flow.onToggleSearch}
+        onSearchQueryChange={flow.onSearchQueryChange}
+        onToggleSettings={flow.onToggleSettings}
+      />
       <div className="ann-main" data-region="main">
-        <WritingChrome chrome={model.quietWriting.writingChrome} />
+        <WritingChrome
+          chrome={model.quietWriting.writingChrome}
+          commandMenuOpen={flow.commandMenuOpen}
+          shareStatus={flow.shareStatus}
+          onShareNote={flow.onShareNote}
+          onToggleCommandMenu={flow.onToggleCommandMenu}
+          onManualOrganize={flow.onManualOrganize}
+          onCreateNote={flow.onCreateNote}
+        />
         <main className="ann-note-surface" data-region="noteSurface" data-surface="single-note" data-note-id={model.noteSurface.noteHeader.noteId}>
-          <NoteHeader header={model.noteSurface.noteHeader} />
+          <NoteHeader header={model.noteSurface.noteHeader} onUpdateTitle={flow.onUpdateTitle} />
           <ReturnLayer
             returnLayer={model.quietWriting.returnLayer}
             noteId={model.noteSurface.noteHeader.noteId}
@@ -30,9 +48,11 @@ export function NoteSurfaceApp() {
           <NoteSurfaceBlocks
             blocks={model.noteSurface.blocks}
             placeholderText={flow.placeholderText}
+            pendingFocusBlockId={flow.pendingFocusBlockId}
             onEditableFocus={flow.onEditableFocus}
             onEditableInput={flow.onEditableInput}
             onEditableBlur={flow.onEditableBlur}
+            onEditableKeyDown={flow.onEditableKeyDown}
             onInspectSource={flow.onInspectSource}
             onRememberMemoryCandidate={flow.onRememberMemoryCandidate}
             onRejectMemoryCandidate={flow.onRejectMemoryCandidate}

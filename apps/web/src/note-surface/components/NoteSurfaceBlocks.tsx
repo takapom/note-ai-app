@@ -1,15 +1,17 @@
-import type { FocusEvent, FormEvent } from 'react';
+import { useEffect, useRef, type FocusEvent, type FormEvent, type KeyboardEvent } from 'react';
 import type { NoteBlockViewModel } from '../viewModelTypes.ts';
-import type { EditableBlockInput } from '../state/useNoteSurfaceFlow.ts';
+import type { EditableBlockInput, EditableBlockKeyInput } from '../state/useNoteSurfaceFlow.ts';
 import { AiAssistBlock } from '../../ai-assist/components/AiAssistBlock.tsx';
 import { MemoryCandidateBlock } from '../../memory/components/MemoryCandidateBlock.tsx';
 
 interface NoteSurfaceBlocksProps {
   blocks: readonly NoteBlockViewModel[];
   placeholderText: string;
+  pendingFocusBlockId: string | undefined;
   onEditableFocus(input: EditableBlockInput): void;
   onEditableInput(input: EditableBlockInput): void;
   onEditableBlur(input: EditableBlockInput): void;
+  onEditableKeyDown(input: EditableBlockKeyInput): void;
   onInspectSource(): void;
   onRememberMemoryCandidate(blockId: string): void;
   onRejectMemoryCandidate(blockId: string): void;
@@ -33,7 +35,7 @@ function NoteBlock(props: NoteSurfaceBlocksProps & { block: NoteBlockViewModel }
     ? <MemoryCandidateBlock block={block} onRemember={props.onRememberMemoryCandidate} onReject={props.onRejectMemoryCandidate} />
     : block.aiAssist !== undefined
       ? <AiAssistBlock block={block} onInspectSource={props.onInspectSource} onToggleEditing={() => undefined} onDelete={() => undefined} />
-      : <EditableUserBlock block={block} placeholderText={props.placeholderText} onFocus={props.onEditableFocus} onInput={props.onEditableInput} onBlur={props.onEditableBlur} />;
+      : <EditableUserBlock block={block} placeholderText={props.placeholderText} pendingFocusBlockId={props.pendingFocusBlockId} onFocus={props.onEditableFocus} onInput={props.onEditableInput} onBlur={props.onEditableBlur} onKeyDown={props.onEditableKeyDown} />;
 
   return (
     <article
@@ -47,19 +49,32 @@ function NoteBlock(props: NoteSurfaceBlocksProps & { block: NoteBlockViewModel }
       data-editor-layout-stability="block-identity"
     >
       {body}
-      {block.memoryCandidate === undefined && block.aiAssist === undefined ? <BlockControls block={block} /> : null}
       <BlockStatus block={block} />
     </article>
   );
 }
 
-function EditableUserBlock({ block, placeholderText, onFocus, onInput, onBlur }: {
+function EditableUserBlock({ block, placeholderText, pendingFocusBlockId, onFocus, onInput, onBlur, onKeyDown }: {
   block: NoteBlockViewModel;
   placeholderText: string;
+  pendingFocusBlockId: string | undefined;
   onFocus(input: EditableBlockInput): void;
   onInput(input: EditableBlockInput): void;
   onBlur(input: EditableBlockInput): void;
+  onKeyDown(input: EditableBlockKeyInput): void;
 }) {
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (pendingFocusBlockId !== block.id) {
+      return;
+    }
+    const timer = globalThis.setTimeout(() => {
+      editorRef.current?.focus();
+    }, 0);
+    return () => globalThis.clearTimeout(timer);
+  }, [block.id, pendingFocusBlockId]);
+
   const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (event.currentTarget.textContent === placeholderText) {
       event.currentTarget.textContent = '';
@@ -72,6 +87,17 @@ function EditableUserBlock({ block, placeholderText, onFocus, onInput, onBlur }:
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     onBlur({ blockId: block.id, text: event.currentTarget.textContent ?? '' });
   };
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+    }
+    onKeyDown({
+      blockId: block.id,
+      text: event.currentTarget.textContent ?? '',
+      key: event.key,
+      shiftKey: event.shiftKey,
+    });
+  };
 
   return (
     <div
@@ -80,23 +106,15 @@ function EditableUserBlock({ block, placeholderText, onFocus, onInput, onBlur }:
       data-editor-composition-state="idle"
       role="textbox"
       aria-readonly="false"
+      ref={editorRef}
       contentEditable
       suppressContentEditableWarning
       onFocus={handleFocus}
       onInput={handleInput}
       onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
     >
       {block.text}
-    </div>
-  );
-}
-
-function BlockControls({ block }: { block: NoteBlockViewModel }) {
-  return (
-    <div className="ann-block-controls" data-action-group="block_editor">
-      <button type="button" data-action="edit_block" data-target="block_editor" data-block-id={block.id}>編集</button>
-      <button type="button" data-action="save_block" data-target="block_editor" data-block-id={block.id}>保存</button>
-      <button type="button" data-action="cancel_edit" data-target="block_editor" data-block-id={block.id}>キャンセル</button>
     </div>
   );
 }
