@@ -63,12 +63,6 @@ export function ThinRail({
           ))}
         </ul>
       </nav>
-      {settingsOpen ? (
-        <div className="ann-thin-rail__panel" role="status">
-          <p>ローカルで下書きを保持中</p>
-          <p>バックエンド接続後は Worker API の状態を表示します。</p>
-        </div>
-      ) : null}
       <div className="ann-thin-rail__tools" aria-label="ツール">
         <button type="button" className="ann-icon-button" aria-label="検索" aria-pressed={searchOpen} onClick={onToggleSearch}><span className="ann-icon-button__glyph" aria-hidden="true">⌕</span></button>
         <button type="button" className="ann-icon-button" aria-label="設定" aria-pressed={settingsOpen} onClick={onToggleSettings}><span className="ann-icon-button__glyph" aria-hidden="true">⚙</span></button>

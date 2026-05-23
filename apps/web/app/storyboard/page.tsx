@@ -48,7 +48,7 @@ function renderPanel(
 
 function createWriteModel() {
   return createNoteSurfaceViewModel(createDocument([
-    paragraphBlock('block_placeholder', '/　ここから書く｜', 0),
+    paragraphBlock('block_placeholder', '\u200B', 0),
   ]), {
     workspaceName: 'ANN',
     recentThoughts: recentThoughts(),
@@ -58,7 +58,7 @@ function createWriteModel() {
 
 function createReturnLayerModel() {
   return createNoteSurfaceViewModel(createDocument([
-    paragraphBlock('block_placeholder', 'ここから書く｜', 0),
+    paragraphBlock('block_placeholder', '\u200B', 0),
   ]), {
     workspaceName: 'ANN',
     recentThoughts: recentThoughts(),

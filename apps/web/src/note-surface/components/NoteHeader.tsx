@@ -1,4 +1,4 @@
-import type { FocusEvent, KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from 'react';
 import type { NoteHeaderViewModel } from '../viewModelTypes.ts';
 
 interface NoteHeaderProps {
@@ -7,11 +7,32 @@ interface NoteHeaderProps {
 }
 
 export function NoteHeader({ header, onUpdateTitle }: NoteHeaderProps) {
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const previousNoteIdRef = useRef<string | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    const title = titleRef.current;
+    if (title === null) {
+      return;
+    }
+
+    const noteChanged = previousNoteIdRef.current !== header.noteId;
+    previousNoteIdRef.current = header.noteId;
+    const focused = globalThis.document.activeElement === title;
+    if (!noteChanged && focused) {
+      return;
+    }
+
+    if (title.textContent !== header.title) {
+      title.textContent = header.title;
+    }
+  }, [header.noteId, header.title]);
+
   const handleBlur = (event: FocusEvent<HTMLHeadingElement>) => {
-    if ((event.currentTarget.textContent ?? '').trim().length === 0) {
+    if (event.currentTarget.textContent.trim().length === 0) {
       event.currentTarget.textContent = header.title;
     }
-    onUpdateTitle(event.currentTarget.textContent ?? '');
+    onUpdateTitle(event.currentTarget.textContent);
   };
   const handleKeyDown = (event: KeyboardEvent<HTMLHeadingElement>) => {
     if (event.key === 'Enter') {
@@ -28,11 +49,10 @@ export function NoteHeader({ header, onUpdateTitle }: NoteHeaderProps) {
         suppressContentEditableWarning
         role="textbox"
         aria-label="メモのタイトル"
+        ref={titleRef}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-      >
-        {header.title}
-      </h1>
+      />
       <p data-note-description="effective">{header.description.effective}</p>
     </header>
   );

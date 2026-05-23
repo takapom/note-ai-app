@@ -89,6 +89,59 @@ export function appendBlockAfter(
   return nextBlockId;
 }
 
+export interface MergeBlockIntoPreviousResult {
+  mergedIntoBlockId: string;
+  caretOffset: number;
+}
+
+export function mergeBlockIntoPrevious(
+  activeNote: LocalNote,
+  blockId: string,
+  currentText: string,
+  setWorkspace: (updater: (current: LocalNoteWorkspace) => LocalNoteWorkspace) => void,
+): MergeBlockIntoPreviousResult | undefined {
+  const noteId = activeNote.id;
+  const blockIndex = activeNote.blocks.findIndex((block) => block.id === blockId);
+  if (blockIndex <= 0) {
+    return undefined;
+  }
+
+  const previousBlock = activeNote.blocks[blockIndex - 1];
+  const caretOffset = previousBlock.text.length;
+  setWorkspace((current) => ({
+    ...current,
+    notes: current.notes.map((note) => {
+      if (note.id !== noteId) {
+        return note;
+      }
+
+      const currentIndex = note.blocks.findIndex((block) => block.id === blockId);
+      if (currentIndex <= 0) {
+        return note;
+      }
+
+      const targetIndex = currentIndex - 1;
+      const targetBlock = note.blocks[targetIndex];
+      const nextNote = {
+        ...note,
+        updatedLabel: 'いま更新',
+        organizedResultReady: false,
+        blocks: [
+          ...note.blocks.slice(0, targetIndex),
+          { ...targetBlock, text: `${targetBlock.text}${currentText}` },
+          ...note.blocks.slice(currentIndex + 1),
+        ],
+      };
+      return {
+        ...nextNote,
+        organizedResultReady: hasWritableContent(nextNote),
+      };
+    }),
+  }));
+
+  return { mergedIntoBlockId: previousBlock.id, caretOffset };
+}
+
 function createNextBlockId(note: LocalNote): string {
   let index = note.blocks.length + 1;
   const ids = new Set(note.blocks.map((block) => block.id));
@@ -132,9 +185,7 @@ export function createLocalDocument(note: LocalNote): NoteDocumentContract {
     ? [{ id: `${note.id}_block_1`, type: 'paragraph' as const, text: '' }]
     : note.blocks;
   const renderedBlocks = blocks.map((block, index) => createBlockContract(note.id, block, index));
-  const effectiveDescription = hasWritableContent(note)
-    ? '保存済み ・ ローカル'
-    : 'ここから書き始める';
+  const effectiveDescription = '保存済み ・ ローカル';
   return {
     note: {
       id: note.id,
@@ -190,7 +241,10 @@ function createBlockContract(
 }
 
 export function resolveActiveNote(workspace: LocalNoteWorkspace): LocalNote {
-  return workspace.notes.find((note) => note.id === workspace.activeNoteId) ?? workspace.notes[0] ?? createEmptyNote([]);
+  if (workspace.notes.length === 0) {
+    return createEmptyNote([]);
+  }
+  return workspace.notes.find((note) => note.id === workspace.activeNoteId) ?? workspace.notes[0];
 }
 
 export function createRecentThoughts(workspace: LocalNoteWorkspace, query: string): readonly RecentThoughtInput[] {
@@ -215,8 +269,8 @@ export function readNoteText(note: LocalNote): string {
 
 export function readStoredWorkspace(): LocalNoteWorkspace | undefined {
   try {
-    const raw = globalThis.localStorage?.getItem(LOCAL_NOTE_WORKSPACE_STORAGE_KEY);
-    if (raw === undefined || raw === null) {
+    const raw = globalThis.localStorage.getItem(LOCAL_NOTE_WORKSPACE_STORAGE_KEY);
+    if (raw === null) {
       return undefined;
     }
     const parsed = JSON.parse(raw) as Partial<LocalNoteWorkspace>;
@@ -238,7 +292,7 @@ export function readStoredWorkspace(): LocalNoteWorkspace | undefined {
 
 export function writeStoredWorkspace(workspace: LocalNoteWorkspace): void {
   try {
-    globalThis.localStorage?.setItem(LOCAL_NOTE_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
+    globalThis.localStorage.setItem(LOCAL_NOTE_WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
   } catch {
     // Local persistence is a convenience for the demo app; failure must not block writing.
   }

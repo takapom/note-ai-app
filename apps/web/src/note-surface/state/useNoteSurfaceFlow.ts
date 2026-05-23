@@ -9,6 +9,7 @@ import {
   createLocalDocument,
   createRecentThoughts,
   hasWritableContent,
+  mergeBlockIntoPrevious,
   NEW_NOTE_TITLE,
   normalizeBlockInput,
   readNoteText,
@@ -22,6 +23,43 @@ import {
 type TimerHandle = ReturnType<typeof setTimeout>;
 
 export type NoteSurfaceFlowState = 'write' | 'writing' | 'return' | 'provenance';
+export type WritingDensitySetting = 'standard' | 'spacious';
+export type ThemeSetting = 'system' | 'light' | 'dark';
+export type MotionSetting = 'system' | 'reduced';
+export type SettingsSheetPositionSetting = 'left' | 'right';
+
+export interface NoteSurfaceSettings {
+  authoringShortcutsEnabled: boolean;
+  focusNewNoteBody: boolean;
+  digestAutoOpen: boolean;
+  memoryCandidatesVisible: boolean;
+  sourceButtonsAlwaysVisible: boolean;
+  writingDensity: WritingDensitySetting;
+  theme: ThemeSetting;
+  motion: MotionSetting;
+  settingsSheetPosition: SettingsSheetPositionSetting;
+}
+
+export type NoteSurfaceSettingsPatch = Partial<NoteSurfaceSettings>;
+
+export interface SettingsSheetStatus {
+  localDraftStatus: string;
+  digestStatus: string;
+}
+
+export const NOTE_SURFACE_SETTINGS_STORAGE_KEY = 'ai-native-note.settings.v1';
+
+export const defaultNoteSurfaceSettings: NoteSurfaceSettings = {
+  authoringShortcutsEnabled: true,
+  focusNewNoteBody: true,
+  digestAutoOpen: true,
+  memoryCandidatesVisible: true,
+  sourceButtonsAlwaysVisible: true,
+  writingDensity: 'standard',
+  theme: 'system',
+  motion: 'system',
+  settingsSheetPosition: 'right',
+};
 
 export interface EditableBlockInput {
   blockId: string;
@@ -31,6 +69,7 @@ export interface EditableBlockInput {
 export interface EditableBlockKeyInput extends EditableBlockInput {
   key: string;
   shiftKey: boolean;
+  caretOffset?: number;
 }
 
 export interface NoteSurfaceFlowController {
@@ -38,9 +77,12 @@ export interface NoteSurfaceFlowController {
   flowState: NoteSurfaceFlowState;
   placeholderText: string;
   pendingFocusBlockId?: string;
+  pendingFocusOffset?: number;
   searchOpen: boolean;
   searchQuery: string;
   settingsOpen: boolean;
+  settings: NoteSurfaceSettings;
+  settingsStatus: SettingsSheetStatus;
   commandMenuOpen: boolean;
   shareStatus?: string;
   onCreateNote(): void;
@@ -61,6 +103,8 @@ export interface NoteSurfaceFlowController {
   onToggleSearch(): void;
   onSearchQueryChange(query: string): void;
   onToggleSettings(): void;
+  onCloseSettings(): void;
+  onUpdateSettings(patch: NoteSurfaceSettingsPatch): void;
   onToggleCommandMenu(): void;
   onShareNote(): void;
   onManualOrganize(): void;
@@ -71,7 +115,7 @@ function focusEditableBlockSoon(blockId: string | undefined): void {
     return;
   }
   globalThis.setTimeout(() => {
-    const target = globalThis.document?.querySelector<HTMLElement>(`[data-block-id="${blockId}"] [data-block-editor-content="true"]`);
+    const target = globalThis.document.querySelector<HTMLElement>(`[data-block-id="${blockId}"] [data-block-editor-content="true"]`);
     target?.focus();
   }, 80);
 }
@@ -87,9 +131,11 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<NoteSurfaceSettings>(defaultNoteSurfaceSettings);
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | undefined>(undefined);
   const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string | undefined>(undefined);
+  const [pendingFocusOffset, setPendingFocusOffset] = useState<number | undefined>(undefined);
   const [hydrated, setHydrated] = useState(false);
   const saveTimerRef = useRef<TimerHandle | undefined>(undefined);
   const latestDraftByBlockIdRef = useRef(new Map<string, string>());
@@ -100,6 +146,10 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     if (stored !== undefined) {
       setWorkspace(stored);
     }
+    const storedSettings = readStoredSettings();
+    if (storedSettings !== undefined) {
+      setSettings(storedSettings);
+    }
     setHydrated(true);
   }, []);
 
@@ -108,6 +158,12 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
       writeStoredWorkspace(workspace);
     }
   }, [hydrated, workspace]);
+
+  useEffect(() => {
+    if (hydrated) {
+      writeStoredSettings(settings);
+    }
+  }, [hydrated, settings]);
 
   const activeNote = useMemo(() => resolveActiveNote(workspace), [workspace]);
   const activeNoteText = useMemo(() => readNoteText(activeNote), [activeNote]);
@@ -178,15 +234,24 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     returnLayerOpen,
     provenanceOpen,
   });
+  const settingsStatus = useMemo(() => ({
+    localDraftStatus: hydrated ? 'ローカル保存中' : '読み込み中',
+    digestStatus: activeNote.organizedResultReady && hasWritableContent(activeNote)
+      ? '次に戻る入口があります'
+      : '整理待ちはありません',
+  }), [activeNote, hydrated]);
 
   return {
     model,
     flowState,
     placeholderText: DEMO_PLACEHOLDER_TEXT,
     ...(pendingFocusBlockId === undefined ? {} : { pendingFocusBlockId }),
+    ...(pendingFocusOffset === undefined ? {} : { pendingFocusOffset }),
     searchOpen,
     searchQuery,
     settingsOpen,
+    settings,
+    settingsStatus,
     commandMenuOpen,
     ...(shareStatus === undefined ? {} : { shareStatus }),
     onCreateNote() {
@@ -196,8 +261,13 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
         notes: [nextNote, ...current.notes],
       }));
       closeTransientSurfaces();
-      setPendingFocusBlockId(nextNote.blocks[0]?.id);
-      focusEditableBlockSoon(nextNote.blocks[0]?.id);
+      setPendingFocusOffset(undefined);
+      if (settings.focusNewNoteBody) {
+        setPendingFocusBlockId(nextNote.blocks[0]?.id);
+        focusEditableBlockSoon(nextNote.blocks[0]?.id);
+      } else {
+        setPendingFocusBlockId(undefined);
+      }
     },
     onUpdateTitle(title) {
       const normalizedTitle = title.trim().length === 0 ? NEW_NOTE_TITLE : title.trim();
@@ -210,6 +280,7 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     onEditableFocus(input) {
       if (pendingFocusBlockId === input.blockId) {
         setPendingFocusBlockId(undefined);
+        setPendingFocusOffset(undefined);
       }
     },
     onEditableInput(input) {
@@ -217,23 +288,44 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     },
     onEditableBlur(input) {
       const draft = input.text.length > 0 ? input.text : (latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text);
-      updateBlockText(input.blockId, draft, true);
+      updateBlockText(input.blockId, draft, settings.authoringShortcutsEnabled);
     },
     onEditableKeyDown(input) {
+      if ((input.key === 'Backspace' || input.key === 'Delete') && !input.shiftKey && input.caretOffset === 0) {
+        const draft = latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text;
+        if (saveTimerRef.current !== undefined) {
+          clearTimeout(saveTimerRef.current);
+        }
+        const mergeResult = mergeBlockIntoPrevious(activeNote, input.blockId, draft, setWorkspace);
+        if (mergeResult !== undefined) {
+          latestDraftByBlockIdRef.current.delete(input.blockId);
+          latestDraftByBlockIdRef.current.delete(mergeResult.mergedIntoBlockId);
+          setPendingFocusBlockId(mergeResult.mergedIntoBlockId);
+          setPendingFocusOffset(mergeResult.caretOffset);
+          setEditingBlockIds([]);
+          setAiStatus('saved');
+          setDigestAvailable(false);
+          setReturnLayerOpen(false);
+          setProvenanceOpen(false);
+        }
+        return;
+      }
+
       if (input.key !== 'Enter' || input.shiftKey) {
         return;
       }
       const draft = input.text.length > 0 ? input.text : (latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text);
-      updateBlockText(input.blockId, draft, true);
+      updateBlockText(input.blockId, draft, settings.authoringShortcutsEnabled);
       const nextBlockId = appendBlockAfter(activeNote, input.blockId, setWorkspace);
       setPendingFocusBlockId(nextBlockId);
+      setPendingFocusOffset(undefined);
       focusEditableBlockSoon(nextBlockId);
     },
     onOpenRecentThought(noteId) {
       const target = workspace.notes.find((note) => note.id === noteId);
       const targetIsCurrent = noteId === workspace.activeNoteId;
       const targetHasWritableContent = target === undefined ? false : hasWritableContent(target);
-      const shouldShowDigest = targetHasWritableContent && (target?.organizedResultReady === true || targetIsCurrent);
+      const shouldShowDigest = settings.digestAutoOpen && targetHasWritableContent && (target?.organizedResultReady === true || targetIsCurrent);
       setWorkspace((current) => {
         const nextNotes = current.notes.map((note) => note.id === current.activeNoteId
           ? { ...note, organizedResultReady: hasWritableContent(note) || note.organizedResultReady }
@@ -243,6 +335,8 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
       setDigestAvailable(shouldShowDigest);
       setReturnLayerOpen(shouldShowDigest);
       setProvenanceOpen(false);
+      setPendingFocusBlockId(undefined);
+      setPendingFocusOffset(undefined);
       setCommandMenuOpen(false);
       setSettingsOpen(false);
       setSearchOpen(false);
@@ -289,6 +383,12 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
       setSearchOpen(false);
       setCommandMenuOpen(false);
     },
+    onCloseSettings() {
+      setSettingsOpen(false);
+    },
+    onUpdateSettings(patch) {
+      setSettings((current) => ({ ...current, ...patch }));
+    },
     onToggleCommandMenu() {
       setCommandMenuOpen((current) => !current);
       setSearchOpen(false);
@@ -296,7 +396,7 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     },
     onShareNote() {
       const text = `${activeNote.title}\n\n${readNoteText(activeNote)}`.trim();
-      void globalThis.navigator?.clipboard?.writeText(text).catch(() => undefined);
+      void globalThis.navigator.clipboard.writeText(text).catch(() => undefined);
       setShareStatus('共有用テキストをコピーしました');
       if (shareTimerRef.current !== undefined) {
         clearTimeout(shareTimerRef.current);
@@ -305,7 +405,7 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     },
     onManualOrganize() {
       markActiveNoteChanged((note) => ({ ...note, organizedResultReady: hasWritableContent(note) }));
-      if (hasWritableContent(activeNote)) {
+      if (settings.digestAutoOpen && hasWritableContent(activeNote)) {
         setDigestAvailable(true);
         setReturnLayerOpen(true);
       }
@@ -320,6 +420,52 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     setCommandMenuOpen(false);
     setSettingsOpen(false);
   }
+}
+
+export function readStoredSettings(): NoteSurfaceSettings | undefined {
+  try {
+    const raw = globalThis.localStorage.getItem(NOTE_SURFACE_SETTINGS_STORAGE_KEY);
+    if (raw === null) {
+      return undefined;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<NoteSurfaceSettings>;
+    return normalizeStoredSettings(parsed);
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeStoredSettings(settings: NoteSurfaceSettings): void {
+  try {
+    globalThis.localStorage.setItem(NOTE_SURFACE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Local settings are convenience preferences; writing must stay available without them.
+  }
+}
+
+function normalizeStoredSettings(candidate: Partial<NoteSurfaceSettings>): NoteSurfaceSettings {
+  return {
+    authoringShortcutsEnabled: typeof candidate.authoringShortcutsEnabled === 'boolean'
+      ? candidate.authoringShortcutsEnabled
+      : defaultNoteSurfaceSettings.authoringShortcutsEnabled,
+    focusNewNoteBody: typeof candidate.focusNewNoteBody === 'boolean'
+      ? candidate.focusNewNoteBody
+      : defaultNoteSurfaceSettings.focusNewNoteBody,
+    digestAutoOpen: typeof candidate.digestAutoOpen === 'boolean'
+      ? candidate.digestAutoOpen
+      : defaultNoteSurfaceSettings.digestAutoOpen,
+    memoryCandidatesVisible: typeof candidate.memoryCandidatesVisible === 'boolean'
+      ? candidate.memoryCandidatesVisible
+      : defaultNoteSurfaceSettings.memoryCandidatesVisible,
+    sourceButtonsAlwaysVisible: typeof candidate.sourceButtonsAlwaysVisible === 'boolean'
+      ? candidate.sourceButtonsAlwaysVisible
+      : defaultNoteSurfaceSettings.sourceButtonsAlwaysVisible,
+    writingDensity: candidate.writingDensity === 'spacious' ? 'spacious' : defaultNoteSurfaceSettings.writingDensity,
+    theme: candidate.theme === 'light' || candidate.theme === 'dark' ? candidate.theme : defaultNoteSurfaceSettings.theme,
+    motion: candidate.motion === 'reduced' ? 'reduced' : defaultNoteSurfaceSettings.motion,
+    settingsSheetPosition: candidate.settingsSheetPosition === 'left' ? 'left' : defaultNoteSurfaceSettings.settingsSheetPosition,
+  };
 }
 
 function resolveFlowState(input: {

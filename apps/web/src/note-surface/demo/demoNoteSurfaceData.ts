@@ -6,7 +6,7 @@ export const DEMO_USER_BLOCK_ID = 'block_user_001';
 export const DEMO_AI_BLOCK_ID = 'block_ai_assist';
 export const DEMO_MEMORY_BLOCK_ID = 'block_memory_candidate';
 export const DEMO_NOW = 1_779_248_149_000;
-export const DEMO_PLACEHOLDER_TEXT = '/　ここから書く｜';
+export const DEMO_PLACEHOLDER_TEXT = '\u200B';
 
 export interface DemoDocumentInput {
   bodyText: string;

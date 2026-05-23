@@ -27,6 +27,7 @@ export function renderBlockEditorSurface(model: NoteSurfaceViewModel): string {
 }
 
 function renderBlock(block: NoteBlockViewModel): string {
+  const emptyUserBlock = block.origin === 'user' && isVisualEmptyEditorText(block.editor.draftText ?? block.text);
   const body = block.memoryCandidate !== undefined
     ? renderMemoryCandidateBlock(block)
     : block.aiAssist !== undefined
@@ -37,7 +38,7 @@ function renderBlock(block: NoteBlockViewModel): string {
     : renderBlockEditorControls(block);
 
   return [
-    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}" data-editor-layout-stability="block-identity">`,
+    `<article class="ann-block ann-block--${escapeAttribute(block.type)}" data-block-id="${escapeAttribute(block.id)}" data-block-type="${escapeAttribute(block.type)}" data-block-origin="${escapeAttribute(block.origin)}" data-position="${block.position}" data-editor-state="${escapeAttribute(block.editor.state)}" data-editor-save-status="${escapeAttribute(block.editor.saveStatus)}" data-empty-block="${emptyUserBlock ? 'true' : 'false'}" data-editor-layout-stability="block-identity">`,
     body,
     controls,
     renderBlockEditorStatus(block),
@@ -47,34 +48,41 @@ function renderBlock(block: NoteBlockViewModel): string {
 
 function renderUserBlockBody(block: NoteBlockViewModel): string {
   const text = block.editor.draftText ?? block.text;
+  const emptyEditor = isVisualEmptyEditorText(text);
+  const dataEmptyEditor = `data-empty-editor="${emptyEditor ? 'true' : 'false'}"`;
+  const renderedText = emptyEditor ? '' : escapeHtml(text);
 
   if (block.sectionBoundary !== undefined) {
     const level = block.sectionBoundary.level;
     const tag = `h${level}`;
     return [
-      `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
-      escapeHtml(text),
+      `<${tag} class="ann-block-text ann-heading" data-block-editor-content="true" data-editor-composition-state="idle" ${dataEmptyEditor} role="textbox" aria-readonly="false" contenteditable="true" data-section-level="${level}" data-section-title="${escapeAttribute(block.sectionBoundary.title)}">`,
+      renderedText,
       `</${tag}>`,
     ].join('');
   }
 
   if (block.authoringIntent === 'quote') {
     return [
-      '<blockquote class="ann-block-text ann-block-text--quote" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-authoring-intent="quote">',
-      escapeHtml(text),
+      `<blockquote class="ann-block-text ann-block-text--quote" data-block-editor-content="true" data-editor-composition-state="idle" ${dataEmptyEditor} role="textbox" aria-readonly="false" contenteditable="true" data-authoring-intent="quote">`,
+      renderedText,
       '</blockquote>',
     ].join('');
   }
 
   if (block.authoringIntent === 'bullet') {
     return [
-      '<div class="ann-block-text ann-block-text--bullet" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true" data-authoring-intent="bullet">',
-      escapeHtml(text),
+      `<div class="ann-block-text ann-block-text--bullet" data-block-editor-content="true" data-editor-composition-state="idle" ${dataEmptyEditor} role="textbox" aria-readonly="false" contenteditable="true" data-authoring-intent="bullet">`,
+      renderedText,
       '</div>',
     ].join('');
   }
 
-  return `<div class="ann-block-text" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(text)}</div>`;
+  return `<div class="ann-block-text" data-block-editor-content="true" data-editor-composition-state="idle" ${dataEmptyEditor} role="textbox" aria-readonly="false" contenteditable="true">${renderedText}</div>`;
+}
+
+function isVisualEmptyEditorText(text: string): boolean {
+  return text === '\u200B';
 }
 
 function renderAiAssistBlock(block: NoteBlockViewModel): string {

@@ -1,6 +1,7 @@
 import { useNoteSurfaceFlow } from '../state/useNoteSurfaceFlow.ts';
 import { CarriedContextTray } from './CarriedContextTray.tsx';
 import { NoteHeader } from './NoteHeader.tsx';
+import { SettingsSheet } from './SettingsSheet.tsx';
 import { NoteSurfaceBlocks } from './NoteSurfaceBlocks.tsx';
 import { ThinRail } from './ThinRail.tsx';
 import { WritingChrome } from './WritingChrome.tsx';
@@ -12,7 +13,18 @@ export function NoteSurfaceApp() {
   const model = flow.model;
 
   return (
-    <div className="ann-app ann-app-shell ann-app--quiet-writing" data-ann-live-app="true" data-flow-state={flow.flowState} data-layout={model.appShell.layout}>
+    <div
+      className="ann-app ann-app-shell ann-app--quiet-writing"
+      data-ann-live-app="true"
+      data-flow-state={flow.flowState}
+      data-layout={model.appShell.layout}
+      data-writing-density={flow.settings.writingDensity}
+      data-ann-theme={flow.settings.theme}
+      data-motion={flow.settings.motion}
+      data-source-actions={flow.settings.sourceButtonsAlwaysVisible ? 'always' : 'on-focus'}
+      data-memory-candidates={flow.settings.memoryCandidatesVisible ? 'visible' : 'hidden'}
+      data-settings-position={flow.settings.settingsSheetPosition}
+    >
       <ThinRail
         rail={model.quietWriting.thinRail}
         searchOpen={flow.searchOpen}
@@ -49,6 +61,7 @@ export function NoteSurfaceApp() {
             blocks={model.noteSurface.blocks}
             placeholderText={flow.placeholderText}
             pendingFocusBlockId={flow.pendingFocusBlockId}
+            pendingFocusOffset={flow.pendingFocusOffset}
             onEditableFocus={flow.onEditableFocus}
             onEditableInput={flow.onEditableInput}
             onEditableBlur={flow.onEditableBlur}
@@ -61,6 +74,13 @@ export function NoteSurfaceApp() {
         </main>
         <CarriedContextTray tray={model.quietWriting.carriedContextTray} onRemember={flow.onRememberMemoryCandidate} onReject={flow.onRejectMemoryCandidate} />
       </div>
+      <SettingsSheet
+        open={flow.settingsOpen}
+        settings={flow.settings}
+        status={flow.settingsStatus}
+        onUpdateSettings={flow.onUpdateSettings}
+        onClose={flow.onCloseSettings}
+      />
     </div>
   );
 }
