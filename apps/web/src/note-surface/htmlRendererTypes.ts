@@ -18,7 +18,8 @@ export type NoteSurfaceHtmlRenderTarget =
   | 'return_layer'
   | 're_entry_surface'
   | 'thin_rail'
-  | 'provenance_popover';
+  | 'provenance_popover'
+  | 'organization_history';
 
 export type NoteSurfaceHtmlAction =
   | BlockEditorAction
@@ -29,7 +30,8 @@ export type NoteSurfaceHtmlAction =
   | 'close_return_layer'
   | 'defer_return_layer'
   | 'continue_writing'
-  | 'close_provenance';
+  | 'close_provenance'
+  | 'open_organization_history';
 
 export interface NoteSurfaceHtmlRenderEventDescriptor {
   action: NoteSurfaceHtmlAction;

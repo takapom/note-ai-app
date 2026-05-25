@@ -9,6 +9,7 @@ import { hasId } from './operationRouterPrimitives.ts';
 export function validateOperationTargets(
   operation: StructureOperation,
   snapshot: OperationRouterSnapshot,
+  routedNoteId?: string,
 ): string[] {
   const errors: string[] = [];
 
@@ -46,6 +47,26 @@ export function validateOperationTargets(
         !hasId(snapshot.sections, operation.position.appendToSectionId)
       ) {
         errors.push(`position.appendToSectionId ${operation.position.appendToSectionId} does not exist`);
+      }
+      break;
+    case 'create_organized_note_version':
+      if (!hasId(snapshot.notes, operation.targetNoteId)) {
+        errors.push(`targetNoteId ${operation.targetNoteId} does not exist`);
+      }
+      if (routedNoteId !== undefined && operation.targetNoteId !== routedNoteId) {
+        errors.push(`targetNoteId ${operation.targetNoteId} must match routed noteId ${routedNoteId}`);
+      }
+      for (const [index, entryId] of operation.sourceCaptureEntryIds.entries()) {
+        if (!hasId(snapshot.captureEntries, entryId)) {
+          errors.push(`sourceCaptureEntryIds[${index}] ${entryId} does not exist`);
+        }
+      }
+      for (const [blockIndex, draft] of operation.organizedBlocks.entries()) {
+        for (const [entryIndex, entryId] of draft.sourceCaptureEntryIds.entries()) {
+          if (!hasId(snapshot.captureEntries, entryId)) {
+            errors.push(`organizedBlocks[${blockIndex}].sourceCaptureEntryIds[${entryIndex}] ${entryId} does not exist`);
+          }
+        }
       }
       break;
     case 'mark_stale':

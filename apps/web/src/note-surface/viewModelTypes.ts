@@ -53,6 +53,7 @@ export interface CreateNoteSurfaceViewModelOptions {
   returnLayerOpen?: boolean;
   recentThoughts?: readonly RecentThoughtInput[];
   provenancePopover?: ProvenancePopoverInput;
+  organizationLayer?: OrganizationLayerInput;
 }
 
 export interface NoteSurfaceViewModel {
@@ -185,12 +186,35 @@ export interface TopBarViewModel {
 export interface NoteSurfaceBodyViewModel {
   kind: 'NoteSurface';
   noteHeader: NoteHeaderViewModel;
+  organizationLayer: OrganizationLayerViewModel;
   nextOpenDigest: NextOpenDigestViewModel;
   blockEditor: BlockEditorViewModel;
   blocks: readonly NoteBlockViewModel[];
   sectionBoundaries: readonly SectionBoundaryViewModel[];
   availableActions: NoteSurfaceActionsViewModel;
   provenancePopover: ProvenancePopoverViewModel;
+}
+
+export interface OrganizationLayerInput {
+  status?: 'current' | 'updated' | 'failed' | 'disabled';
+  updatedLabel?: string;
+  failureLabel?: string;
+  canRestore?: boolean;
+}
+
+export interface OrganizationLayerViewModel {
+  kind: 'OrganizationLayer';
+  defaultLayer: 'organized';
+  captureLayerEditable: false;
+  status: 'current' | 'updated' | 'failed' | 'disabled';
+  historyAffordance: {
+    visible: boolean;
+    label: string;
+    canRestore: boolean;
+    summary?: string;
+  };
+  emitsAiProviderCall: false;
+  mutatesUserAuthoredBlock: false;
 }
 
 export interface NoteHeaderViewModel {

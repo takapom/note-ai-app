@@ -22,8 +22,27 @@ test('web note surface exposes one AppShell with one note surface', () => {
   assert.equal(model.quietWriting.kind, 'QuietWritingSurface');
   assert.equal(model.quietWriting.thinRail.recentThoughts.length > 0, true);
   assert.equal(model.noteSurface.kind, 'NoteSurface');
+  assert.equal(model.noteSurface.organizationLayer.defaultLayer, 'organized');
+  assert.equal(model.noteSurface.organizationLayer.captureLayerEditable, false);
   assert.equal(model.noteSurface.noteHeader.title, noteDocumentFixture.note.title);
   assert.equal(model.noteSurface.blockEditor.emitsAiProviderCall, false);
+});
+
+test('organized layer exposes only a quiet history affordance for restoration', () => {
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    organizationLayer: {
+      status: 'updated',
+      updatedLabel: '整理済み',
+      canRestore: true,
+    },
+  });
+
+  assert.equal(model.noteSurface.organizationLayer.status, 'updated');
+  assert.equal(model.noteSurface.organizationLayer.historyAffordance.visible, true);
+  assert.equal(model.noteSurface.organizationLayer.historyAffordance.label, '履歴');
+  assert.equal(model.noteSurface.organizationLayer.historyAffordance.canRestore, true);
+  assert.equal(model.noteSurface.organizationLayer.emitsAiProviderCall, false);
+  assert.equal(model.noteSurface.organizationLayer.mutatesUserAuthoredBlock, false);
 });
 
 test('web note surface renders only structural H1/H2/H3 heading blocks as section boundaries', () => {

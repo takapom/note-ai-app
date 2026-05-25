@@ -19,6 +19,7 @@
 - dirty scope と context_hash dedupe のライフサイクル。
 - 安定した section / note 離脱時の振る舞い。
 - 次回オープンダイジェスト の振る舞い。
+- Organized layer generation / reflection の最小ライフサイクル。
 
 
 ## この契約が所有しないもの
@@ -35,15 +36,17 @@
 - AI structuring はキー入力ごとに実行してはならない。
 - BlockChanged は blocks を保存し、edit event を記録し、dirty scope をマークし、必要なら lightweight index を更新するだけである。
 - MVP の主要トリガーは note close / tab switch / app leave である。
-- 次回オープン時には取りこぼした structure job を復旧し、digest candidate を表示する。
+- 次回オープン時には取りこぼした structure job を復旧し、Organized layer を表示する。digest candidate は補助的な再入口として表示してよい。
 - manual organize は明示的なユーザー意図として許可される。
-- note close flow は latest blocks save、note session ended、dirty sections discovery、structure job enqueue、background structuring、operations saved/applied、next open digest prepared の順序で進む。
+- note close flow は latest blocks save、capture entry append、note session ended、dirty sections discovery、structure job enqueue、background structuring、operations saved/applied、organized note version prepared、next open digest prepared の順序で進む。
 - 構造化対象は section を基本とする。block は小さすぎ、workspace は retrieval 対象であって直接構造化対象ではない。
 - whole note は note description / summary 生成または manual organize の場合にのみ許可される。
 - 各 section は content_hash、last_structured_hash、last_structured_at、is_dirty を持つ。
 - 構造化は `content_hash != last_structured_hash` の section のみ対象にする。
 - structure job は context_hash を持ち、同じ context_hash の成功済み job を再実行しない。
 - completed StructureJob の AI response だけが Operation Router に渡される。non-completed job と provider failure は Note/Block の source of truth を変更せず、operation routing も実行しない。
+- OrganizationRun failure は既存 Organized layer を変更しない。次回 open は現状維持し、失敗状態を控えめに表示する。
+- note-level auto organize off の場合、background structuring は実行されても Organized layer への自動反映を行わない。manual organize は明示的なユーザー意図として許可される。
 
 
 ## 許可されるトポロジー

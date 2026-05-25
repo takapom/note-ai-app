@@ -6,6 +6,9 @@
 // Block types: 'paragraph', 'heading', 'bullet_list_item', 'numbered_list_item',
 // 'todo', 'quote', 'code', 'divider', 'ai_summary', 'ai_question',
 // 'ai_decision', 'ai_related_context', 'ai_memory_candidate'.
+// Organization layers: CaptureEntry, OrganizedNoteVersion, OrganizationRun,
+// OrganizationPreferences, RelatedContextReference.
 
 export * from './noteTypes.ts';
 export * from './noteValidation.ts';
+export * from './noteOrganization.ts';

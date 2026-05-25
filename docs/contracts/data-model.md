@@ -16,6 +16,7 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 
 - MVP の論理エンティティと必須フィールド。
 - user-authored data と AI-derived projection の境界。
+- Capture layer / Organized layer / OrganizationRun / OrganizationPreferences の論理境界。
 - Turso に保存される canonical data と Agent-local SQL の一時 state の境界。
 - schema tests が保証すべき識別子、origin、status、hash、provenance の最小要件。
 
@@ -36,6 +37,12 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - MVP の user block type は `paragraph`, `heading`, `bullet_list_item`, `numbered_list_item`, `todo`, `quote`, `code`, `divider` である。
 - MVP の AI block type は `ai_summary`, `ai_question`, `ai_decision`, `ai_related_context`, `ai_memory_candidate` である。
 - `edit_events` は user edit の証跡であり、AI structure の正本ではない。
+- `capture_entries` はユーザー入力の読み取り用ログであり、`workspace_id`, `note_id`, `kind`, `content`, `content_hash`, `source_block_ids`, `captured_at` を持つ。MVP では過去 capture entry を直接編集せず、復元・出典・整理再実行の入力として扱う。
+- `organized_note_versions` は次回表示される整理済みノート版であり、`workspace_id`, `note_id`, `organization_run_id`, `source_capture_entry_ids`, `blocks`, `created_at`, optional `restored_from_version_id` を持つ。Organized layer は元 capture への参照なしに存在してはならない。
+- `organization_runs` は自動または手動整理の audit / lifecycle record であり、`workspace_id`, `note_id`, `trigger`, `status`, `source_capture_entry_ids`, `preferences_snapshot`, `auto_applied`, optional `organized_version_id`, optional `failure_reason`, `created_at`, `updated_at` を持つ。
+- `organization_preferences` は workspace-level の整理方針であり、自由プロンプト、auto organize default、固定 trust guards を持つ。プロンプトは復元可能性、出典確認、無断追加禁止、情報消失防止を上書きできない。
+- `note_organization_settings` は note-level の自動整理反映フラグを持つ。自動整理 OFF は organized layer への自動反映を止めるが、manual organize を禁止しない。
+- `related_context_references` は Organized layer に関連する過去メモ / memory 参照であり、本文の自動統合ではなく source-inspectable な関係表示である。
 - `structure_jobs` は `target_scope`, `trigger_reason`, `context_hash`, `status`, `priority` を持つ。
 - `trigger_reason` は `note_closed`, `tab_switched`, `app_left`, `next_open`, `manual_organize` のいずれかである。
 - `semantic_units` と `semantic_edges` は AI-derived projection であり、user blocks を置き換えない。
@@ -48,11 +55,12 @@ AI ネイティブノートの内部正本、派生構造、操作履歴、prove
 - `source_spans` は `target_type`, `target_id`, `source_block_id`, `start_offset`, `end_offset`, `reason` を持つ。
 - AI operation audit record の `source_spans.target_id` は、同じ routing 結果の `ai_operations.id` を参照する。
 - Runtime persistence は duplicate `ai_operations.id` を上書きせず拒否する。
+- OrganizationRun failure は既存 OrganizedNoteVersion を壊してはならない。失敗は failureReason として記録し、通常表示は現状維持する。
 
 ## 許可されるトポロジー
 
 UI/editor events -> note model contract -> persistence schema -> scheduler/context/operation projections。  
-Turso は canonical DB として notes、sections、blocks、semantic_units、semantic_edges、memory_items、ai_operations、source_spans を保存する。  
+Turso は canonical DB として notes、sections、blocks、capture_entries、organized_note_versions、organization_runs、organization_preferences、note_organization_settings、related_context_references、semantic_units、semantic_edges、memory_items、ai_operations、source_spans を保存する。
 Agent-local SQL は current session、dirty tracking、pending jobs、retry queue のみを保存する。
 
 ## 移行用の seam

@@ -29,6 +29,7 @@
 - NoteSurface browser app entry deployment bootstrap。`apps/web/src/browserNoteSurfaceAppEntry.ts` は deployment descriptor から注入された browser runtime で mount adapter を起動するだけの bootstrap であり、NoteSurface application boundary や domain policy ではない。import-time side effect、framework / bundler package ownership、provider SDK、auth policy、ID generation、canonical Note / Section / Block の直接 mutation を所有しない。
 - AI Assist Blocks のレンダリング。
 - 次回オープンダイジェストコンポーネントのふるまい。
+- Organized layer の通常表示と、Capture layer 復元用の控えめな history affordance。
 - Provenance popover の配置。
 - Note Header の title / description 表示。
 - Manual Organize の command palette entry。
@@ -88,6 +89,8 @@
 - Public browser artifact は status region の min-height と block layout の安定寸法を持つ最小 CSS を含めてください。これは deployment shell の visual contract であり、NoteSurface application boundary に framework / provider / Worker policy を追加しないでください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
 - Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
+- NoteSurface は default layer を Organized layer として扱ってください。Capture layer は MVP では読み取り用履歴であり、常時表示の Raw / Organized 二面 editor を主 UI にしないでください。
+- Organization history affordance は AI/provider call や user-authored block の直接 mutation を行わず、復元・履歴確認の入口だけを表現してください。
 - Provenance popover は bounded excerpt と source metadata だけを持ち、full note / full workspace dump を持たせないでください。
 - バックグラウンド構造化中も、執筆フローは応答性を保たなければなりません。
 - AI Assist Block 挿入はカーソル位置を奪ってはなりません。

@@ -6,7 +6,11 @@ import type {
   AiOperationAuditRecordContract,
 } from '../../../../contexts/ai-operations/src/contract/operationRouterContract.ts';
 
-export type ActiveOperationProjectionEffect = 'create_semantic_unit' | 'create_relation' | 'mark_stale';
+export type ActiveOperationProjectionEffect =
+  | 'create_semantic_unit'
+  | 'create_relation'
+  | 'create_organized_note_version'
+  | 'mark_stale';
 
 export interface OperationProjectionWriteIntent {
   operationId: string;
@@ -75,7 +79,7 @@ export function validateOperationProjectionWriteIntent(intent: OperationProjecti
     errors.push('workspaceId must be a stable non-sentinel runtime id');
   }
   if (!isActiveProjectionEffect(record.effect)) {
-    errors.push('effect must be create_semantic_unit, create_relation, or mark_stale');
+    errors.push('effect must be create_semantic_unit, create_relation, create_organized_note_version, or mark_stale');
   }
   if (!isNonEmptyString(record.reason)) {
     errors.push('reason must be a non-empty string');
@@ -113,7 +117,10 @@ export function validateOperationProjectionWriteIntent(intent: OperationProjecti
 }
 
 export function isActiveProjectionEffect(value: unknown): value is ActiveOperationProjectionEffect {
-  return value === 'create_semantic_unit' || value === 'create_relation' || value === 'mark_stale';
+  return value === 'create_semantic_unit' ||
+    value === 'create_relation' ||
+    value === 'create_organized_note_version' ||
+    value === 'mark_stale';
 }
 
 function cloneProjectionWriteIntent(intent: OperationProjectionWriteIntent): OperationProjectionWriteIntent {

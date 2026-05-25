@@ -56,6 +56,76 @@ export const canonicalSchemaFixture = Object.freeze({
         updated_at integer not null
       )
     `),
+    capture_entries: table(`
+      create table capture_entries (
+        id text primary key,
+        workspace_id text not null,
+        note_id text not null,
+        kind text not null,
+        content text not null,
+        content_hash text not null,
+        source_block_ids_json text not null,
+        captured_at integer not null
+      )
+    `),
+    organized_note_versions: table(`
+      create table organized_note_versions (
+        id text primary key,
+        workspace_id text not null,
+        note_id text not null,
+        organization_run_id text not null,
+        source_capture_entry_ids_json text not null,
+        blocks_json text not null,
+        related_context_references_json text,
+        restored_from_version_id text,
+        created_at integer not null
+      )
+    `),
+    organization_runs: table(`
+      create table organization_runs (
+        id text primary key,
+        workspace_id text not null,
+        note_id text not null,
+        trigger text not null,
+        status text not null,
+        source_capture_entry_ids_json text not null,
+        preferences_snapshot_json text not null,
+        auto_applied integer not null,
+        organized_version_id text,
+        failure_reason text,
+        created_at integer not null,
+        updated_at integer not null
+      )
+    `),
+    organization_preferences: table(`
+      create table organization_preferences (
+        workspace_id text primary key,
+        user_id text,
+        prompt text not null,
+        auto_organize_default_enabled integer not null,
+        fixed_trust_guards_json text not null,
+        updated_at integer not null
+      )
+    `),
+    note_organization_settings: table(`
+      create table note_organization_settings (
+        note_id text primary key,
+        auto_organize_enabled integer not null,
+        updated_at integer not null
+      )
+    `),
+    related_context_references: table(`
+      create table related_context_references (
+        id text primary key,
+        workspace_id text not null,
+        note_id text not null,
+        kind text not null,
+        target_id text not null,
+        title text not null,
+        reason text not null,
+        source_inspectable integer not null
+      )
+    `),
     memory_items: table(`
       create table memory_items (
         id text primary key,
@@ -244,6 +314,64 @@ export const canonicalRequiredColumnsByTable = Object.freeze({
     'content_hash',
     'created_at',
     'updated_at',
+  ]),
+  capture_entries: Object.freeze([
+    'id',
+    'workspace_id',
+    'note_id',
+    'kind',
+    'content',
+    'content_hash',
+    'source_block_ids_json',
+    'captured_at',
+  ]),
+  organized_note_versions: Object.freeze([
+    'id',
+    'workspace_id',
+    'note_id',
+    'organization_run_id',
+    'source_capture_entry_ids_json',
+    'blocks_json',
+    'related_context_references_json',
+    'restored_from_version_id',
+    'created_at',
+  ]),
+  organization_runs: Object.freeze([
+    'id',
+    'workspace_id',
+    'note_id',
+    'trigger',
+    'status',
+    'source_capture_entry_ids_json',
+    'preferences_snapshot_json',
+    'auto_applied',
+    'organized_version_id',
+    'failure_reason',
+    'created_at',
+    'updated_at',
+  ]),
+  organization_preferences: Object.freeze([
+    'workspace_id',
+    'user_id',
+    'prompt',
+    'auto_organize_default_enabled',
+    'fixed_trust_guards_json',
+    'updated_at',
+  ]),
+  note_organization_settings: Object.freeze([
+    'note_id',
+    'auto_organize_enabled',
+    'updated_at',
+  ]),
+  related_context_references: Object.freeze([
+    'id',
+    'workspace_id',
+    'note_id',
+    'kind',
+    'target_id',
+    'title',
+    'reason',
+    'source_inspectable',
   ]),
   memory_items: Object.freeze([
     'id',

@@ -38,6 +38,7 @@ test('operation contract keeps forbidden rewrite operations out of MVP operation
     'create_relation',
     'create_memory_candidate',
     'insert_assist_block',
+    'create_organized_note_version',
     'mark_stale',
     'no_op',
   ]) {

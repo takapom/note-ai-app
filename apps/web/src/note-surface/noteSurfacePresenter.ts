@@ -83,6 +83,7 @@ export function createNoteSurfaceViewModel(
     noteSurface: {
       kind: 'NoteSurface',
       noteHeader: createNoteHeaderViewModel(document.note, sectionBoundaries),
+      organizationLayer: createOrganizationLayerViewModel(options.organizationLayer),
       nextOpenDigest: {
         ...nextOpenDigest,
         expanded: returnLayerOpen,
@@ -103,6 +104,31 @@ export function createNoteSurfaceViewModel(
       provenancePopover: createProvenancePopoverViewModel(options.provenancePopover),
     },
     excludedSurfaces: createExcludedSurfacesGuard(),
+  };
+}
+
+function createOrganizationLayerViewModel(
+  input: CreateNoteSurfaceViewModelOptions['organizationLayer'],
+): NoteSurfaceViewModel['noteSurface']['organizationLayer'] {
+  const status = input?.status ?? 'current';
+  const visible = status === 'updated' || status === 'failed' || input?.canRestore === true;
+  const summary = status === 'failed'
+    ? (input?.failureLabel ?? '整理は前回の状態を保っています')
+    : input?.updatedLabel;
+
+  return {
+    kind: 'OrganizationLayer',
+    defaultLayer: 'organized',
+    captureLayerEditable: false,
+    status,
+    historyAffordance: {
+      visible,
+      label: '履歴',
+      canRestore: input?.canRestore ?? false,
+      ...(summary === undefined ? {} : { summary }),
+    },
+    emitsAiProviderCall: false,
+    mutatesUserAuthoredBlock: false,
   };
 }
 

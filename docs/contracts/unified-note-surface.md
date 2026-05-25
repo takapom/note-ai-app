@@ -16,6 +16,7 @@
 
 
 - Single note surface principle。
+- Organized layer as the default note surface。
 - 整理由来 projection placement principle。
 - 次回オープンダイジェスト surface behavior。
 - MVP に persistent AI side chat がないこと。
@@ -33,9 +34,10 @@
 ## 不変条件
 
 
-- AI structural output は原則として compact next-open digest として表示され、必要時のみ note surface 内の整理由来 projection として表示される。
+- AI structural output は原則として次回表示される Organized layer として返され、compact next-open digest は補助的な再入口として表示される。
 - ユーザーは note body と AI interpretation pane を行き来しない。
 - AI / agent は別ペインのチャットではなく、同じノート内の整理結果として静かに戻る。
+- ユーザーは Raw/Capture editor と Organized editor を常時行き来しない。Capture layer は履歴・復元・出典確認のために必要時だけ見える。
 - AI output は dismissible かつ inspectable でなければならない。
 - Persistent right-side AI interpretation panel は MVP コアではない。
 - Graph view は MVP コアではない。

@@ -74,6 +74,50 @@ test('memory candidate routes as review and keeps source-backed audit record', (
   assert.equal(result.auditRecord.sourceSpans[0].reason, 'create_memory_candidate');
 });
 
+test('organized note version routes as silent apply without rewriting user blocks', () => {
+  const result = routeOperation(validOperationFixtures[6], operationRouterSnapshotFixture, {
+    ...routeOptions,
+    operationId: 'operation_organized_version_001',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.accepted, true);
+  assert.equal(result.policy, 'silent');
+  assert.deepEqual(result.applyResult, {
+    action: 'apply',
+    effect: 'create_organized_note_version',
+    reason: 'silent policy operation is safe to apply through the runtime boundary',
+  });
+  assert.equal(result.auditRecord.targetType, 'note');
+  assert.equal(result.auditRecord.targetId, 'note_001');
+  assert.equal(result.auditRecord.operationType, 'create_organized_note_version');
+  assert.equal(result.auditRecord.sourceSpans[0].sourceBlockId, 'block_001');
+});
+
+test('organized note version target must stay within the routed note', () => {
+  const result = routeOperation(
+    {
+      ...validOperationFixtures[6],
+      targetNoteId: 'note_other',
+    },
+    {
+      ...operationRouterSnapshotFixture,
+      notes: [...operationRouterSnapshotFixture.notes, { id: 'note_other' }],
+    },
+    {
+      ...routeOptions,
+      operationId: 'operation_organized_cross_note_001',
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.accepted, false);
+  assert.deepEqual(result.errors, [
+    'targetNoteId note_other must match routed noteId note_001',
+  ]);
+  assert.equal(result.applyResult.action, 'reject');
+});
+
 test('unknown and forbidden operations route as blocked rejected records', () => {
   const unknown = routeOperation({ type: ' unknown_operation ' }, operationRouterSnapshotFixture, routeOptions);
   assert.equal(unknown.ok, false);
@@ -465,7 +509,7 @@ test('operation revert rejects invalid audit record primitives', () => {
   assert.ok(result.errors.includes('auditRecord.policy must be one of silent, inline, review, blocked'));
   assert.ok(result.errors.includes('auditRecord.noteId must be a non-empty string when provided'));
   assert.ok(result.errors.includes('auditRecord.structureJobId must be a non-empty string when provided'));
-  assert.ok(result.errors.includes('auditRecord.targetType must be one of block, section, semantic_unit, memory_candidate, assist_block'));
+  assert.ok(result.errors.includes('auditRecord.targetType must be one of note, block, section, semantic_unit, memory_candidate, assist_block'));
   assert.ok(result.errors.includes('auditRecord.targetId must be a non-empty string when provided'));
   assert.ok(result.errors.includes('auditRecord.generatedBy must be trimmed'));
   assert.ok(result.errors.includes('auditRecord.errors[0] must be a non-empty string'));

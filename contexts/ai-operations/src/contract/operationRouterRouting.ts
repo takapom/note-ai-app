@@ -53,7 +53,7 @@ export function routeOperation(
 
   const operation = input as StructureOperation;
   const confidenceErrors = validateConfidenceThreshold(operation, resolveConfidenceThreshold(options));
-  const targetErrors = validateOperationTargets(operation, snapshot);
+  const targetErrors = validateOperationTargets(operation, snapshot, options.noteId);
   const errors = [...confidenceErrors, ...targetErrors];
 
   if (errors.length > 0) {
@@ -174,6 +174,7 @@ function createApplyResult(operation: StructureOperation, policy: OperationPolic
   switch (operation.type) {
     case 'create_semantic_unit':
     case 'create_relation':
+    case 'create_organized_note_version':
     case 'mark_stale':
       return {
         action: 'apply',

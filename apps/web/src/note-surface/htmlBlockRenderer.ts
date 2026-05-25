@@ -5,11 +5,22 @@ import { renderBlockEditorActionLabel } from './htmlLabels.ts';
 
 export function renderNoteHeader(model: NoteSurfaceViewModel): string {
   const header = model.noteSurface.noteHeader;
+  const organization = model.noteSurface.organizationLayer;
 
   return [
     '<header class="ann-note-header" data-component="note-header">',
     `<h1>${escapeHtml(header.title)}</h1>`,
     `<p data-note-description="effective">${escapeHtml(header.description.effective)}</p>`,
+    organization.historyAffordance.visible
+      ? [
+          `<div class="ann-organization-history" data-component="organization-history" data-organization-status="${escapeAttribute(organization.status)}" data-default-layer="${escapeAttribute(organization.defaultLayer)}" data-capture-editable="false">`,
+          organization.historyAffordance.summary === undefined
+            ? ''
+            : `<span>${escapeHtml(organization.historyAffordance.summary)}</span>`,
+          `<button type="button" data-action="open_organization_history" data-target="organization_history" data-note-id="${escapeAttribute(header.noteId)}">${escapeHtml(organization.historyAffordance.label)}</button>`,
+          '</div>',
+        ].join('')
+      : '',
     '</header>',
   ].join('');
 }

@@ -27,6 +27,24 @@ export function validateRenderableNoteSurface(model: NoteSurfaceViewModel): read
   if (model.noteSurface.provenancePopover.emitsAiProviderCall !== false) {
     errors.push('provenance render controls must not emit AI calls');
   }
+  const organizationLayer = model.noteSurface.organizationLayer as {
+    emitsAiProviderCall: boolean;
+    mutatesUserAuthoredBlock: boolean;
+    defaultLayer: string;
+    captureLayerEditable: boolean;
+  };
+  if (organizationLayer.emitsAiProviderCall !== false) {
+    errors.push('organization history controls must not emit AI calls');
+  }
+  if (organizationLayer.mutatesUserAuthoredBlock !== false) {
+    errors.push('organization history controls must not mutate user-authored blocks');
+  }
+  if (organizationLayer.defaultLayer !== 'organized') {
+    errors.push('note surface must default to the organized layer');
+  }
+  if (organizationLayer.captureLayerEditable !== false) {
+    errors.push('capture layer must stay read-only in the MVP note surface');
+  }
 
   for (const block of model.noteSurface.blocks) {
     if (block.aiAssist !== undefined) {

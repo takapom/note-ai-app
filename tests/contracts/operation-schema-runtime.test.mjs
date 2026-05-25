@@ -24,6 +24,7 @@ test('operation policy classification matches contract policy buckets', () => {
   assert.equal(classifyOperationPolicy(validOperationFixtures[0]), 'silent');
   assert.equal(classifyOperationPolicy(validOperationFixtures[2]), 'review');
   assert.equal(classifyOperationPolicy(validOperationFixtures[3]), 'inline');
+  assert.equal(classifyOperationPolicy(validOperationFixtures[6]), 'silent');
   assert.equal(classifyOperationPolicy({ type: 'rewrite_user_block' }), 'blocked');
 });
 

@@ -1,7 +1,18 @@
 // Live product semantics for AI operations.
 // Authority: docs/contracts/operation-return-contract.md
 
-import { aiBlockTypes, type AiBlockType } from '../../../note-model/src/contract/noteContract.ts';
+import {
+  aiBlockTypes,
+  headingLevels,
+  organizationTrustGuards,
+  relatedContextReferenceKinds,
+  userBlockTypes,
+  type AiBlockType,
+  type HeadingLevel,
+  type OrganizationTrustGuard,
+  type RelatedContextReferenceKind,
+  type UserBlockType,
+} from '../../../note-model/src/contract/noteContract.ts';
 import { memoryTypes, type MemoryType } from '../../../memory/src/contract/memoryContract.ts';
 
 export const operationTypes = [
@@ -9,6 +20,7 @@ export const operationTypes = [
   'create_relation',
   'create_memory_candidate',
   'insert_assist_block',
+  'create_organized_note_version',
   'mark_stale',
   'no_op',
 ] as const;
@@ -70,6 +82,22 @@ export interface OperationPositionContract {
   appendToSectionId?: string;
 }
 
+export interface OrganizedBlockDraftContract {
+  blockType: UserBlockType;
+  text: string;
+  headingLevel?: HeadingLevel;
+  position: number;
+  sourceCaptureEntryIds: string[];
+}
+
+export interface OperationRelatedContextReferenceContract {
+  kind: RelatedContextReferenceKind;
+  targetId: string;
+  title: string;
+  reason: string;
+  sourceInspectable: true;
+}
+
 export type StructureOperation =
   | {
       type: 'create_semantic_unit';
@@ -105,6 +133,16 @@ export type StructureOperation =
       confidence: number;
     }
   | {
+      type: 'create_organized_note_version';
+      targetNoteId: string;
+      sourceCaptureEntryIds: string[];
+      organizedBlocks: OrganizedBlockDraftContract[];
+      trustGuards: OrganizationTrustGuard[];
+      relatedContextReferences?: OperationRelatedContextReferenceContract[];
+      sourceSpans: SourceSpanContract[];
+      confidence: number;
+    }
+  | {
       type: 'mark_stale';
       targetType: StaleTargetType;
       targetId: string;
@@ -123,6 +161,7 @@ export function classifyOperationPolicy(operation: StructureOperation | { type?:
   switch (operation.type) {
     case 'create_semantic_unit':
     case 'create_relation':
+    case 'create_organized_note_version':
     case 'mark_stale':
       return 'silent';
     case 'insert_assist_block':
@@ -185,6 +224,15 @@ export function validateStructureOperation(input: unknown): OperationValidationR
       requireEnum(errors, input.blockType, assistBlockTypes, 'blockType');
       requireNonEmptyString(errors, input.content, 'content');
       requirePosition(errors, input.position);
+      requireSourceSpans(errors, input.sourceSpans);
+      requireConfidence(errors, input.confidence);
+      break;
+    case 'create_organized_note_version':
+      requireNonEmptyString(errors, input.targetNoteId, 'targetNoteId');
+      requireNonEmptyStringArray(errors, input.sourceCaptureEntryIds, 'sourceCaptureEntryIds');
+      requireOrganizedBlockDrafts(errors, input.organizedBlocks);
+      requireAllTrustGuards(errors, input.trustGuards);
+      requireRelatedContextReferences(errors, input.relatedContextReferences);
       requireSourceSpans(errors, input.sourceSpans);
       requireConfidence(errors, input.confidence);
       break;
@@ -279,8 +327,88 @@ function requirePosition(errors: string[], value: unknown): void {
   }
 }
 
-function requireEnum<T extends readonly string[]>(errors: string[], value: unknown, allowed: T, field: string): void {
-  if (!isString(value) || !(allowed as readonly string[]).includes(value)) {
+function requireNonEmptyStringArray(errors: string[], value: unknown, field: string): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    errors.push(`${field} must contain at least one non-empty string`);
+    return;
+  }
+
+  for (const [index, item] of value.entries()) {
+    if (!isNonEmptyString(item)) {
+      errors.push(`${field}[${index}] must be a non-empty string`);
+    }
+  }
+}
+
+function requireOrganizedBlockDrafts(errors: string[], value: unknown): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    errors.push('organizedBlocks must contain at least one block draft');
+    return;
+  }
+
+  for (const [index, draft] of value.entries()) {
+    if (!isRecord(draft)) {
+      errors.push(`organizedBlocks[${index}] must be an object`);
+      continue;
+    }
+    requireEnum(errors, draft.blockType, userBlockTypes, `organizedBlocks[${index}].blockType`);
+    requireNonEmptyString(errors, draft.text, `organizedBlocks[${index}].text`);
+    if (draft.headingLevel !== undefined) {
+      requireEnum(errors, draft.headingLevel, headingLevels, `organizedBlocks[${index}].headingLevel`);
+    }
+    if (draft.blockType === 'heading' && draft.headingLevel === undefined) {
+      errors.push(`organizedBlocks[${index}].headingLevel is required for heading drafts`);
+    }
+    if (draft.blockType !== 'heading' && draft.headingLevel !== undefined) {
+      errors.push(`organizedBlocks[${index}].headingLevel is only allowed for heading drafts`);
+    }
+    if (typeof draft.position !== 'number' || !Number.isFinite(draft.position)) {
+      errors.push(`organizedBlocks[${index}].position must be a finite number`);
+    }
+    requireNonEmptyStringArray(errors, draft.sourceCaptureEntryIds, `organizedBlocks[${index}].sourceCaptureEntryIds`);
+  }
+}
+
+function requireAllTrustGuards(errors: string[], value: unknown): void {
+  if (!Array.isArray(value)) {
+    errors.push(`trustGuards must include ${organizationTrustGuards.join(', ')}`);
+    return;
+  }
+
+  for (const guard of organizationTrustGuards) {
+    if (!value.includes(guard)) {
+      errors.push(`trustGuards must include ${guard}`);
+    }
+  }
+}
+
+function requireRelatedContextReferences(errors: string[], value: unknown): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(value)) {
+    errors.push('relatedContextReferences must be an array when provided');
+    return;
+  }
+
+  for (const [index, reference] of value.entries()) {
+    if (!isRecord(reference)) {
+      errors.push(`relatedContextReferences[${index}] must be an object`);
+      continue;
+    }
+    requireEnum(errors, reference.kind, relatedContextReferenceKinds, `relatedContextReferences[${index}].kind`);
+    requireNonEmptyString(errors, reference.targetId, `relatedContextReferences[${index}].targetId`);
+    requireNonEmptyString(errors, reference.title, `relatedContextReferences[${index}].title`);
+    requireNonEmptyString(errors, reference.reason, `relatedContextReferences[${index}].reason`);
+    if (reference.sourceInspectable !== true) {
+      errors.push(`relatedContextReferences[${index}].sourceInspectable must be true`);
+    }
+  }
+}
+
+function requireEnum<T extends readonly (string | number)[]>(errors: string[], value: unknown, allowed: T, field: string): void {
+  if (!((allowed as readonly unknown[]).includes(value))) {
     errors.push(`${field} must be one of ${allowed.join(', ')}`);
   }
 }

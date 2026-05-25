@@ -18,11 +18,15 @@ MVP に含まれるものと除外されるものを正確に定義する。
 MVP に含まれるもの:
 - 統一ノートサーフェス。
 - アプリ固有の Block / Section document model。
+- Capture layer / Organized layer の二層ノート体験。
+- バックエンドエージェントによる Organized layer の自動生成と次回表示。
+- Organized layer の復元用履歴導線。
+- Workspace-level organization prompt と note-level auto organize off。
 - Notion-like な block editor writing surface。
 - Markdown-compatible authoring shortcuts。ただし Markdown は内部 SoT ではなく、入力を Block / Section model へ変換する UI affordance である。
 - note ごとの title と description。
 - H1/H2/H3 section boundary semantics。
-- バックグラウンド整理結果としての次回オープン整理。
+- バックグラウンド整理結果としての次回オープン整理済みノート。
 - 必要時にだけ表示される整理由来の context / memory candidate projection。
 - Note close / tab switch / app leave structuring trigger。
 - Dirty section tracking。
@@ -60,10 +64,12 @@ MVP から除外されるもの:
 ## 不変条件
 
 
-- MVP は core loop を実証しなければならない: write -> leave note -> background organize -> next open organized digest -> continue writing.
-- AI / agent はユーザーが書いている最中に前景化せず、整理結果は次回オープン時の digest / context projection として静かに返す。
+- MVP は core loop を実証しなければならない: write loosely -> leave note -> background organize -> next open organized layer -> continue writing.
+- AI / agent はユーザーが書いている最中に前景化せず、整理結果は次回オープン時の Organized layer と控えめな履歴導線として静かに返す。
+- 次回オープンダイジェストは Organized layer を補助する secondary entry として残してよいが、MVP の主価値は「整理済みノートが自然に開く」ことである。
 - Inline 整理由来 projection blocks は MVP の主体験ではなく、必要な整理結果がある場合の secondary projection として扱う。
 - MVP への追加はすべて、この loop を直接支援しなければならない。
+- 自動整理は提案カードの確認作業をユーザーに押し戻してはならない。失敗時は現状維持し、復元可能な履歴を壊さない。
 - Future candidates は Google Docs export、Google Calendar action candidate、Slack action candidate、Graph/cluster view、Memory dashboard、Team workspace、External content ingestion であり、MVP scope ではない。
 - 外部連携は第一思想ではなく、整理された思考を外へ運ぶための extension として扱う。
 

@@ -100,6 +100,34 @@ test('projection flow persists only silent apply effects as active projection wr
   assert.deepEqual(result.userAuthoredBlockMutations, []);
 });
 
+test('projection flow persists organized note version intents without note SoT mutation', async () => {
+  const routing = routeGeneratedOperations({
+    ...runtimeInput,
+    operationIdPrefix: 'operation_organized_projection',
+    aiResponse: [validOperationFixtures[6]],
+  });
+  const projectionPersistence = new InMemoryOperationProjectionPersistencePort();
+  const proposalPersistence = new InMemoryOperationProposalPersistencePort();
+
+  const result = await runOperationProjectionPersistenceFlow({
+    routing,
+    projectionPersistence,
+    proposalPersistence,
+    now: now + 1,
+  });
+
+  assert.equal(result.routing.ok, true);
+  assert.equal(result.projectionPersistence.ok, true);
+  assert.equal(result.projectionPersistence.savedCount, 1);
+  assert.deepEqual(result.activeProjectionWriteIntents.map((intent) => intent.effect), [
+    'create_organized_note_version',
+  ]);
+  assert.deepEqual(result.directApplyResults, []);
+  assert.deepEqual(result.noteSotMutations, []);
+  assert.deepEqual(result.userAuthoredBlockMutations, []);
+});
+
+
 test('projection flow sends propose actions to proposal persistence without active projection writes', async () => {
   const routing = routeGeneratedOperations({
     ...runtimeInput,

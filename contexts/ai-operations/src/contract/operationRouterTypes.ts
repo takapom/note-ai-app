@@ -18,12 +18,13 @@ export const operationApplyEffects = [
   'create_relation',
   'create_memory_candidate',
   'insert_assist_block',
+  'create_organized_note_version',
   'mark_stale',
   'no_op',
 ] as const;
 export type OperationApplyEffect = (typeof operationApplyEffects)[number];
 
-export const operationTargetTypes = ['block', 'section', 'semantic_unit', 'memory_candidate', 'assist_block'] as const;
+export const operationTargetTypes = ['note', 'block', 'section', 'semantic_unit', 'memory_candidate', 'assist_block'] as const;
 export type OperationTargetType = (typeof operationTargetTypes)[number];
 
 export const operationAuditPolicies = operationPolicies;
@@ -40,8 +41,10 @@ export interface OperationRouterIdSnapshot {
 }
 
 export interface OperationRouterSnapshot {
+  notes: readonly OperationRouterIdSnapshot[];
   blocks: readonly OperationRouterBlockSnapshot[];
   sections: readonly OperationRouterIdSnapshot[];
+  captureEntries: readonly OperationRouterIdSnapshot[];
   semanticUnits: readonly OperationRouterIdSnapshot[];
   memoryCandidates: readonly OperationRouterIdSnapshot[];
   assistBlocks: readonly OperationRouterIdSnapshot[];

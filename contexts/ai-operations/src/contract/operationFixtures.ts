@@ -47,6 +47,43 @@ export const validOperationFixtures: StructureOperation[] = [
     type: 'no_op',
     reason: 'No stable structure can be inferred from the target section.',
   },
+  {
+    type: 'create_organized_note_version',
+    targetNoteId: 'note_001',
+    sourceCaptureEntryIds: ['capture_001'],
+    organizedBlocks: [
+      {
+        blockType: 'heading',
+        text: 'MVP scope',
+        headingLevel: 2,
+        position: 0,
+        sourceCaptureEntryIds: ['capture_001'],
+      },
+      {
+        blockType: 'paragraph',
+        text: 'The MVP protects writing flow before adding integrations.',
+        position: 1,
+        sourceCaptureEntryIds: ['capture_001'],
+      },
+    ],
+    trustGuards: [
+      'restorable_history',
+      'source_inspectable_related_context',
+      'no_unbacked_claims_in_organized_body',
+      'no_information_loss_without_history',
+    ],
+    relatedContextReferences: [
+      {
+        kind: 'note',
+        targetId: 'note_related_001',
+        title: 'Unified surface principle',
+        reason: 'Related prior note about keeping AI secondary.',
+        sourceInspectable: true,
+      },
+    ],
+    sourceSpans: [{ blockId: 'block_001' }, { blockId: 'block_002' }],
+    confidence: 0.9,
+  },
 ];
 
 export const forbiddenRewriteOperationFixture = {

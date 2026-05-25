@@ -297,6 +297,8 @@ function getOperationTarget(
         return { targetType: 'section', targetId: operation.position.appendToSectionId };
       }
       return undefined;
+    case 'create_organized_note_version':
+      return { targetType: 'note', targetId: operation.targetNoteId };
     case 'mark_stale':
       return { targetType: operation.targetType, targetId: operation.targetId };
     case 'no_op':

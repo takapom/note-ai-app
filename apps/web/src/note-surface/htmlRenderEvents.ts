@@ -78,6 +78,21 @@ export function createRenderEvents(model: NoteSurfaceViewModel): readonly NoteSu
     });
   }
 
+  if (model.noteSurface.organizationLayer.historyAffordance.visible) {
+    events.push({
+      action: 'open_organization_history',
+      target: 'organization_history',
+      label: model.noteSurface.organizationLayer.historyAffordance.label,
+      dataAction: 'open_organization_history',
+      noteId: model.noteSurface.noteHeader.noteId,
+      apiIntent: 'none',
+      emitsAiProviderCall: false,
+      mutatesUserAuthoredBlock: false,
+      hiddenProfiling: false,
+      automaticActiveMemory: false,
+    });
+  }
+
   for (const block of model.noteSurface.blocks) {
     if (block.memoryCandidate !== undefined) {
       for (const action of block.memoryCandidate.actions) {
