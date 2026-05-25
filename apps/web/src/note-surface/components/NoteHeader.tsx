@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent } from 'react';
 import type { NoteHeaderViewModel } from '../viewModelTypes.ts';
+import { normalizeNoteTitleDraft, shouldCommitNoteTitleKey } from '../noteTitleEditor.ts';
 
 interface NoteHeaderProps {
   header: NoteHeaderViewModel;
@@ -7,35 +8,52 @@ interface NoteHeaderProps {
 }
 
 export function NoteHeader({ header, onUpdateTitle }: NoteHeaderProps) {
-  const titleRef = useRef<HTMLHeadingElement | null>(null);
-  const previousNoteIdRef = useRef<string | undefined>(undefined);
+  const titleRef = useRef<HTMLTextAreaElement | null>(null);
+  const previousNoteIdRef = useRef(header.noteId);
+  const focusedRef = useRef(false);
+  const [draftTitle, setDraftTitle] = useState(header.title);
 
   useLayoutEffect(() => {
     const title = titleRef.current;
     if (title === null) {
       return;
     }
+    resizeTitleTextarea(title);
+  }, [draftTitle]);
 
+  useEffect(() => {
     const noteChanged = previousNoteIdRef.current !== header.noteId;
     previousNoteIdRef.current = header.noteId;
-    const focused = globalThis.document.activeElement === title;
-    if (!noteChanged && focused) {
+    if (!noteChanged && focusedRef.current) {
       return;
     }
 
-    if (title.textContent !== header.title) {
-      title.textContent = header.title;
-    }
+    setDraftTitle(header.title);
   }, [header.noteId, header.title]);
 
-  const handleBlur = (event: FocusEvent<HTMLHeadingElement>) => {
-    if (event.currentTarget.textContent.trim().length === 0) {
-      event.currentTarget.textContent = header.title;
-    }
-    onUpdateTitle(event.currentTarget.textContent);
+  const commitTitle = (title: string) => {
+    const normalizedTitle = normalizeNoteTitleDraft(title, header.title);
+    setDraftTitle(normalizedTitle);
+    onUpdateTitle(normalizedTitle);
   };
-  const handleKeyDown = (event: KeyboardEvent<HTMLHeadingElement>) => {
-    if (event.key === 'Enter') {
+
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setDraftTitle(event.currentTarget.value);
+  };
+  const handleFocus = () => {
+    focusedRef.current = true;
+  };
+  const handleBlur = (event: FocusEvent<HTMLTextAreaElement>) => {
+    focusedRef.current = false;
+    commitTitle(event.currentTarget.value);
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (shouldCommitNoteTitleKey({
+      key: event.key,
+      shiftKey: event.shiftKey,
+      isComposing: event.nativeEvent.isComposing,
+      keyCode: event.keyCode,
+    })) {
       event.preventDefault();
       event.currentTarget.blur();
     }
@@ -43,17 +61,24 @@ export function NoteHeader({ header, onUpdateTitle }: NoteHeaderProps) {
 
   return (
     <header className="ann-note-header" data-component="note-header">
-      <h1
+      <textarea
         className="ann-note-title-editor"
-        contentEditable
-        suppressContentEditableWarning
-        role="textbox"
         aria-label="メモのタイトル"
+        enterKeyHint="done"
         ref={titleRef}
+        rows={1}
+        value={draftTitle}
+        onChange={handleChange}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
       <p data-note-description="effective">{header.description.effective}</p>
     </header>
   );
+}
+
+function resizeTitleTextarea(title: HTMLTextAreaElement): void {
+  title.style.height = 'auto';
+  title.style.height = `${title.scrollHeight}px`;
 }

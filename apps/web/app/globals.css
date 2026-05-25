@@ -357,7 +357,8 @@
         padding: 2.25rem 1.5rem 2rem;
       }
 
-      .ann-note-header h1 {
+      .ann-note-header h1,
+      .ann-note-title-editor {
         margin: 0 0 0.625rem;
         font-family: var(--ann-font-editor);
         font-size: var(--ann-type-title-size);
@@ -367,8 +368,17 @@
       }
 
       .ann-note-title-editor {
+        display: block;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--ann-ink);
+        padding: 0;
         outline: none;
         overflow-wrap: anywhere;
+        resize: none;
+        overflow: hidden;
+        appearance: none;
       }
 
       .ann-note-title-editor:focus {
@@ -960,7 +970,8 @@
           padding-inline: 1rem;
         }
 
-        .ann-note-header h1 {
+        .ann-note-header h1,
+        .ann-note-title-editor {
           font-size: 1.875rem;
         }
 
