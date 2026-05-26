@@ -10,6 +10,7 @@
 - `runtime/browser/**` は browser runtime projection、ephemeral editing/digest/provenance UI state、action dispatch coordination を所有する。実 DOM API、global fetch、Worker internals、backend policy は所有しない。
 - `runtime/dom/**` は DOM host adapter、selection/focus preservation、composition state observation、render event descriptor enrichment を所有する。transport、event controller、backend policy、canonical mutation は所有しない。
 - `runtime/api-client/**` は caller supplied fetch-like binding を使った Worker API method/path、request body construction、response parsing だけを所有する。UI state、layout、product policy、ID generation、retry policy、Worker 実装 import は所有しない。
+- `runtime/next/**` は Next.js route composition、SSR metadata resolution、server-side Worker proxy adapter、Next client mount adapter を所有する。NoteSurface application semantics、backend product policy、Worker internals、generated OpenAPI、provider SDK、canonical Note / Section / Block mutation は所有しない。
 - `digest/**` は next-open digest parser / presenter を所有する。missing digest から fake content を作らず、digest item の backend semantics を再定義しない。
 - `provenance/**` は bounded source lookup result の popover presenter を所有する。full note / full workspace dump を持たせない。
 - `shared-ui/**` は HTML escaping など product-independent visual / string primitives だけを所有する。NoteSurface、memory、AI assist、runtime module を import しない。

@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "npm run web:dev",
-    "web:dev": "WATCHPACK_POLLING=true next dev apps/web -p 3000 --webpack",
+    "web:dev": "npm --workspace @ai-native-note/web run dev",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:web": "node scripts/build-web.mjs",
     "preview:ui": "node scripts/preview-ui.mjs",
