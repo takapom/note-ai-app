@@ -48,6 +48,8 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
     viewState: {
       workspaceName: 'Research Workspace',
       expandedDigest: true,
+      inlineAiProjectionsVisible: true,
+      returnLayerVisible: true,
     },
     projectionMaps: {
       operationIdByBlockId: {
@@ -92,6 +94,8 @@ test('browser note surface mount reads deployment metadata from the root dataset
     expandedDigest: 'true',
     viewStateJson: JSON.stringify({
       aiStatus: 'saved',
+      inlineAiProjectionsVisible: true,
+      returnLayerVisible: true,
     }),
     projectionMapsJson: JSON.stringify({
       operationIdByBlockId: {
@@ -206,6 +210,8 @@ test('browser note surface mount explicit options override root dataset metadata
     noteId: 'note_from_options',
     viewState: {
       workspaceName: 'Explicit Workspace',
+      inlineAiProjectionsVisible: true,
+      returnLayerVisible: true,
     },
     projectionMaps: {
       operationIdByBlockId: {

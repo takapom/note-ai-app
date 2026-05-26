@@ -52,6 +52,8 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
     viewState: {
       workspaceName: 'Research Workspace',
       expandedDigest: true,
+      inlineAiProjectionsVisible: true,
+      returnLayerVisible: true,
     },
     projectionMaps: {
       operationIdByBlockId: {
@@ -106,6 +108,7 @@ test('HTTP digest product app skips digest GET when caller supplies next open di
     root,
     viewState: {
       expandedDigest: true,
+      returnLayerVisible: true,
       nextOpenDigest: {
         available: true,
         decisions: [
@@ -152,6 +155,7 @@ test('HTTP digest product app still mounts when digest projection is unavailable
     root,
     viewState: {
       expandedDigest: true,
+      returnLayerVisible: true,
     },
     ...metadata,
   });

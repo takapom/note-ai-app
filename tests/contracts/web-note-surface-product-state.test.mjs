@@ -19,6 +19,8 @@ test('product state composes bootstrap options from caller supplied document vie
       workspaceName: 'Research Workspace',
       aiStatus: 'updated',
       editingBlockIds: ['block_paragraph_001'],
+      inlineAiProjectionsVisible: true,
+      returnLayerVisible: true,
       nextOpenDigest: {
         available: true,
         unresolvedQuestions: [
@@ -57,6 +59,8 @@ test('product state composes bootstrap options from caller supplied document vie
     sourceSpanIdByBlockId: {
       block_ai_question_001: 'source_span_001',
     },
+    inlineAiProjectionsVisible: true,
+    returnLayerVisible: true,
     nextOpenDigest: {
       available: true,
       unresolvedQuestions: [

@@ -20,6 +20,7 @@ test('product app loads provider snapshot then mounts and dispatches clicks thro
           document: structuredClone(noteDocumentFixture),
           viewState: {
             workspaceName: 'Research Workspace',
+            inlineAiProjectionsVisible: true,
           },
           projectionMaps: {
             operationIdByBlockId: {

@@ -86,6 +86,7 @@ test('block editing actions remain available when AI status is failed', () => {
 
 test('AI assist blocks expose inline action intents without direct user block mutation', () => {
   const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    inlineAiProjectionsVisible: true,
     sourceSpanIdByBlockId: {
       block_ai_question_001: 'source_span_ai_question_001',
     },
@@ -114,7 +115,9 @@ test('AI assist blocks expose inline action intents without direct user block mu
 });
 
 test('AI assist source action is only exposed when caller supplied provenance mapping can support it', () => {
-  const model = createNoteSurfaceViewModel(noteDocumentFixture);
+  const model = createNoteSurfaceViewModel(noteDocumentFixture, {
+    inlineAiProjectionsVisible: true,
+  });
   const aiBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_question');
 
   assert.equal(aiBlock?.aiAssist?.sourceInspectable, false);
@@ -125,7 +128,9 @@ test('AI assist source action is only exposed when caller supplied provenance ma
 });
 
 test('memory candidate blocks expose review actions without hidden activation', () => {
-  const model = createNoteSurfaceViewModel(createMemoryCandidateDocument());
+  const model = createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+    memoryCandidatesVisible: true,
+  });
   const memoryBlock = model.noteSurface.blocks.find((block) => block.type === 'ai_memory_candidate');
 
   assert.equal(memoryBlock?.memoryCandidate?.label, '持ち越す文脈');
@@ -146,6 +151,18 @@ test('memory candidate blocks expose review actions without hidden activation', 
     'POST /memory/:memoryId/delete',
     'POST /memory/:memoryId/hold',
   ]);
+});
+
+test('secondary AI projections are hidden from the default writing surface', () => {
+  const model = createNoteSurfaceViewModel(createMemoryCandidateDocument());
+
+  assert.equal(model.noteSurface.blocks.some((block) => block.aiAssist !== undefined), false);
+  assert.equal(model.noteSurface.blocks.some((block) => block.memoryCandidate !== undefined), false);
+  assert.deepEqual(model.noteSurface.blocks.map((block) => block.id), [
+    'block_heading_001',
+    'block_paragraph_001',
+  ]);
+  assert.equal(model.quietWriting.carriedContextTray.candidates.length, 0);
 });
 
 test('next open digest is compact, expandable, and does not invent unavailable content', () => {
@@ -178,6 +195,7 @@ test('next open digest is compact, expandable, and does not invent unavailable c
   assert.deepEqual(empty.sections, []);
 
   const expanded = createNoteSurfaceViewModel(noteDocumentFixture, {
+    returnLayerVisible: true,
     expandedDigest: true,
     nextOpenDigest: {
       available: true,

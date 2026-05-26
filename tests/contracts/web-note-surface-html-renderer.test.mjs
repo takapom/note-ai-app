@@ -13,6 +13,9 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   const model = createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
     workspaceName: 'MVP Workspace',
     editingBlockIds: ['block_paragraph_001'],
+    inlineAiProjectionsVisible: true,
+    memoryCandidatesVisible: true,
+    returnLayerVisible: true,
     sourceSpanIdByBlockId: {
       block_ai_question_001: 'source_span_ai_question_001',
       block_ai_memory_candidate_001: 'source_span_memory_candidate_001',
@@ -138,13 +141,14 @@ test('HTML renderer exposes organized layer history without AI calls or raw edit
 test('HTML renderer renders AI proposal edit mode as projection editing without source-of-truth mutation', () => {
   const model = createNoteSurfaceViewModel(noteDocumentFixture, {
     editingBlockIds: ['block_ai_question_001'],
+    inlineAiProjectionsVisible: true,
   });
 
   const { html, events } = renderNoteSurfaceHtml(model);
 
   assert.match(html, /data-inline-ai-block="true"[\s\S]*data-editing="true"[\s\S]*contenteditable="true"/);
   assert.match(html, /data-action="edit" data-target="ai_assist_block" data-block-id="block_ai_question_001"[^>]*>完了</);
-  assert.match(html, /data-source-available="false">出典なし/);
+  assert.doesNotMatch(html, /出典なし/);
   assert.equal(events.some((event) => (
     event.target === 'ai_assist_block'
     && event.action === 'edit'
@@ -157,6 +161,21 @@ test('HTML renderer renders AI proposal edit mode as projection editing without 
   )), false);
 });
 
+test('HTML renderer keeps secondary AI projection blocks out of the default writing surface', () => {
+  const { html, events } = renderNoteSurfaceHtml(createNoteSurfaceViewModel(createMemoryCandidateDocument()));
+
+  assert.doesNotMatch(html, /整理された文脈/);
+  assert.doesNotMatch(html, /Should the initial digest be collapsed by default\?/);
+  assert.doesNotMatch(html, /持ち越す文脈/);
+  assert.doesNotMatch(html, /出典なし/);
+  assert.doesNotMatch(html, /data-inline-ai-block="true"/);
+  assert.doesNotMatch(html, /data-inline-memory-candidate="true"/);
+  assert.doesNotMatch(html, /data-target="ai_assist_block"/);
+  assert.doesNotMatch(html, /data-target="memory_candidate_block"/);
+  assert.equal(events.some((event) => event.target === 'ai_assist_block'), false);
+  assert.equal(events.some((event) => event.target === 'memory_candidate_block'), false);
+});
+
 test('HTML renderer escapes note, block, digest, and provenance text', () => {
   const document = structuredClone(noteDocumentFixture);
   document.note.title = 'Title <script>alert("x")</script>';
@@ -165,6 +184,7 @@ test('HTML renderer escapes note, block, digest, and provenance text', () => {
   document.blocks[1].plainText = 'User <img src=x onerror="alert(1)"> & note';
 
   const model = createNoteSurfaceViewModel(document, {
+    returnLayerVisible: true,
     expandedDigest: true,
     nextOpenDigest: {
       available: true,
@@ -193,6 +213,27 @@ test('HTML renderer escapes note, block, digest, and provenance text', () => {
   assert.match(html, /&lt;script&gt;source\(\)&lt;\/script&gt;/);
 });
 
+test('HTML renderer keeps next-open digest re-entry out of the default writing surface', () => {
+  const { html, events } = renderNoteSurfaceHtml(createNoteSurfaceViewModel(noteDocumentFixture, {
+    nextOpenDigest: {
+      available: true,
+      unresolvedQuestions: [
+        { id: 'question_001', text: 'MVP の優先順位を 3 つに整理' },
+      ],
+    },
+    expandedDigest: true,
+  }));
+
+  assert.doesNotMatch(html, /前回から整理された入口/);
+  assert.doesNotMatch(html, /前回からの整理/);
+  assert.doesNotMatch(html, /MVP の優先順位を 3 つに整理/);
+  assert.doesNotMatch(html, /data-component="return-layer"/);
+  assert.doesNotMatch(html, /data-component="re-entry-surface"/);
+  assert.equal(events.some((event) => event.target === 'next_open_digest'), false);
+  assert.equal(events.some((event) => event.target === 're_entry_surface'), false);
+  assert.equal(events.some((event) => event.target === 'return_layer'), false);
+});
+
 test('HTML renderer rejects MVP-excluded surfaces and render-unsafe action flags', () => {
   const model = createNoteSurfaceViewModel(noteDocumentFixture);
   const chatModel = structuredClone(model);
@@ -207,7 +248,9 @@ test('HTML renderer rejects MVP-excluded surfaces and render-unsafe action flags
     },
   );
 
-  const unsafeActionModel = structuredClone(model);
+  const unsafeActionModel = structuredClone(createNoteSurfaceViewModel(noteDocumentFixture, {
+    inlineAiProjectionsVisible: true,
+  }));
   const deleteAction = unsafeActionModel.noteSurface.blocks[2].aiAssist.actions.find((action) => action.id === 'delete');
   assert.ok(deleteAction);
   deleteAction.mutatesUserAuthoredBlock = true;

@@ -27,6 +27,7 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
     },
     viewState: {
       workspaceName: 'Research Workspace',
+      inlineAiProjectionsVisible: true,
     },
     ...metadata,
   });
@@ -107,6 +108,7 @@ test('HTTP product app passes caller supplied view state and projection maps thr
     viewState: {
       workspaceName: 'Caller Workspace',
       expandedDigest: true,
+      inlineAiProjectionsVisible: true,
     },
     projectionMaps: {
       activeNoteId: 'note_from_caller',

@@ -21,6 +21,9 @@ test('browser runtime mounts escaped HTML and binds render events through an inj
   const document = createMemoryCandidateDocument();
   document.note.title = 'Runtime <script>alert("x")</script>';
   const model = createNoteSurfaceViewModel(document, {
+    inlineAiProjectionsVisible: true,
+    memoryCandidatesVisible: true,
+    returnLayerVisible: true,
     expandedDigest: true,
     nextOpenDigest: {
       available: true,
@@ -55,6 +58,8 @@ test('browser runtime dispatches AI memory digest and provenance actions through
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      inlineAiProjectionsVisible: true,
+      memoryCandidatesVisible: true,
       sourceSpanIdByBlockId: {
         block_ai_question_001: 'source_span_ai_question_001',
       },
@@ -178,7 +183,9 @@ test('browser runtime sends manual organize actions then reads backend digest pr
   const host = createHost();
   let observedStructuringProjection = false;
   const runtime = createNoteSurfaceBrowserRuntime({
-    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      returnLayerVisible: true,
+    }),
     eventController: createController(calls, () => {
       observedStructuringProjection = /data-save-status="visible">整理中<\/span>/.test(host.html);
     }, (url) => {
@@ -490,6 +497,7 @@ test('browser runtime applies digest and provenance UI-only actions as local pro
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      returnLayerVisible: true,
       expandedDigest: false,
       nextOpenDigest: {
         available: true,
@@ -550,6 +558,7 @@ test('browser runtime focuses the writing surface after continue_writing', async
   };
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      returnLayerVisible: true,
       expandedDigest: false,
       nextOpenDigest: {
         available: true,
@@ -583,7 +592,9 @@ test('browser runtime toggles AI assist projection editing locally without dispa
   const calls = [];
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
-    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      inlineAiProjectionsVisible: true,
+    }),
     eventController: createController(calls),
     host,
   });
@@ -709,6 +720,9 @@ test('browser runtime applies successful API response projections without owning
   ];
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      inlineAiProjectionsVisible: true,
+      memoryCandidatesVisible: true,
+      returnLayerVisible: true,
       expandedDigest: true,
       sourceSpanIdByBlockId: {
         block_ai_question_001: 'source_span_ai_question_001',
@@ -775,6 +789,8 @@ test('browser runtime preserves projection state when API action transport fails
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
     model: createNoteSurfaceViewModel(createMemoryCandidateDocument(), {
+      memoryCandidatesVisible: true,
+      returnLayerVisible: true,
       expandedDigest: true,
       nextOpenDigest: {
         available: true,
@@ -827,7 +843,9 @@ test('browser runtime preserves projection state when API action transport fails
 test('browser runtime renders digest read transport and invalid-body failures honestly', async () => {
   const invalidHost = createHost();
   const invalidRuntime = createNoteSurfaceBrowserRuntime({
-    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      returnLayerVisible: true,
+    }),
     eventController: createQueuedController([
       {
         ok: true,
@@ -858,7 +876,9 @@ test('browser runtime renders digest read transport and invalid-body failures ho
 
   const transportHost = createHost();
   const transportRuntime = createNoteSurfaceBrowserRuntime({
-    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      returnLayerVisible: true,
+    }),
     eventController: createQueuedController([
       {
         ok: false,

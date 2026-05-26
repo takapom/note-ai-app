@@ -19,6 +19,9 @@ test('app bootstrap mounts the note surface and dispatches delegated clicks thro
     apiBaseUrl: 'https://worker.example.test/api/',
     fetchLike: createFetchLike(calls),
     ...metadata,
+    viewOptions: {
+      inlineAiProjectionsVisible: true,
+    },
     resolverOptions: {
       operationIdByBlockId: {
         block_ai_question_001: 'operation_001',
