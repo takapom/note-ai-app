@@ -1,8 +1,7 @@
-import { createNoteSurfaceApiRequest } from './noteSurfaceApiIntents.ts';
 import {
-  sendNoteSurfaceApiRequest,
   type NoteSurfaceApiFetchLike,
 } from './noteSurfaceApiTransport.ts';
+import { createNoteSurfaceApiClient } from './runtime/api-client/noteSurfaceApiClient.ts';
 
 export interface NoteSurfacePageLifecyclePort {
   onPageHide(listener: () => void): () => void;
@@ -28,20 +27,12 @@ export function registerNoteSurfacePageLeaveOnHide(
     }
     sent = true;
 
-    const mapped = createNoteSurfaceApiRequest({
-      intent: 'note.leave',
+    const apiClient = createNoteSurfaceApiClient({
+      apiBaseUrl: options.apiBaseUrl,
+      fetchLike: options.fetchLike,
       workspaceId: options.workspaceId,
       ...(options.userId === undefined ? {} : { userId: options.userId }),
-      noteId: options.noteId,
-      cause: 'app_leave',
     });
-    if (!mapped.ok || mapped.request === undefined) {
-      return;
-    }
-
-    void sendNoteSurfaceApiRequest(mapped.request, {
-      baseUrl: options.apiBaseUrl,
-      fetchLike: options.fetchLike,
-    });
+    void apiClient.leaveNote({ noteId: options.noteId, cause: 'app_leave' });
   });
 }

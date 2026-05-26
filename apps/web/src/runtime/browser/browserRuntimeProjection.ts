@@ -10,6 +10,7 @@ import type {
   LocalProjectionAction,
   SuccessfulApiProjectionAction,
   BlockUpdateProjectionAction,
+  ManualStructureProjectionAction,
 } from './browserRuntimeActions.ts';
 import { readDescriptorRawString } from './browserRuntimeDescriptor.ts';
 
@@ -196,6 +197,50 @@ export function applyEditorSaveFailed(
       )),
     },
   };
+}
+
+export function applyManualStructureStarted(
+  model: NoteSurfaceViewModel,
+  _action: ManualStructureProjectionAction,
+): NoteSurfaceViewModel {
+  return refreshQuietWritingProjection({
+    ...model,
+    topBar: {
+      ...model.topBar,
+      aiStatus: 'structuring',
+    },
+  });
+}
+
+export function applyManualStructureFailed(
+  model: NoteSurfaceViewModel,
+  _action: ManualStructureProjectionAction,
+): NoteSurfaceViewModel {
+  return refreshQuietWritingProjection({
+    ...model,
+    topBar: {
+      ...model.topBar,
+      aiStatus: 'failed',
+    },
+  });
+}
+
+export function applyManualStructureDigestProjection(
+  model: NoteSurfaceViewModel,
+  action: SuccessfulApiProjectionAction,
+): NoteSurfaceViewModel {
+  const nextModel = applySuccessfulApiProjectionAction(model, action);
+  if (action.action !== 'read_digest' || action.digest.available !== true) {
+    return nextModel;
+  }
+
+  return refreshQuietWritingProjection({
+    ...nextModel,
+    topBar: {
+      ...nextModel.topBar,
+      aiStatus: 'updated',
+    },
+  });
 }
 
 export function applySuccessfulApiProjectionAction(

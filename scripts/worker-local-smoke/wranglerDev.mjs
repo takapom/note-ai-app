@@ -12,6 +12,11 @@ import {
 
 export const defaultPort = 8787;
 export const defaultPersistTo = '.wrangler/state';
+export const defaultWranglerLogPath = '.wrangler/logs';
+export const defaultWranglerRegistryPath = '.wrangler/registry';
+export const defaultWranglerXdgConfigHome = '.wrangler/xdg-config';
+export const defaultWranglerXdgCacheHome = '.wrangler/xdg-cache';
+export const defaultWranglerXdgStateHome = '.wrangler/xdg-state';
 
 export function readWranglerBaseConfig() {
   const port = readPositiveIntegerEnv('WORKER_LOCAL_PORT', defaultPort);
@@ -61,10 +66,7 @@ export function startWrangler({ wrangler, config, stdio, authSecret }) {
   }
   const child = spawn(wrangler, args, {
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      NO_COLOR: process.env.NO_COLOR ?? '1',
-    },
+    env: createWranglerProcessEnv(),
     stdio: stdio === 'inherit' ? 'inherit' : ['ignore', 'pipe', 'pipe'],
   });
 
@@ -143,7 +145,7 @@ async function runCommand(command, args, timeoutMs) {
   return await new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: process.cwd(),
-      env: process.env,
+      env: createWranglerProcessEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -167,6 +169,19 @@ async function runCommand(command, args, timeoutMs) {
       resolve({ exitCode: code ?? 1, stdout, stderr });
     });
   });
+}
+
+export function createWranglerProcessEnv() {
+  return {
+    ...process.env,
+    NO_COLOR: process.env.NO_COLOR ?? '1',
+    WRANGLER_CI_DISABLE_CONFIG_WATCHING: process.env.WRANGLER_CI_DISABLE_CONFIG_WATCHING ?? 'true',
+    WRANGLER_LOG_PATH: process.env.WRANGLER_LOG_PATH ?? defaultWranglerLogPath,
+    WRANGLER_REGISTRY_PATH: process.env.WRANGLER_REGISTRY_PATH ?? defaultWranglerRegistryPath,
+    XDG_CACHE_HOME: process.env.XDG_CACHE_HOME ?? defaultWranglerXdgCacheHome,
+    XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME ?? defaultWranglerXdgConfigHome,
+    XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? defaultWranglerXdgStateHome,
+  };
 }
 
 function formatCommandFailure(result) {

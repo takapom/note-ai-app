@@ -1,7 +1,7 @@
 import {
-  createNoteSurfaceApiTransport,
-  type NoteSurfaceApiFetchLike,
-} from './noteSurfaceApiTransport.ts';
+  createNoteSurfaceApiClient,
+} from './runtime/api-client/noteSurfaceApiClient.ts';
+import type { NoteSurfaceApiFetchLike } from './noteSurfaceApiTransport.ts';
 import type {
   NoteSurfaceProductProvider,
   NoteSurfaceProductStateInput,
@@ -41,15 +41,13 @@ export function createNoteSurfaceHttpProductProvider(
         throw new NoteSurfaceHttpProductProviderError(validationErrors);
       }
 
-      const transport = createNoteSurfaceApiTransport({
-        baseUrl: options.apiBaseUrl,
+      const apiClient = createNoteSurfaceApiClient({
+        apiBaseUrl: options.apiBaseUrl,
         fetchLike: options.fetchLike,
+        workspaceId: options.workspaceId,
+        ...(options.userId === undefined ? {} : { userId: options.userId }),
       });
-      const result = await transport.send({
-        method: 'GET',
-        path: `/notes/${options.noteId}`,
-        headers: createHeaders(options),
-      });
+      const result = await apiClient.getNote({ noteId: options.noteId });
 
       if (!result.ok) {
         throw new NoteSurfaceHttpProductProviderError(
@@ -129,13 +127,6 @@ function isStableRuntimeId(value: string): boolean {
     /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value) &&
     !/(^|_)(unset|unknown|null|undefined|nan|sentinel|placeholder)($|_)/i.test(value)
   );
-}
-
-function createHeaders(options: NoteSurfaceHttpProductProviderOptions): Record<string, string> {
-  return {
-    'X-Workspace-Id': options.workspaceId,
-    ...(options.userId === undefined ? {} : { 'X-User-Id': options.userId }),
-  };
 }
 
 function readDocument(body: unknown): unknown | undefined {

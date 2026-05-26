@@ -61,9 +61,18 @@ export interface WorkerHttpRouterPorts {
   provenanceLookup?: ProvenanceLookupPort;
 }
 
+export interface NoteStructureBackgroundDispatchResult {
+  attempted: boolean;
+  ok: boolean;
+  enqueuedCount: number;
+  scheduledJobIds: readonly string[];
+  errors: string[];
+}
+
 export interface NoteStructureRoutePort {
   runNoteStructureRoute(input: {
     workspaceId: string;
+    userId?: string;
     noteId: string;
     route: NoteStructureRouteKind;
     cause?: NoteLeaveCause;
@@ -71,7 +80,7 @@ export interface NoteStructureRoutePort {
   }): Promise<Pick<
     NoteStructureRouteHandlerResult,
     'ok' | 'route' | 'triggerReason' | 'scheduledJobs' | 'providerCalls' | 'operationRoutingCalls' | 'auditWrites' | 'errors'
-  >>;
+  > & { backgroundDispatch?: NoteStructureBackgroundDispatchResult }>;
 }
 
 export type WorkerRouteName =

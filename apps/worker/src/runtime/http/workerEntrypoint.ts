@@ -16,6 +16,7 @@ import {
   type WorkerHttpResponse,
   type WorkerHttpRouterPorts,
 } from './workerHttpRouter.ts';
+import { handleWorkerDeploymentBootstrapRequest } from './workerDeploymentBootstrap.ts';
 import {
   normalizeWorkerAuthBoundary,
   type WorkerAuthBoundaryContext,
@@ -77,6 +78,15 @@ export async function handleWorkerFetch<Env extends WorkerEntrypointEnv = Worker
   const parsed = await parseWorkerRequest(request, env, context);
   if (!parsed.ok) {
     return toFetchResponse(parsed.response);
+  }
+
+  const deploymentBootstrapResponse = handleWorkerDeploymentBootstrapRequest({
+    request: parsed.request,
+    env,
+    requestOrigin: new URL(request.url).origin,
+  });
+  if (deploymentBootstrapResponse !== undefined) {
+    return toFetchResponse(deploymentBootstrapResponse);
   }
 
   const localWorkspaceBrainResponse = await handleLocalWorkspaceBrainProcessRequest(parsed.request, env);

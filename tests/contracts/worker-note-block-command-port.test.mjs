@@ -40,6 +40,40 @@ test('note block command port creates blocks through canonical document persiste
   assert.equal(result.body.document.blocks.at(-1).plainText, 'A user-authored follow-up block.');
 });
 
+test('note block command port creates user-authored text blocks without frontend-generated ids', async () => {
+  const persistence = new TrackingPersistence([noteDocumentFixture]);
+  const port = new NoteDocumentBlockCommandPort(persistence, {
+    createBlockId() {
+      return 'block_backend_created_001';
+    },
+  });
+
+  const result = await port.createBlock({
+    workspaceId: noteFixture.workspaceId,
+    noteId: noteFixture.id,
+    now,
+    body: {
+      content: 'Created by Worker from plain editor content.',
+      afterBlockId: blockFixtures[1].id,
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(persistence.loads, 1);
+  assert.equal(persistence.saves, 1);
+  assert.equal(result.body.block.id, 'block_backend_created_001');
+  assert.equal(result.body.block.noteId, noteFixture.id);
+  assert.equal(result.body.block.origin, 'user');
+  assert.equal(result.body.block.type, 'paragraph');
+  assert.equal(result.body.block.sectionId, blockFixtures[1].sectionId);
+  assert.equal(result.body.block.plainText, 'Created by Worker from plain editor content.');
+  assert.deepEqual(result.body.block.contentJson, {
+    text: 'Created by Worker from plain editor content.',
+  });
+  assert.notEqual(result.body.document.sections[0].contentHash, noteDocumentFixture.sections[0].contentHash);
+  assert.equal(result.body.document.sections[0].lastStructuredHash, noteDocumentFixture.sections[0].lastStructuredHash);
+});
+
 test('note block command port updates existing blocks without touching projections or AI runtime', async () => {
   const persistence = new TrackingPersistence([noteDocumentFixture]);
   const port = new NoteDocumentBlockCommandPort(persistence);

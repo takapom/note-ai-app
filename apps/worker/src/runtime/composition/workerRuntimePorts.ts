@@ -8,6 +8,7 @@ import { createContextAssemblyPorts } from './contextAssemblyPorts.ts';
 import {
   createNoteAgentStructureRoutePort,
   readNoteAgentNamespaceFromEnv,
+  readWorkspaceBrainAgentNamespaceFromEnv,
 } from './cloudflareNoteAgentRoutePort.ts';
 import { createMemoryPorts } from './memoryPorts.ts';
 import { createNoteModelPorts } from './noteModelPorts.ts';
@@ -30,6 +31,7 @@ export function createWorkerRuntimePorts(input: {
   const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
   const agentLocalClient = readTursoClient(input.agentLocalSql) ?? readTursoClient(input.env.AGENT_LOCAL_SQL);
   const noteAgent = readNoteAgentNamespaceFromEnv(input.env);
+  const workspaceBrainAgent = readWorkspaceBrainAgentNamespaceFromEnv(input.env);
 
   const noteModel = createNoteModelPorts(tursoClient);
   const memory = createMemoryPorts(tursoClient);
@@ -43,7 +45,7 @@ export function createWorkerRuntimePorts(input: {
     : undefined;
   const noteStructureRoute = noteAgent === undefined
     ? undefined
-    : createNoteAgentStructureRoutePort(noteAgent);
+    : createNoteAgentStructureRoutePort(noteAgent, workspaceBrainAgent);
 
   return {
     ...(noteModel.noteDocument === undefined ? {} : { noteDocument: noteModel.noteDocument }),

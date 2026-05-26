@@ -20,6 +20,7 @@ test('wrangler config serves web build artifacts through the Worker deployment',
   assert.equal(config.assets?.directory, './dist/web');
   assert.deepEqual(config.assets?.run_worker_first, [
     '/api/*',
+    '/__ann/*',
     '/notes/*',
     '/blocks/*',
     '/ai-operations/*',
@@ -34,7 +35,7 @@ test('wrangler config keeps API routes Worker-first and static assets asset-firs
   const config = parseWranglerConfig(source);
   const workerFirst = new Set(config.assets?.run_worker_first ?? []);
 
-  for (const route of ['/notes/*', '/blocks/*', '/ai-operations/*', '/memory/*', '/provenance/*', '/__local/*']) {
+  for (const route of ['/__ann/*', '/notes/*', '/blocks/*', '/ai-operations/*', '/memory/*', '/provenance/*', '/__local/*']) {
     assert.equal(workerFirst.has(route), true, `${route} must run Worker script first`);
   }
 

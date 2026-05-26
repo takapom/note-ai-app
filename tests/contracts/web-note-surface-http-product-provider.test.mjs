@@ -300,9 +300,8 @@ test('HTTP product provider source stays framework-neutral and limited to the in
   );
 
   assert.match(source, /export function createNoteSurfaceHttpProductProvider/);
-  assert.match(source, /createNoteSurfaceApiTransport/);
-  assert.match(source, /method:\s*['"]GET['"]/);
-  assert.match(source, /path:\s*`\/notes\/\$\{options\.noteId\}`/);
+  assert.match(source, /createNoteSurfaceApiClient/);
+  assert.match(source, /apiClient\.getNote\(\{ noteId: options\.noteId \}\)/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);

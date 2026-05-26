@@ -8,6 +8,7 @@ import type { WorkerTursoClient } from './workerTursoSqlExecutor.ts';
 export interface WorkerEntrypointEnv extends WorkerAuthBoundaryEnv {
   WORKSPACE_ID?: string;
   USER_ID?: string;
+  NOTE_ID?: string;
   WORKER_AUTH_SHARED_SECRET?: string;
   AUTH_SHARED_SECRET?: string;
   TURSO?: WorkerTursoClient;

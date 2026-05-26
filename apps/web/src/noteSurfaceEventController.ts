@@ -13,7 +13,10 @@ import type { NoteSurfaceHtmlRenderEventDescriptor } from './noteSurfaceHtmlRend
 export type NoteSurfaceEventControllerApiIntent =
   | NoteSurfaceHtmlRenderEventDescriptor['apiIntent']
   | NoteSurfaceApiIntentKind
+  | 'POST /notes/:noteId/blocks'
   | 'PATCH /blocks/:blockId'
+  | 'DELETE /blocks/:blockId'
+  | 'POST /notes/:noteId/structure/manual'
   | 'GET /notes/:noteId/digest'
   | 'POST /provenance/source';
 
@@ -85,7 +88,11 @@ const apiIntentToIntentKind: Readonly<Record<string, NoteSurfaceApiIntentKind>> 
   'POST /memory/:memoryId/edit': 'memory.edit',
   'POST /memory/:memoryId/delete': 'memory.delete',
   'POST /memory/:memoryId/hold': 'memory.snooze',
+  'POST /notes/:noteId/blocks': 'block.create',
   'PATCH /blocks/:blockId': 'block.update',
+  'DELETE /blocks/:blockId': 'block.delete',
+  'POST /notes/:noteId/leave': 'note.leave',
+  'POST /notes/:noteId/structure/manual': 'note.manual_structure',
   'GET /notes/:noteId/digest': 'digest.read',
   'POST /provenance/source': 'provenance.lookup',
   'ai_assist.accept': 'ai_assist.accept',
@@ -95,7 +102,11 @@ const apiIntentToIntentKind: Readonly<Record<string, NoteSurfaceApiIntentKind>> 
   'memory.edit': 'memory.edit',
   'memory.delete': 'memory.delete',
   'memory.snooze': 'memory.snooze',
+  'block.create': 'block.create',
   'block.update': 'block.update',
+  'block.delete': 'block.delete',
+  'note.leave': 'note.leave',
+  'note.manual_structure': 'note.manual_structure',
   'digest.read': 'digest.read',
   'provenance.lookup': 'provenance.lookup',
 };
@@ -328,6 +339,38 @@ function createApiIntentInput(
         },
       };
     }
+    case 'block.create': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      const content = requireResolvedString(resolved, 'content', apiIntent, errors);
+      if (noteId === undefined || content === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
+          content,
+        },
+      };
+    }
+    case 'block.delete': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      const blockId = requireResolvedString(resolved, 'blockId', apiIntent, errors);
+      if (noteId === undefined || blockId === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
+          blockId,
+        },
+      };
+    }
     case 'digest.read': {
       const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
       if (noteId === undefined) {
@@ -356,6 +399,20 @@ function createApiIntentInput(
       };
     }
     case 'note.leave': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      if (noteId === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
+        },
+      };
+    }
+    case 'note.manual_structure': {
       const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
       if (noteId === undefined) {
         return { ok: false, errors };

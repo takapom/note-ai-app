@@ -61,6 +61,10 @@ export function createNoteSurfaceActionInputResolver(
       return readDigestNoteInput(options, event);
     }
 
+    if (isNoteLifecycleIntent(event.apiIntent)) {
+      return readDigestNoteInput(options, event);
+    }
+
     if (isProvenanceLookupIntent(event.apiIntent)) {
       return readProvenanceInput(options, event);
     }
@@ -108,6 +112,15 @@ function isMemoryReviewIntent(apiIntent: string): boolean {
 
 function isDigestReadIntent(apiIntent: string): boolean {
   return apiIntent === 'GET /notes/:noteId/digest' || apiIntent === 'digest.read';
+}
+
+function isNoteLifecycleIntent(apiIntent: string): boolean {
+  return (
+    apiIntent === 'POST /notes/:noteId/leave'
+    || apiIntent === 'POST /notes/:noteId/structure/manual'
+    || apiIntent === 'note.leave'
+    || apiIntent === 'note.manual_structure'
+  );
 }
 
 function isProvenanceLookupIntent(apiIntent: string): boolean {

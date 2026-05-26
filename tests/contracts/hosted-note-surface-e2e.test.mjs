@@ -61,6 +61,22 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
       return {
         noteDocument: persistence,
         noteBlocks: boundNoteBlocks,
+        noteStructureRoute: {
+          async runNoteStructureRoute(input) {
+            return {
+              ok: true,
+              route: input.route,
+              triggerReason: 'manual_organize',
+              scheduledJobs: [{
+                id: 'job_manual_001',
+                workspaceId: input.workspaceId,
+                noteId: input.noteId,
+                triggerReason: 'manual_organize',
+              }],
+              errors: [],
+            };
+          },
+        },
       };
     },
   });
@@ -132,6 +148,27 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
   assert.deepEqual(savedBlock.contentJson, { text: savedText });
   assert.notEqual(saved.document.sections[0].contentHash, originalSectionHash);
   assert.equal(saved.document.sections[0].lastStructuredHash, initialDocument.sections[0].lastStructuredHash);
+
+  rootElement.click(createActionElement({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    noteId,
+  }));
+
+  await waitFor(() => workerRequests.some((request) => (
+    request.method === 'POST' && request.path === `/notes/${noteId}/structure/manual`
+  )));
+  await waitFor(() => fetchCalls.filter((call) => (
+    call.init.method === 'GET' && call.url === 'https://worker.example.test/notes/note_001/digest'
+  )).length === 2);
+
+  assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes/note_001/digest'],
+    ['PATCH', 'https://worker.example.test/blocks/block_paragraph_001'],
+    ['POST', 'https://worker.example.test/notes/note_001/structure/manual'],
+    ['GET', 'https://worker.example.test/notes/note_001/digest'],
+  ]);
 });
 
 test('hosted note surface uses Worker env bindings for canonical and Agent-local runtime wiring', async () => {
@@ -513,6 +550,17 @@ function createSaveActionElement(dataset, content) {
     },
   };
   return button;
+}
+
+function createActionElement(dataset) {
+  const element = {
+    dataset,
+    closest(selector) {
+      assert.equal(selector, '[data-action]');
+      return element;
+    },
+  };
+  return element;
 }
 
 async function waitFor(predicate) {

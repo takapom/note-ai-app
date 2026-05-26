@@ -9,6 +9,12 @@ import {
   scheduleNoteStructureThroughAgent,
   processWorkspaceBrainThroughAgent,
 } from '../../apps/worker/src/runtime/cloudflare/cloudflareAgentRpcBoundary.ts';
+import {
+  enqueueStructureJobsThroughWorkspaceBrain,
+} from '../../apps/worker/src/runtime/cloudflare/cloudflareWorkspaceBrainEnqueueRpc.ts';
+import {
+  createNoteAgentStructureRoutePort,
+} from '../../apps/worker/src/runtime/composition/cloudflareNoteAgentRoutePort.ts';
 
 const root = new URL('../../', import.meta.url);
 
@@ -104,6 +110,135 @@ test('Cloudflare Agent RPC boundary invokes WorkspaceBrainAgent stub', async () 
   assert.deepEqual(result.result.noteSotMutations, []);
 });
 
+test('Cloudflare Agent RPC boundary invokes WorkspaceBrainAgent enqueue stub', async () => {
+  const calls = [];
+  const structureJob = queuedStructureJob();
+  const namespace = createNamespace({
+    async enqueueStructureJobs(command) {
+      calls.push(command);
+      return {
+        ok: true,
+        accepted: true,
+        reason: 'workspace_brain_structure_jobs_enqueued',
+        scheduledJobIds: command.structureJobs.map((job) => job.id),
+        enqueuedCount: command.structureJobs.length,
+        providerCalls: [],
+        operationRoutingCalls: [],
+        auditWrites: [],
+        noteSotMutations: [],
+        errors: [],
+      };
+    },
+  });
+
+  const result = await enqueueStructureJobsThroughWorkspaceBrain({
+    namespace,
+    command: {
+      workspaceId: 'workspace_001',
+      userId: 'user_001',
+      now: 1_764_001_000_000,
+      structureJobs: [structureJob],
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.result.reason, 'workspace_brain_structure_jobs_enqueued');
+  assert.deepEqual(result.result.scheduledJobIds, ['structure_job_001']);
+  assert.deepEqual(calls, [{
+    workspaceId: 'workspace_001',
+    userId: 'user_001',
+    now: 1_764_001_000_000,
+    structureJobs: [structureJob],
+  }]);
+});
+
+test('Cloudflare Agent RPC boundary rejects cross-workspace structure job enqueue commands', async () => {
+  let called = false;
+  const result = await enqueueStructureJobsThroughWorkspaceBrain({
+    namespace: createNamespace({
+      async enqueueStructureJobs() {
+        called = true;
+      },
+    }),
+    command: {
+      workspaceId: 'workspace_001',
+      userId: 'user_001',
+      now: 1_764_001_000_000,
+      structureJobs: [{ ...queuedStructureJob(), workspaceId: 'workspace_other' }],
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'agent_rpc_command_invalid');
+  assert.equal(result.methodName, 'enqueueStructureJobs');
+  assert.deepEqual(result.errors, [
+    'structureJobs[0].workspaceId must match workspaceId',
+  ]);
+  assert.equal(called, false);
+});
+
+test('NoteAgent route port dispatches scheduled jobs to WorkspaceBrain queue when available', async () => {
+  const scheduledJob = queuedStructureJob();
+  const workspaceCalls = [];
+  const noteAgent = createNamespace({
+    async scheduleNoteStructure(command) {
+      return {
+        ok: true,
+        accepted: true,
+        reason: command.route,
+        scheduledJobIds: [scheduledJob.id],
+        scheduledJobs: [scheduledJob],
+        providerCalls: [],
+        operationRoutingCalls: [],
+        auditWrites: [],
+        noteSotMutations: [],
+        errors: [],
+      };
+    },
+  });
+  const workspaceBrain = createNamespace({
+    async enqueueStructureJobs(command) {
+      workspaceCalls.push(command);
+      return {
+        ok: true,
+        accepted: true,
+        reason: 'workspace_brain_structure_jobs_enqueued',
+        scheduledJobIds: [scheduledJob.id],
+        enqueuedCount: 1,
+        providerCalls: [],
+        operationRoutingCalls: [],
+        auditWrites: [],
+        noteSotMutations: [],
+        errors: [],
+      };
+    },
+  });
+
+  const port = createNoteAgentStructureRoutePort(noteAgent, workspaceBrain);
+  const result = await port.runNoteStructureRoute({
+    workspaceId: 'workspace_001',
+    userId: 'user_001',
+    noteId: 'note_001',
+    route: 'manual_organize',
+    now: 1_764_001_000_000,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.backgroundDispatch, {
+    attempted: true,
+    ok: true,
+    enqueuedCount: 1,
+    scheduledJobIds: ['structure_job_001'],
+    errors: [],
+  });
+  assert.deepEqual(workspaceCalls, [{
+    workspaceId: 'workspace_001',
+    userId: 'user_001',
+    now: 1_764_001_000_000,
+    structureJobs: [scheduledJob],
+  }]);
+});
+
 test('Cloudflare Agent RPC boundary normalizes namespace and thrown failures', async () => {
   assert.equal(readDurableObjectNamespace({}), undefined);
 
@@ -157,5 +292,20 @@ function createNamespace(stub) {
       assert.equal(typeof id.name, 'string');
       return stub;
     },
+  };
+}
+
+function queuedStructureJob() {
+  return {
+    id: 'structure_job_001',
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+    sectionId: 'section_001',
+    targetScope: 'section',
+    triggerReason: 'manual_organize',
+    contextHash: 'section:note_001:section_001:hash_001',
+    status: 'queued',
+    priority: 'high',
+    createdAt: 1_764_001_000_000,
   };
 }

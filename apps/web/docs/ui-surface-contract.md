@@ -9,6 +9,7 @@
 - `note-surface/**` は view model、presenter、block / chrome rendering、HTML render event composition を所有する。backend-owned document semantics、AI operation policy、memory lifecycle、canonical mutation は所有しない。
 - `runtime/browser/**` は browser runtime projection、ephemeral editing/digest/provenance UI state、action dispatch coordination を所有する。実 DOM API、global fetch、Worker internals、backend policy は所有しない。
 - `runtime/dom/**` は DOM host adapter、selection/focus preservation、composition state observation、render event descriptor enrichment を所有する。transport、event controller、backend policy、canonical mutation は所有しない。
+- `runtime/api-client/**` は caller supplied fetch-like binding を使った Worker API method/path、request body construction、response parsing だけを所有する。UI state、layout、product policy、ID generation、retry policy、Worker 実装 import は所有しない。
 - `digest/**` は next-open digest parser / presenter を所有する。missing digest から fake content を作らず、digest item の backend semantics を再定義しない。
 - `provenance/**` は bounded source lookup result の popover presenter を所有する。full note / full workspace dump を持たせない。
 - `shared-ui/**` は HTML escaping など product-independent visual / string primitives だけを所有する。NoteSurface、memory、AI assist、runtime module を import しない。
@@ -52,6 +53,7 @@
 - Markdown-compatible authoring shortcuts は UI 入力 affordance です。Web は Markdown string を canonical note storage として扱わず、入力を backend-owned Block / Section model へ渡す意図に留めてください。
 - API intent mapping は dependency-free request descriptor に留め、Worker 実装、generated OpenAPI、provider call、auth policy を import しないでください。
 - API transport は request descriptor を注入された fetch-like binding に渡すだけに留め、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
+- Runtime API client は note/block/digest/provenance などの route 関数を提供できますが、backend ID を生成したり、canonical Note / Section / Block を直接 mutation したり、missing response から fake document / digest / projection を作ってはいけません。
 - HTML renderer は dependency-free な文字列レンダリングと `data-action` / `data-block-id` などの event descriptor に留め、Worker 実装、generated OpenAPI、provider call、fetch、auth policy、user-authored block の直接 mutation を持たせないでください。
 - Event controller は renderer の event descriptor、API intent mapper、API transport だけを接続し、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
 - Event controller は `apiIntent: none`、`edit_block`、`save_block`、`cancel_edit` を transport に送らず、operation / memory / digest / provenance の具体 ID や content は caller supplied mapping から受け取ってください。

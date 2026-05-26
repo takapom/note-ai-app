@@ -108,11 +108,12 @@ test('action input resolver returns block id and plain text content for editor s
   });
 });
 
-test('action input resolver returns digest note id with event note id before configured active note id', () => {
+test('action input resolver returns note lifecycle ids with event note id before configured active note id', () => {
   const resolveActionInput = createNoteSurfaceActionInputResolver({
     activeNoteId: 'note_active_001',
     noteIdByTarget: {
       next_open_digest: 'note_target_001',
+      writing_chrome: 'note_target_002',
     },
   });
 
@@ -127,6 +128,17 @@ test('action input resolver returns digest note id with event note id before con
     target: 'next_open_digest',
     apiIntent: 'digest.read',
   }), { noteId: 'note_active_001' });
+  assert.deepEqual(resolveActionInput({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    noteId: 'note_event_002',
+    apiIntent: 'note.manual_structure',
+  }), { noteId: 'note_event_002' });
+  assert.deepEqual(resolveActionInput({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    apiIntent: 'POST /notes/:noteId/structure/manual',
+  }), { noteId: 'note_active_001' });
 
   const targetFallback = createNoteSurfaceActionInputResolver({
     noteIdByTarget: {
@@ -138,6 +150,11 @@ test('action input resolver returns digest note id with event note id before con
     target: 'next_open_digest',
     apiIntent: 'digest.read',
   }), { noteId: 'note_target_001' });
+  assert.deepEqual(targetFallback({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    apiIntent: 'note.manual_structure',
+  }), undefined);
 });
 
 test('action input resolver returns provenance lookup input from caller block map', () => {
@@ -260,6 +277,11 @@ test('action input resolver integrates with the event controller without owning 
       apiIntent: 'GET /notes/:noteId/digest',
     },
     {
+      action: 'manual_organize',
+      target: 'writing_chrome',
+      apiIntent: 'POST /notes/:noteId/structure/manual',
+    },
+    {
       action: 'inspect_source',
       target: 'provenance_popover',
       blockId: 'block_source_001',
@@ -279,6 +301,7 @@ test('action input resolver integrates with the event controller without owning 
     ['POST', '/ai-operations/operation_001/accept', undefined],
     ['POST', '/memory/memory_001/edit', { content: 'Remember the source-backed editor preference.' }],
     ['GET', '/notes/note_active_001/digest', undefined],
+    ['POST', '/notes/note_active_001/structure/manual', undefined],
     ['POST', '/provenance/source', {
       sourceSpanId: 'span_001',
       sourceBlockId: 'block_source_001',

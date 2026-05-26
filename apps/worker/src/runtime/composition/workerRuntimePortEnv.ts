@@ -5,6 +5,7 @@ export interface WorkerRuntimePortEnv {
   TURSO_CLIENT?: WorkerTursoClient;
   AGENT_LOCAL_SQL?: WorkerTursoClient;
   NOTE_AGENT?: unknown;
+  WORKSPACE_BRAIN_AGENT?: unknown;
   WORKSPACE_BRAIN_OPERATION_PROVIDER_REGISTRY?: unknown;
   WORKSPACE_BRAIN_OPERATION_ROUTER_SNAPSHOT?: unknown;
   [key: string]: unknown;

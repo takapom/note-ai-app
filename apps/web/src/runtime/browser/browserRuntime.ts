@@ -12,13 +12,17 @@ import {
   resolveBlockUpdateProjectionAction,
   resolveDigestReadFailureProjectionAction,
   resolveInlineApiProjectionAction,
+  resolveManualStructureProjectionAction,
   resolveLocalProjectionAction,
   resolveSuccessfulApiProjectionAction,
 } from './browserRuntimeActions.ts';
 import {
   applyEditorSaveFailed,
   applyEditorSaveStarted,
+  applyManualStructureDigestProjection,
   applyLocalProjectionAction,
+  applyManualStructureFailed,
+  applyManualStructureStarted,
   applySuccessfulApiProjectionAction,
   enrichLocalProjectionAction,
 } from './browserRuntimeProjection.ts';
@@ -85,6 +89,15 @@ export function createNoteSurfaceBrowserRuntime(
       }
     }
 
+    const manualStructureAction = resolveManualStructureProjectionAction(eventDescriptor);
+    if (manualStructureAction !== undefined) {
+      currentModel = applyManualStructureStarted(currentModel, manualStructureAction);
+      const pendingRender = await renderCurrentModel();
+      if (!pendingRender.ok) {
+        return pendingRender;
+      }
+    }
+
     try {
       const controllerResult = await options.eventController.handleRenderEvent(eventDescriptor);
       if (!controllerResult.ok) {
@@ -110,6 +123,14 @@ export function createNoteSurfaceBrowserRuntime(
             'failed',
             inlineApiAction.target,
           );
+          const failureRender = await renderCurrentModel(controllerResult);
+          if (!failureRender.ok) {
+            return failureRender;
+          }
+        }
+
+        if (manualStructureAction !== undefined) {
+          currentModel = applyManualStructureFailed(currentModel, manualStructureAction);
           const failureRender = await renderCurrentModel(controllerResult);
           if (!failureRender.ok) {
             return failureRender;
@@ -144,6 +165,10 @@ export function createNoteSurfaceBrowserRuntime(
         return renderCurrentModel(controllerResult);
       }
 
+      if (manualStructureAction !== undefined) {
+        return refreshDigestAfterManualStructure(manualStructureAction, controllerResult);
+      }
+
       return {
         ok: true,
         status: 'handled',
@@ -173,12 +198,57 @@ export function createNoteSurfaceBrowserRuntime(
         }
       }
 
+      if (manualStructureAction !== undefined) {
+        currentModel = applyManualStructureFailed(currentModel, manualStructureAction);
+        const failureRender = await renderCurrentModel();
+        if (!failureRender.ok) {
+          return failureRender;
+        }
+      }
+
       return {
         ok: false,
         status: 'controller_error',
         errors: toBoundaryErrors(error),
       };
     }
+  }
+
+  async function refreshDigestAfterManualStructure(
+    action: { noteId: string },
+    controllerResult: NoteSurfaceEventControllerResult,
+  ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
+    const digestDescriptor = {
+      action: 'read_digest',
+      target: 'next_open_digest',
+      noteId: action.noteId,
+      apiIntent: 'digest.read',
+    };
+
+    try {
+      const digestResult = await options.eventController.handleRenderEvent(digestDescriptor);
+      const digestProjectionAction = digestResult.ok
+        ? resolveSuccessfulApiProjectionAction(digestDescriptor, digestResult)
+        : resolveDigestReadFailureProjectionAction(digestDescriptor);
+
+      if (digestProjectionAction !== undefined) {
+        currentModel = applyManualStructureDigestProjection(currentModel, digestProjectionAction);
+        return renderCurrentModel(controllerResult);
+      }
+    } catch {
+      const failedDigestAction = resolveDigestReadFailureProjectionAction(digestDescriptor);
+      if (failedDigestAction !== undefined) {
+        currentModel = applyManualStructureDigestProjection(currentModel, failedDigestAction);
+        return renderCurrentModel(controllerResult);
+      }
+    }
+
+    return {
+      ok: true,
+      status: 'handled',
+      controllerResult,
+      errors: [],
+    };
   }
 
   async function renderCurrentModel(

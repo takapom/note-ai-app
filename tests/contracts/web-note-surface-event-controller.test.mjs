@@ -102,10 +102,45 @@ test('event controller sends explicit block editor save actions as block update 
   ]);
 });
 
+test('event controller sends block create and delete requests from caller-resolved ids', async () => {
+  const calls = [];
+  const controller = createController(calls, (event) => ({
+    noteId: event.noteId,
+    blockId: event.blockId,
+    content: event.content,
+  }));
+
+  const create = await controller.handleRenderEvent({
+    action: 'create_block',
+    target: 'block_editor',
+    noteId: 'note_001',
+    content: 'New backend-owned paragraph.',
+    apiIntent: 'POST /notes/:noteId/blocks',
+  });
+  const deleteBlock = await controller.handleRenderEvent({
+    action: 'delete_block',
+    target: 'block_editor',
+    noteId: 'note_001',
+    blockId: 'block_paragraph_001',
+    apiIntent: 'DELETE /blocks/:blockId',
+  });
+
+  assert.equal(create.ok, true);
+  assert.equal(deleteBlock.ok, true);
+  assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
+    ['POST', '/notes/note_001/blocks', {
+      content: 'New backend-owned paragraph.',
+    }],
+    ['DELETE', '/blocks/block_paragraph_001', {
+      noteId: 'note_001',
+    }],
+  ]);
+});
+
 test('event controller sends digest read and provenance lookup actions from caller-resolved ids', async () => {
   const calls = [];
   const controller = createController(calls, (event) => {
-    if (event.target === 'next_open_digest') {
+    if (event.target === 'next_open_digest' || event.target === 'writing_chrome') {
       return { noteId: 'note_001' };
     }
     return {
@@ -123,6 +158,11 @@ test('event controller sends digest read and provenance lookup actions from call
     target: 'next_open_digest',
     apiIntent: 'GET /notes/:noteId/digest',
   });
+  const manualStructure = await controller.handleRenderEvent({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    apiIntent: 'POST /notes/:noteId/structure/manual',
+  });
   const provenance = await controller.handleRenderEvent({
     action: 'inspect_source',
     target: 'ai_assist_block',
@@ -131,9 +171,11 @@ test('event controller sends digest read and provenance lookup actions from call
   });
 
   assert.equal(digest.ok, true);
+  assert.equal(manualStructure.ok, true);
   assert.equal(provenance.ok, true);
   assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
     ['GET', '/notes/note_001/digest', undefined],
+    ['POST', '/notes/note_001/structure/manual', undefined],
     ['POST', '/provenance/source', {
       sourceSpanId: 'span_001',
       sourceBlockId: 'block_source_001',

@@ -20,7 +20,7 @@ npm run worker:local:smoke
 
 ## 事前条件
 
-- Cloudflare Wrangler CLI が実行可能であること。
+- repo-local devDependency の Cloudflare Wrangler CLI が実行可能であること。通常は `npm install` 後に `npm run worker:local:smoke` / `npm run worker:local` から使う。
 - local Worker が Durable Object bindings を使えること。
 - repo-tracked config に local secret / workspace / user / fixture 値を追加しないこと。
 - `.wrangler/state` や `.dev.vars` は commit しないこと。

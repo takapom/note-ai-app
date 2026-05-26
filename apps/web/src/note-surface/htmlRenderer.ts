@@ -29,7 +29,7 @@ export function renderNoteSurfaceHtml(model: NoteSurfaceViewModel): NoteSurfaceH
     `<div class="ann-app ann-app-shell ann-app--quiet-writing" data-layout="${escapeAttribute(model.appShell.layout)}">`,
     renderThinRail(quietWriting.thinRail),
     '<div class="ann-main" data-region="main">',
-    renderWritingChrome(quietWriting.writingChrome),
+    renderWritingChrome(quietWriting.writingChrome, surface.noteHeader.noteId),
     `<main class="ann-note-surface" data-region="noteSurface" data-surface="single-note" data-note-id="${escapeAttribute(surface.noteHeader.noteId)}">`,
     renderNoteHeader(model),
     renderReEntrySurface(quietWriting.reEntrySurface, surface.noteHeader.noteId),

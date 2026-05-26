@@ -81,6 +81,41 @@ export interface TextBlockUpdateBody {
   errors: string[];
 }
 
+export interface TextBlockCreateBody {
+  kind: 'text_create';
+  content: string;
+  afterBlockId?: string;
+  errors: string[];
+}
+
+export function readTextCreateBody(body: unknown): TextBlockCreateBody | { kind: 'not_text_create' } {
+  const record = asRecord(body);
+  if (!record || record.block !== undefined || record.content === undefined) {
+    return { kind: 'not_text_create' };
+  }
+
+  const errors: string[] = [];
+  const content = typeof record.content === 'string' ? record.content : '';
+  if (content.trim() === '') {
+    errors.push('body.content must be a non-empty string');
+  }
+
+  const afterBlockId = typeof record.afterBlockId === 'string' ? record.afterBlockId : undefined;
+  if (record.afterBlockId !== undefined && afterBlockId === undefined) {
+    errors.push('body.afterBlockId must be a stable non-sentinel runtime id');
+  }
+  if (afterBlockId !== undefined) {
+    errors.push(...validateStableId('body.afterBlockId', afterBlockId));
+  }
+
+  return {
+    kind: 'text_create',
+    content,
+    ...(afterBlockId === undefined ? {} : { afterBlockId }),
+    errors,
+  };
+}
+
 export function readTextUpdateBody(body: unknown): TextBlockUpdateBody | { kind: 'not_text_update' } {
   const record = asRecord(body);
   if (!record || record.block !== undefined || record.content === undefined || record.noteId === undefined) {
@@ -229,11 +264,34 @@ export function applyTextUpdate(block: BlockContract, content: string, updatedAt
   };
 }
 
-function createEditorTextContentHash(blockId: string, content: string): string {
+export function createUserParagraphBlock(input: {
+  id: string;
+  noteId: string;
+  sectionId?: string;
+  content: string;
+  position: number;
+  now: number;
+}): BlockContract {
+  return {
+    id: input.id,
+    noteId: input.noteId,
+    ...(input.sectionId === undefined ? {} : { sectionId: input.sectionId }),
+    type: 'paragraph',
+    contentJson: { text: input.content },
+    plainText: input.content,
+    position: input.position,
+    origin: userAuthoredBlockOrigin,
+    contentHash: createEditorTextContentHash(input.id, input.content),
+    createdAt: input.now,
+    updatedAt: input.now,
+  };
+}
+
+export function createEditorTextContentHash(blockId: string, content: string): string {
   return `hash_${blockId}_${hashString(content).toString(16)}`;
 }
 
-function hashString(value: string): number {
+export function hashString(value: string): number {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);

@@ -23,6 +23,7 @@ const trackedRuntimeValueNames = [
   'API_KEY',
   'WORKSPACE_ID',
   'USER_ID',
+  'NOTE_ID',
   'WORKER_AUTH_SHARED_SECRET',
   'AUTH_SHARED_SECRET',
 ];
@@ -51,7 +52,8 @@ test('public HTML leaves browser root metadata for deployment injection', async 
   const html = await readText(publicHtmlPath);
 
   assert.match(html, /<main data-note-surface-root><\/main>/);
-  assert.match(html, /Deployment must provide data-api-base-url, data-workspace-id, and data-note-id\./);
+  assert.match(html, /Deployment runtime supplies required metadata through \/__ann\/bootstrap\./);
+  assert.match(html, /\/__ann\/bootstrap/);
 
   for (const key of ['api-base-url', 'workspace-id', 'note-id', 'user-id']) {
     assert.doesNotMatch(
@@ -83,6 +85,9 @@ test('Worker env interfaces declare optional deployment-supplied bindings withou
     assert.match(authBoundaryEnv, new RegExp(`\\b${key}\\?:\\s*unknown\\b`));
     assert.match(entrypointEnv, new RegExp(`\\b${key}\\?:\\s*string\\b`));
   }
+
+  assert.match(entrypointEnv, /\bNOTE_ID\?:\s*string\b/);
+  assert.doesNotMatch(authBoundaryEnv, /\bNOTE_ID\b/);
 
   for (const key of ['TURSO', 'TURSO_CLIENT', 'AGENT_LOCAL_SQL']) {
     assert.match(entrypointEnv, new RegExp(`\\b${key}\\?:\\s*WorkerTursoClient\\b`));

@@ -6,15 +6,23 @@ import process from 'node:process';
 
 import { blockFixtures } from '../contexts/note-model/src/contract/noteFixtures.ts';
 import { createLocalSmokeDocument } from './worker-local-smoke/fixtures.mjs';
-import { defaultPort, readWranglerBaseConfig, waitForWorkerReadiness } from './worker-local-smoke/wranglerDev.mjs';
+import {
+  createWranglerProcessEnv,
+  defaultPort,
+  readWranglerBaseConfig,
+  waitForWorkerReadiness,
+} from './worker-local-smoke/wranglerDev.mjs';
 
-async function requireWranglerViaNpx() {
-  const child = spawn('npx', ['wrangler', '--version'], { stdio: 'pipe' });
+async function requireWrangler(command) {
+  const child = spawn(command, ['--version'], {
+    env: createWranglerProcessEnv(),
+    stdio: 'pipe',
+  });
   const exitCode = await new Promise((resolve) => {
     child.on('exit', (code) => resolve(code ?? 1));
   });
   if (exitCode !== 0) {
-    throw new Error('Wrangler is required. Install with: npm install -g wrangler (or use: npm run preview:ui:static)');
+    throw new Error('Wrangler is required. Run npm install or use: npm run preview:ui:static');
   }
 }
 
@@ -31,17 +39,13 @@ async function main() {
   }
 
   const baseConfig = readWranglerBaseConfig();
-  const wrangler = process.env.WRANGLER_BIN ?? 'npx';
-  const wranglerArgs = process.env.WRANGLER_BIN === undefined
-    ? ['wrangler']
-    : [];
+  const wrangler = process.env.WRANGLER_BIN ?? 'wrangler';
   if (process.env.WRANGLER_BIN === undefined) {
-    await requireWranglerViaNpx();
+    await requireWrangler(wrangler);
   }
   const child = spawn(
     wrangler,
     [
-      ...wranglerArgs,
       'dev',
       '--port',
       String(baseConfig.port ?? defaultPort),
@@ -53,6 +57,7 @@ async function main() {
     {
       stdio: 'inherit',
       cwd: new URL('../', import.meta.url),
+      env: createWranglerProcessEnv(),
     },
   );
 
@@ -60,7 +65,7 @@ async function main() {
   await waitForWorkerReadiness(baseConfig.baseUrl, child, fetch);
   await seedPreviewRuntime(baseConfig.baseUrl);
   process.stdout.write('\n');
-  process.stdout.write('Open: http://127.0.0.1:8787/dev.html\n');
+  process.stdout.write(`Open: ${new URL('/dev.html', baseConfig.baseUrl).toString()}\n`);
   process.stdout.write('Press Ctrl+C to stop Wrangler.\n\n');
 
   await new Promise((resolve, reject) => {

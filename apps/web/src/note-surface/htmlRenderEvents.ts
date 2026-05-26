@@ -78,6 +78,19 @@ export function createRenderEvents(model: NoteSurfaceViewModel): readonly NoteSu
     });
   }
 
+  events.push({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    label: '整理',
+    dataAction: 'manual_organize',
+    noteId: model.noteSurface.noteHeader.noteId,
+    apiIntent: 'note.manual_structure',
+    emitsAiProviderCall: false,
+    mutatesUserAuthoredBlock: false,
+    hiddenProfiling: false,
+    automaticActiveMemory: false,
+  });
+
   if (model.noteSurface.organizationLayer.historyAffordance.visible) {
     events.push({
       action: 'open_organization_history',

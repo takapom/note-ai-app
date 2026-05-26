@@ -39,6 +39,12 @@ export type BlockUpdateProjectionAction = {
   content: string;
 };
 
+export type ManualStructureProjectionAction = {
+  action: 'manual_organize';
+  target: 'writing_chrome';
+  noteId: string;
+};
+
 export function resolveLocalProjectionAction(eventDescriptor: unknown): LocalProjectionAction | undefined {
   if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
     return undefined;
@@ -281,6 +287,28 @@ export function resolveBlockUpdateProjectionAction(eventDescriptor: unknown): Bl
   return blockId === undefined || content === undefined
     ? undefined
     : { action, target, blockId, content };
+}
+
+export function resolveManualStructureProjectionAction(eventDescriptor: unknown): ManualStructureProjectionAction | undefined {
+  if (eventDescriptor === null || typeof eventDescriptor !== 'object') {
+    return undefined;
+  }
+
+  const source = eventDescriptor as Record<string, unknown>;
+  const dataset = source.dataset !== null && typeof source.dataset === 'object'
+    ? source.dataset as Record<string, unknown>
+    : undefined;
+  const action = readDescriptorString(source, dataset, 'action');
+  const target = readDescriptorString(source, dataset, 'target');
+  const apiIntent = readDescriptorString(source, dataset, 'apiIntent');
+  const noteId = readDescriptorString(source, dataset, 'noteId');
+
+  return action === 'manual_organize'
+    && target === 'writing_chrome'
+    && (apiIntent === 'note.manual_structure' || apiIntent === 'POST /notes/:noteId/structure/manual')
+    && noteId !== undefined
+    ? { action, target, noteId }
+    : undefined;
 }
 
 export function isInputCompositionSaveBlocked(eventDescriptor: unknown): boolean {

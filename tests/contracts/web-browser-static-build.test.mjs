@@ -88,10 +88,13 @@ test('public HTML is a deployment page that explicitly starts the compiled brows
 
   assert.match(html, /<main data-note-surface-root><\/main>/);
   assert.match(html, /from ['"]\/assets\/apps\/web\/src\/browserNoteSurfaceAppEntry\.js['"]/);
+  assert.match(html, /\/__ann\/bootstrap/);
+  assert.match(html, /bootstrap\.workspaceId/);
+  assert.match(html, /bootstrap\.noteId/);
   assert.match(html, /\bstartBrowserNoteSurfaceApp\s*\(/);
   assert.match(html, /document\.readyState/);
   assert.match(html, /globalThis\.addEventListener\.bind\(globalThis\)/);
-  assert.match(html, /Deployment must provide data-api-base-url, data-workspace-id, and data-note-id\./);
+  assert.match(html, /Deployment runtime supplies required metadata through \/__ann\/bootstrap\./);
   assert.doesNotMatch(html, /browserNoteSurfaceAppEntry\.ts/);
   assert.doesNotMatch(html, /\b(?:data-api-base-url|data-workspace-id|data-note-id)=["'][^"']+["']/);
   assertNoForbiddenPatterns(html, forbiddenExcludedSurfacePatterns);

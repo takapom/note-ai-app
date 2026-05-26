@@ -5,10 +5,13 @@ import type { BlockContract } from '../../../../contexts/note-model/src/contract
 import { validateNoteDocumentForPersistence, type NoteDocumentPersistencePort } from './noteDocumentPersistencePort.ts';
 import {
   applyTextUpdate,
+  createUserParagraphBlock,
   expectedBlockContext,
   failure,
+  hashString,
   readBlockBody,
   readDeleteNoteId,
+  readTextCreateBody,
   readTextUpdateBody,
   success,
   updateOwningSectionAfterTextSave,
@@ -23,15 +26,41 @@ import {
 } from './noteBlockCommandHelpers.ts';
 import type { NoteBlockCommandInput, NoteBlockCommandPort, NoteBlockCommandResult } from './noteBlockCommandTypes.ts';
 
+export interface NoteDocumentBlockCommandPortOptions {
+  createBlockId?: (input: NoteDocumentBlockIdInput) => string;
+}
+
+export interface NoteDocumentBlockIdInput {
+  workspaceId: string;
+  noteId: string;
+  now: number;
+  blockCount: number;
+}
+
 export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
   private readonly persistence: NoteDocumentPersistencePort;
+  private readonly createBlockId: (input: NoteDocumentBlockIdInput) => string;
 
-  constructor(persistence: NoteDocumentPersistencePort) {
+  constructor(
+    persistence: NoteDocumentPersistencePort,
+    options: NoteDocumentBlockCommandPortOptions = {},
+  ) {
     this.persistence = persistence;
+    this.createBlockId = options.createBlockId ?? createDefaultBlockId;
   }
 
   async createBlock(input: NoteBlockCommandInput): Promise<NoteBlockCommandResult> {
     const identityErrors = validateCommandIdentity(input, { noteId: 'required' });
+    const textCreate = readTextCreateBody(input.body);
+    if (textCreate.kind === 'text_create') {
+      const errors = [...identityErrors, ...textCreate.errors];
+      if (errors.length > 0) {
+        return failure(errors);
+      }
+
+      return this.createUserAuthoredTextBlock(input, textCreate);
+    }
+
     const blockResult = readBlockBody(input.body);
     const blockErrors = blockResult.block === undefined
       ? blockResult.errors
@@ -52,6 +81,71 @@ export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
     }
 
     const document = withBlocks(loaded.document, [...loaded.document.blocks, block]);
+    const documentErrors = validateNoteDocumentForPersistence(document);
+    if (documentErrors.length > 0) {
+      return failure(documentErrors);
+    }
+
+    const saved = await this.persistence.saveDocument(document);
+    if (!saved.ok || saved.document === undefined) {
+      return failure(saved.errors);
+    }
+
+    return success({ document: saved.document, block });
+  }
+
+  private async createUserAuthoredTextBlock(
+    input: NoteBlockCommandInput,
+    create: Extract<ReturnType<typeof readTextCreateBody>, { kind: 'text_create' }>,
+  ): Promise<NoteBlockCommandResult> {
+    const loaded = await this.persistence.loadDocument({
+      workspaceId: input.workspaceId,
+      noteId: input.noteId as string,
+    });
+    if (!loaded.ok || loaded.document === undefined) {
+      return failure(loaded.errors);
+    }
+
+    const anchor = resolveCreateAnchor(loaded.document.blocks, create.afterBlockId);
+    if (!anchor.ok) {
+      return failure(anchor.errors);
+    }
+
+    const blockId = this.createBlockId({
+      workspaceId: input.workspaceId,
+      noteId: input.noteId as string,
+      now: input.now,
+      blockCount: loaded.document.blocks.length,
+    });
+    const idErrors = validateStableId('generated blockId', blockId);
+    if (idErrors.length > 0) {
+      return failure(idErrors);
+    }
+    if (loaded.document.blocks.some((candidate) => candidate.id === blockId)) {
+      return failure(['generated blockId must be unique in the canonical document']);
+    }
+
+    const block = createUserParagraphBlock({
+      id: blockId,
+      noteId: input.noteId as string,
+      ...(anchor.sectionId === undefined ? {} : { sectionId: anchor.sectionId }),
+      content: create.content,
+      position: anchor.position,
+      now: input.now,
+    });
+    const blocks = [...loaded.document.blocks, block];
+    const sectionUpdate = updateOwningSectionAfterTextSave(
+      loaded.document,
+      blocks,
+      block,
+      create.content,
+      input.now,
+    );
+    if (!sectionUpdate.ok) {
+      return failure(sectionUpdate.errors);
+    }
+
+    const document = withDocumentParts(loaded.document, blocks, sectionUpdate.sections);
     const documentErrors = validateNoteDocumentForPersistence(document);
     if (documentErrors.length > 0) {
       return failure(documentErrors);
@@ -225,4 +319,49 @@ export class NoteDocumentBlockCommandPort implements NoteBlockCommandPort {
 
     return success({ document: saved.document, blockId: input.blockId });
   }
+}
+
+function createDefaultBlockId(input: NoteDocumentBlockIdInput): string {
+  const hash = hashString(`${input.workspaceId}:${input.noteId}:${input.now}:${input.blockCount}`);
+  return `block_${input.noteId}_${input.now}_${hash.toString(36)}`;
+}
+
+function resolveCreateAnchor(
+  blocks: readonly BlockContract[],
+  afterBlockId: string | undefined,
+): { ok: true; position: number; sectionId?: string } | { ok: false; errors: string[] } {
+  if (afterBlockId !== undefined) {
+    const block = blocks.find((candidate) => candidate.id === afterBlockId);
+    if (block === undefined) {
+      return { ok: false, errors: ['body.afterBlockId must reference a block in the canonical document'] };
+    }
+    return {
+      ok: true,
+      position: nextPositionAfter(block.position, blocks),
+      ...(block.sectionId === undefined ? {} : { sectionId: block.sectionId }),
+    };
+  }
+
+  const lastBlock = [...blocks].sort((left, right) => right.position - left.position).at(0);
+  if (lastBlock === undefined) {
+    return { ok: true, position: 0 };
+  }
+
+  return {
+    ok: true,
+    position: lastBlock.position + 1,
+    ...(lastBlock.sectionId === undefined ? {} : { sectionId: lastBlock.sectionId }),
+  };
+}
+
+function nextPositionAfter(position: number, blocks: readonly BlockContract[]): number {
+  const laterPositions = blocks
+    .map((block) => block.position)
+    .filter((candidatePosition) => candidatePosition > position)
+    .sort((left, right) => left - right);
+  const nextPosition = laterPositions.at(0);
+
+  return nextPosition === undefined
+    ? position + 1
+    : position + ((nextPosition - position) / 2);
 }

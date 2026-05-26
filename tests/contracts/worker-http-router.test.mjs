@@ -315,6 +315,7 @@ test('worker HTTP router delegates note leave cause preservation to note structu
   const queue = createQueuePort();
   const response = await handleWorkerHttpRequest({
     ...baseRequest,
+    userId: 'user_001',
     method: 'POST',
     path: `/notes/${noteFixture.id}/leave`,
     body: { cause: 'tab_switch' },
@@ -334,6 +335,7 @@ test('worker HTTP router delegates note structure routes through route port befo
   const calls = [];
   const response = await handleWorkerHttpRequest({
     ...baseRequest,
+    userId: 'user_001',
     method: 'POST',
     path: `/notes/${noteFixture.id}/leave`,
     body: { cause: 'tab_switch' },
@@ -364,6 +366,7 @@ test('worker HTTP router delegates note structure routes through route port befo
 
   assert.deepEqual(calls, [{
     workspaceId: noteFixture.workspaceId,
+    userId: 'user_001',
     noteId: noteFixture.id,
     route: 'note_leave',
     cause: 'tab_switch',

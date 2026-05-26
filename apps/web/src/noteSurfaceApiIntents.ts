@@ -1,4 +1,4 @@
-export type NoteSurfaceWorkerRequestMethod = 'GET' | 'POST' | 'PATCH';
+export type NoteSurfaceWorkerRequestMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export type NoteSurfaceApiIntentKind =
   | 'ai_assist.accept'
@@ -8,8 +8,11 @@ export type NoteSurfaceApiIntentKind =
   | 'memory.edit'
   | 'memory.delete'
   | 'memory.snooze'
+  | 'block.create'
   | 'block.update'
+  | 'block.delete'
   | 'note.leave'
+  | 'note.manual_structure'
   | 'digest.read'
   | 'provenance.lookup';
 
@@ -56,10 +59,28 @@ export interface BlockUpdateApiIntentInput extends NoteSurfaceApiIntentBaseInput
   content: string;
 }
 
+export interface BlockCreateApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'block.create';
+  noteId: string;
+  content: string;
+  afterBlockId?: string;
+}
+
+export interface BlockDeleteApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'block.delete';
+  noteId: string;
+  blockId: string;
+}
+
 export interface NoteLeaveApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   intent: 'note.leave';
   noteId: string;
   cause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
+}
+
+export interface NoteManualStructureApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'note.manual_structure';
+  noteId: string;
 }
 
 export interface DigestApiIntentInput extends NoteSurfaceApiIntentBaseInput {
@@ -83,8 +104,11 @@ export type NoteSurfaceApiIntentInput =
   | AiAssistApiIntentInput
   | MemoryReviewApiIntentInput
   | MemoryEditApiIntentInput
+  | BlockCreateApiIntentInput
   | BlockUpdateApiIntentInput
+  | BlockDeleteApiIntentInput
   | NoteLeaveApiIntentInput
+  | NoteManualStructureApiIntentInput
   | DigestApiIntentInput
   | ProvenanceApiIntentInput;
 
@@ -96,8 +120,11 @@ const supportedIntents = new Set<NoteSurfaceApiIntentKind>([
   'memory.edit',
   'memory.delete',
   'memory.snooze',
+  'block.create',
   'block.update',
+  'block.delete',
   'note.leave',
+  'note.manual_structure',
   'digest.read',
   'provenance.lookup',
 ]);
@@ -175,6 +202,26 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         path: `/memory/${getStringField(input, 'memoryId')}/hold`,
         headers: createMetadataHeaders(input),
       });
+    case 'block.create':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      validateBlockUpdateContent(getStringField(input, 'content'), errors);
+      if (getStringField(input, 'afterBlockId') !== undefined) {
+        validatePathSegment('afterBlockId', getStringField(input, 'afterBlockId'), errors);
+      }
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/notes/${getStringField(input, 'noteId')}/blocks`,
+        headers: {
+          ...createMetadataHeaders(input),
+          'Content-Type': 'application/json',
+        },
+        body: {
+          content: getStringField(input, 'content'),
+          ...(getStringField(input, 'afterBlockId') === undefined
+            ? {}
+            : { afterBlockId: getStringField(input, 'afterBlockId') }),
+        },
+      });
     case 'block.update':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
       validatePathSegment('blockId', getStringField(input, 'blockId'), errors);
@@ -191,6 +238,20 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
           content: getStringField(input, 'content'),
         },
       });
+    case 'block.delete':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      validatePathSegment('blockId', getStringField(input, 'blockId'), errors);
+      return requestResult(errors, {
+        method: 'DELETE',
+        path: `/blocks/${getStringField(input, 'blockId')}`,
+        headers: {
+          ...createMetadataHeaders(input),
+          'Content-Type': 'application/json',
+        },
+        body: {
+          noteId: getStringField(input, 'noteId'),
+        },
+      });
     case 'note.leave':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
       return requestResult(errors, {
@@ -203,6 +264,13 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         body: {
           cause: getStringField(input, 'cause') ?? 'app_leave',
         },
+      });
+    case 'note.manual_structure':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      return requestResult(errors, {
+        method: 'POST',
+        path: `/notes/${getStringField(input, 'noteId')}/structure/manual`,
+        headers: createMetadataHeaders(input),
       });
     case 'digest.read':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);

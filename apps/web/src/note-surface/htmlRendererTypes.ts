@@ -18,6 +18,7 @@ export type NoteSurfaceHtmlRenderTarget =
   | 'return_layer'
   | 're_entry_surface'
   | 'thin_rail'
+  | 'writing_chrome'
   | 'provenance_popover'
   | 'organization_history';
 
@@ -30,6 +31,7 @@ export type NoteSurfaceHtmlAction =
   | 'close_return_layer'
   | 'defer_return_layer'
   | 'continue_writing'
+  | 'manual_organize'
   | 'close_provenance'
   | 'open_organization_history';
 

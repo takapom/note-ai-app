@@ -173,6 +173,97 @@ test('browser runtime sends editor save actions through the block update boundar
   ]);
 });
 
+test('browser runtime sends manual organize actions then reads backend digest projection', async () => {
+  const calls = [];
+  const host = createHost();
+  let observedStructuringProjection = false;
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    eventController: createController(calls, () => {
+      observedStructuringProjection = /data-save-status="visible">整理中<\/span>/.test(host.html);
+    }, (url) => {
+      if (url.endsWith('/notes/note_001/digest')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            available: true,
+            decisions: [{
+              id: 'digest_manual_decision_001',
+              text: 'Manual organize returned a backend-owned digest projection.',
+              sourceBlockId: 'block_paragraph_001',
+            }],
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 202,
+        body: {
+          ok: true,
+          route: 'manual_organize',
+          triggerReason: 'manual_organize',
+          scheduledJobs: [{ id: 'job_manual_001' }],
+          errors: [],
+        },
+      };
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const manualEvent = host.events.find((event) => (
+    event.target === 'writing_chrome'
+    && event.action === 'manual_organize'
+    && event.apiIntent === 'note.manual_structure'
+  ));
+  assert.ok(manualEvent);
+
+  const result = await host.handler(manualEvent);
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.equal(observedStructuringProjection, true);
+  assert.match(host.html, /data-save-status="visible">更新あり<\/span>/);
+  assert.match(host.html, /Manual organize returned a backend-owned digest projection\./);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="true"/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    ['POST', 'https://worker.example.test/api/notes/note_001/structure/manual', undefined],
+    ['GET', 'https://worker.example.test/api/notes/note_001/digest', undefined],
+  ]);
+});
+
+test('browser runtime marks manual organize failures without inventing a digest', async () => {
+  const host = createHost();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture),
+    eventController: {
+      async handleRenderEvent() {
+        return {
+          ok: false,
+          status: 'transport_error',
+          errors: ['manual structure unavailable'],
+        };
+      },
+    },
+    host,
+  });
+  await runtime.mount();
+
+  const result = await host.handler({
+    action: 'manual_organize',
+    target: 'writing_chrome',
+    noteId: 'note_001',
+    apiIntent: 'note.manual_structure',
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'controller_error');
+  assert.match(result.errors.join('\n'), /manual structure unavailable/);
+  assert.match(host.html, /data-save-status="visible">保存に失敗<\/span>/);
+  assert.doesNotMatch(host.html, /data-component="next-open-digest" data-available="true"/);
+});
+
 test('browser runtime suppresses composition-pending editor save without changing draft projection', async () => {
   const calls = [];
   const host = createHost();
@@ -872,17 +963,23 @@ test('browser runtime source stays framework-neutral and outside runtime interna
   assert.equal(rendered.events.every((event) => event.emitsAiProviderCall === false), true);
 });
 
-function createController(calls, beforeFetch) {
+function createController(calls, beforeFetch, responseFor) {
   const transport = createNoteSurfaceApiTransport({
     baseUrl: 'https://worker.example.test/api/',
     async fetchLike(url, init) {
       beforeFetch?.();
       calls.push({ url, init });
-      return {
+      const response = responseFor?.(url, init) ?? {
         ok: true,
         status: 200,
+        body: { handled: true },
+      };
+
+      return {
+        ok: response.ok,
+        status: response.status,
         async json() {
-          return { handled: true };
+          return response.body;
         },
       };
     },
@@ -917,6 +1014,9 @@ function createController(calls, beforeFetch) {
       }
       if (event.target === 'next_open_digest') {
         return { noteId: 'note_001' };
+      }
+      if (event.target === 'writing_chrome') {
+        return { noteId: event.noteId ?? 'note_001' };
       }
       if (event.target === 'block_editor') {
         return {

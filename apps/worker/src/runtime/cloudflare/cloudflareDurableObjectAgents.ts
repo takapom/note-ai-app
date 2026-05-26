@@ -23,6 +23,12 @@ import {
   type CloudflareAgentRpcResult,
 } from './agentRpcResults.ts';
 import {
+  persistWorkspaceBrainAlarmProcessCommand,
+  readWorkspaceBrainAlarmProcessCommand,
+  scheduleWorkspaceBrainProcessingAlarm,
+  shouldScheduleNextWorkspaceBrainAlarm,
+} from './cloudflareDurableObjectAlarm.ts';
+import {
   type NoteLeaveCause,
   type NoteStructureRouteKind,
 } from './noteStructureRouteRpcTypes.ts';
@@ -30,6 +36,10 @@ import {
   createWorkerRuntimePorts,
   createWorkspaceBrainStructureJobProcessorOptions,
 } from '../composition/workerRuntimePorts.ts';
+import {
+  enqueueWorkspaceBrainStructureJobs,
+  type WorkspaceBrainStructureJobsDispatchCommand,
+} from '../composition/workspaceBrainStructureJobDispatch.ts';
 import { type WorkerEntrypointEnv } from '../composition/workerEntrypointEnv.ts';
 import {
   LocalSmokeSchedulerSnapshotStore,
@@ -49,6 +59,8 @@ export interface NoteAgentScheduleStructureCommand {
   cause?: NoteLeaveCause;
   now: number;
 }
+
+export type WorkspaceBrainEnqueueStructureJobsCommand = WorkspaceBrainStructureJobsDispatchCommand;
 
 export type { CloudflareAgentRpcResult } from './agentRpcResults.ts';
 
@@ -157,6 +169,84 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
     super(ctx, env);
     this.workerEnv = env;
     this.storage = ctx.storage;
+  }
+
+  async enqueueStructureJobs(
+    input: WorkspaceBrainEnqueueStructureJobsCommand,
+  ): Promise<CloudflareAgentRpcResult> {
+    const agentLocalSql = readAgentLocalSqlLifecycle({
+      storage: this.storage,
+      ...(this.agentLocalSql === undefined ? {} : { cachedExecutor: this.agentLocalSql }),
+    });
+    if (!agentLocalSql.ok) {
+      return rejectedRpcResult('agent_local_sql_not_configured', agentLocalSql.errors);
+    }
+    this.agentLocalSql = agentLocalSql.executor;
+
+    const result = await enqueueWorkspaceBrainStructureJobs({
+      executor: agentLocalSql.executor,
+      command: input,
+    });
+    if (!result.ok) {
+      return result;
+    }
+
+    const command = await persistWorkspaceBrainAlarmProcessCommand({
+      storage: this.storage,
+      command: {
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+      },
+    });
+    const alarm = command.ok
+      ? await scheduleWorkspaceBrainProcessingAlarm({
+          storage: this.storage,
+          now: input.now,
+        })
+      : command;
+    if (!alarm.ok) {
+      return {
+        ...result,
+        ok: false,
+        accepted: false,
+        reason: 'workspace_brain_alarm_schedule_failed',
+        errors: alarm.errors,
+      };
+    }
+
+    return result;
+  }
+
+  async alarm(): Promise<CloudflareAgentRpcResult> {
+    const command = await readWorkspaceBrainAlarmProcessCommand({ storage: this.storage });
+    if (!command.ok) {
+      return rejectedRpcResult('workspace_brain_alarm_command_not_configured', command.errors);
+    }
+
+    const now = Date.now();
+    const result = await this.processNextQueuedStructureJob({
+      ...command.command,
+      now,
+    });
+    if (!shouldScheduleNextWorkspaceBrainAlarm(result)) {
+      return result;
+    }
+
+    const alarm = await scheduleWorkspaceBrainProcessingAlarm({
+      storage: this.storage,
+      now,
+    });
+    if (!alarm.ok) {
+      return {
+        ...result,
+        ok: false,
+        accepted: false,
+        reason: 'workspace_brain_alarm_reschedule_failed',
+        errors: alarm.errors,
+      };
+    }
+
+    return result;
   }
 
   async processNextQueuedStructureJob(

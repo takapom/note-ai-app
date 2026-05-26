@@ -179,6 +179,33 @@ test('memory edit rejects invalid content before request descriptors are returne
 test('block update maps explicit editor save actions to the Worker block command boundary', () => {
   assert.deepEqual(
     createNoteSurfaceApiRequest({
+      intent: 'block.create',
+      ...metadata,
+      noteId: 'note_001',
+      content: 'New user-authored block text.',
+      afterBlockId: 'block_paragraph_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/notes/note_001/blocks',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          content: 'New user-authored block text.',
+          afterBlockId: 'block_paragraph_001',
+        },
+      },
+      errors: [],
+    },
+  );
+
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
       intent: 'block.update',
       ...metadata,
       noteId: 'note_001',
@@ -198,6 +225,31 @@ test('block update maps explicit editor save actions to the Worker block command
         body: {
           noteId: 'note_001',
           content: 'Updated user-authored block text.',
+        },
+      },
+      errors: [],
+    },
+  );
+
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'block.delete',
+      ...metadata,
+      noteId: 'note_001',
+      blockId: 'block_paragraph_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'DELETE',
+        path: '/blocks/block_paragraph_001',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          noteId: 'note_001',
         },
       },
       errors: [],
@@ -232,6 +284,51 @@ test('block update rejects blank content and invalid block ids before request de
 });
 
 test('digest read maps to the next-open digest GET route', () => {
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'note.leave',
+      ...metadata,
+      noteId: 'note_001',
+      cause: 'tab_switch',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/notes/note_001/leave',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          cause: 'tab_switch',
+        },
+      },
+      errors: [],
+    },
+  );
+
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'note.manual_structure',
+      ...metadata,
+      noteId: 'note_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/notes/note_001/structure/manual',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+        },
+      },
+      errors: [],
+    },
+  );
+
   assert.deepEqual(
     createNoteSurfaceApiRequest({
       intent: 'digest.read',

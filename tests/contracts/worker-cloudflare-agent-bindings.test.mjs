@@ -364,9 +364,14 @@ test('Cloudflare Durable Object adapter is deployable and only delegates to fram
   assert.match(source, /new\s+NoteAgentRuntimeDelegate\(\)/);
   assert.match(source, /new\s+WorkspaceBrainAgentRuntimeDelegate\(\)/);
   assert.match(source, /scheduleNoteStructure\(\s*input:\s*NoteAgentScheduleStructureCommand/s);
+  assert.match(source, /enqueueStructureJobs\(\s*input:\s*WorkspaceBrainEnqueueStructureJobsCommand/s);
+  assert.match(source, /alarm\(\):\s*Promise<CloudflareAgentRpcResult>/);
   assert.match(source, /processNextQueuedStructureJob\(\s*input:\s*WorkspaceBrainProcessNextStructureJobCommand/s);
   assert.match(source, /WORKSPACE_BRAIN_STRUCTURE_JOB_PROCESSOR_OPTIONS/);
   assert.match(source, /createWorkspaceBrainStructureJobProcessorOptions/);
+  assert.match(source, /enqueueWorkspaceBrainStructureJobs/);
+  assert.match(source, /scheduleWorkspaceBrainProcessingAlarm/);
+  assert.match(source, /shouldScheduleNextWorkspaceBrainAlarm/);
   assert.match(source, /runtimeDelegate\.processNextQueuedStructureJob\(input,\s*options\.options\)/);
   assert.doesNotMatch(source, /handleNoteStructureRoute\(\s*input:\s*NoteStructureRouteHandlerInput/s);
   assert.doesNotMatch(source, /handleStructureJob\(\s*input:\s*StructureJobAgentHandlerInput/s);

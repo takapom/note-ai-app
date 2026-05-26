@@ -313,9 +313,8 @@ test('HTTP digest product provider source stays framework-neutral and limited to
 
   assert.match(source, /export function createNoteSurfaceHttpDigestProductProvider/);
   assert.match(source, /createNoteSurfaceHttpProductProvider/);
-  assert.match(source, /createNoteSurfaceApiTransport/);
-  assert.match(source, /method:\s*['"]GET['"]/);
-  assert.match(source, /path:\s*`\/notes\/\$\{options\.noteId\}\/digest`/);
+  assert.match(source, /createNoteSurfaceApiClient/);
+  assert.match(source, /apiClient\.getDigest\(\{ noteId: options\.noteId \}\)/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);

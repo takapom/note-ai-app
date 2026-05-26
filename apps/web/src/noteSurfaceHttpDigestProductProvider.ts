@@ -2,7 +2,7 @@ import {
   createNoteSurfaceHttpProductProvider,
   type NoteSurfaceHttpProductProviderOptions,
 } from './noteSurfaceHttpProductProvider.ts';
-import { createNoteSurfaceApiTransport } from './noteSurfaceApiTransport.ts';
+import { createNoteSurfaceApiClient } from './runtime/api-client/noteSurfaceApiClient.ts';
 import type {
   NoteSurfaceProductProvider,
   NoteSurfaceProductStateInput,
@@ -38,28 +38,19 @@ export function createNoteSurfaceHttpDigestProductProvider(
 async function loadDigestProjection(
   options: NoteSurfaceHttpDigestProductProviderOptions,
 ): Promise<NextOpenDigestInput> {
-  const transport = createNoteSurfaceApiTransport({
-    baseUrl: options.apiBaseUrl,
+  const apiClient = createNoteSurfaceApiClient({
+    apiBaseUrl: options.apiBaseUrl,
     fetchLike: options.fetchLike,
+    workspaceId: options.workspaceId,
+    ...(options.userId === undefined ? {} : { userId: options.userId }),
   });
-  const result = await transport.send({
-    method: 'GET',
-    path: `/notes/${options.noteId}/digest`,
-    headers: createHeaders(options),
-  });
+  const result = await apiClient.getDigest({ noteId: options.noteId });
 
   if (!result.ok) {
     return failedDigest('transport_failed');
   }
 
   return parseNextOpenDigestInput(result.body) ?? failedDigest('invalid_body');
-}
-
-function createHeaders(options: NoteSurfaceHttpDigestProductProviderOptions): Record<string, string> {
-  return {
-    'X-Workspace-Id': options.workspaceId,
-    ...(options.userId === undefined ? {} : { 'X-User-Id': options.userId }),
-  };
 }
 
 function failedDigest(loadState: 'transport_failed' | 'invalid_body'): NextOpenDigestInput {

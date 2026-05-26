@@ -12,6 +12,7 @@ const importPattern = /from\s+['"]([^'"]+)['"]/g;
 const COMPOSITION_CLOUDFLARE_ALLOWLIST = new Set([
   'runtime/cloudflare/cloudflareAgentBindings',
   'runtime/cloudflare/cloudflareAgentRpcBoundary',
+  'runtime/cloudflare/cloudflareWorkspaceBrainEnqueueRpc',
 ]);
 
 const STRUCTURE_JOB_SCHEDULER_ALLOWLIST = new Set([

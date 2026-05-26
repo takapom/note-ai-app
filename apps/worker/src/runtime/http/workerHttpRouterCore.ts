@@ -177,6 +177,7 @@ async function runStructureRoute(
   if (ports.noteStructureRoute !== undefined) {
     const result = await ports.noteStructureRoute.runNoteStructureRoute({
       workspaceId: request.workspaceId,
+      ...(request.userId === undefined ? {} : { userId: request.userId }),
       noteId,
       route,
       ...cause,

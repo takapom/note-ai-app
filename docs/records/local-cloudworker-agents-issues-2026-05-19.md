@@ -497,7 +497,7 @@ LCWA-01〜07 の実装後、DDD / bounded context / runtime topology / local Clo
 
 ## 未決定事項
 
-- wrangler を devDependency として repo に固定するか、`npx wrangler` の外部 tool 前提にするか。Tooling/smoke slice decision: use an installed external `wrangler` executable and fail clearly when absent; revisit dependency pinning only if the repo later chooses to own CLI version installation.
+- wrangler を devDependency として repo に固定するか、`npx wrangler` の外部 tool 前提にするか。Tooling/smoke slice decision 2026-05-19: use an installed external `wrangler` executable and fail clearly when absent. Updated 2026-05-26: repo now owns `wrangler` as a devDependency so `npm run worker:local`, `npm run worker:local:smoke`, and `npm run preview:ui` can run from a fresh repo install without global Wrangler.
 - local canonical persistence を Turso-compatible in-memory fixture clientにするか、local file DB / remote Turso binding にするか。Decision 2026-05-19: use the local verification-only in-memory fixture for this smoke lane; revisit file DB / remote Turso only when the repo chooses to own a persistent local canonical DB.
 - WorkspaceBrain process trigger を local-only HTTP route にするか、scheduled/test trigger にするか。Decision 2026-05-19: use local-only HTTP path `/__local/agents/workspace/process`, gated by `LOCAL_AGENT_SMOKE_ENABLED=1`, normal auth/workspace normalization, and userId.
 - local smoke lane を standard `npm run verify` に含めるか、Cloudflare runtime optional lane として分離するか。Tooling/smoke slice decision: keep `npm run worker:local:smoke` separate from standard `npm run verify`; failures are explicit setup/blocker/smoke failures, not skips.

@@ -49,6 +49,12 @@ test('transport sends AI memory block digest and provenance descriptors through 
       content: 'Updated user-authored block text.',
     }).request,
     createNoteSurfaceApiRequest({
+      intent: 'block.delete',
+      ...metadata,
+      noteId: 'note_001',
+      blockId: 'block_paragraph_001',
+    }).request,
+    createNoteSurfaceApiRequest({
       intent: 'digest.read',
       ...metadata,
       noteId: 'note_001',
@@ -80,6 +86,7 @@ test('transport sends AI memory block digest and provenance descriptors through 
     ['POST', 'https://worker.example.test/api/ai-operations/operation_001/accept'],
     ['POST', 'https://worker.example.test/api/memory/memory_001/edit'],
     ['PATCH', 'https://worker.example.test/api/blocks/block_paragraph_001'],
+    ['DELETE', 'https://worker.example.test/api/blocks/block_paragraph_001'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
     ['POST', 'https://worker.example.test/api/provenance/source'],
   ]);
@@ -101,6 +108,15 @@ test('transport sends AI memory block digest and provenance descriptors through 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ noteId: 'note_001', content: 'Updated user-authored block text.' }),
+  });
+  assert.deepEqual(calls[3].init, {
+    method: 'DELETE',
+    headers: {
+      'X-Workspace-Id': 'workspace_001',
+      'X-User-Id': 'user_001',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ noteId: 'note_001' }),
   });
 });
 
@@ -231,7 +247,7 @@ test('transport rejects invalid base URL path method and headers before calling 
     },
   );
   assert.equal(invalidMethod.ok, false);
-  assert.match(invalidMethod.errors.join('\n'), /method must be GET, POST, or PATCH/);
+  assert.match(invalidMethod.errors.join('\n'), /method must be GET, POST, PATCH, or DELETE/);
 
   const invalidHeader = await sendNoteSurfaceApiRequest(
     {

@@ -6,7 +6,7 @@ import type { MemoryCandidateProposalBoundaryResult } from '../../memory/memoryC
 import type { NoteStructureRouteHandlerResult } from '../../scheduler/noteStructureRouteHandler.ts';
 import type { NoteDocumentLoadResult, NoteDocumentSaveResult } from '../../note-model/noteDocumentPersistencePort.ts';
 import type { ProvenanceLookupResult } from '../../note-model/provenanceLookupPort.ts';
-import type { WorkerHttpResponse, WorkerRouteCommandResult } from './workerHttpRouterTypes.ts';
+import type { NoteStructureBackgroundDispatchResult, WorkerHttpResponse, WorkerRouteCommandResult } from './workerHttpRouterTypes.ts';
 
 export function mapPortResult(
   result: NoteDocumentLoadResult | NoteDocumentSaveResult | WorkerRouteCommandResult | ProvenanceLookupResult,
@@ -29,7 +29,7 @@ export function mapPortResult(
 export function mapStructureResult(result: Pick<
   NoteStructureRouteHandlerResult,
   'ok' | 'route' | 'triggerReason' | 'scheduledJobs' | 'errors'
->): WorkerHttpResponse {
+> & { backgroundDispatch?: NoteStructureBackgroundDispatchResult }): WorkerHttpResponse {
   if (!result.ok) {
     return badRequest(result.errors);
   }
@@ -41,6 +41,7 @@ export function mapStructureResult(result: Pick<
       route: result.route,
       triggerReason: result.triggerReason,
       scheduledJobs: result.scheduledJobs,
+      ...(result.backgroundDispatch === undefined ? {} : { backgroundDispatch: result.backgroundDispatch }),
       errors: [],
     },
   };

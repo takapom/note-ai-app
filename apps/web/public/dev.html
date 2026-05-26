@@ -514,7 +514,6 @@
     <!-- ローカルプレビュー: npm run preview:ui -->
     <main
       data-note-surface-root
-      data-api-base-url="http://127.0.0.1:8787"
       data-workspace-id="workspace_local_preview"
       data-user-id="user_local_preview"
       data-note-id="note_local_preview"
@@ -530,7 +529,9 @@
           documentReadyState: () => document.readyState,
           addEventListener: globalThis.addEventListener.bind(globalThis),
         },
-        {},
+        {
+          apiBaseUrl: `${globalThis.location.origin}/`,
+        },
       );
     </script>
   </body>

@@ -553,17 +553,32 @@
     </style>
   </head>
   <body>
-    <!-- Deployment must provide data-api-base-url, data-workspace-id, and data-note-id. -->
+    <!-- Deployment runtime supplies required metadata through /__ann/bootstrap. -->
     <main data-note-surface-root></main>
     <script type="module">
       import { startBrowserNoteSurfaceApp } from '/assets/apps/web/src/browserNoteSurfaceAppEntry.js';
+
+      const bootstrapUrl = new URL('/__ann/bootstrap', globalThis.location.href);
+      bootstrapUrl.search = globalThis.location.search;
+      const bootstrapResponse = await fetch(bootstrapUrl.toString(), {
+        headers: { accept: 'application/json' },
+      });
+      const bootstrap = await bootstrapResponse.json();
+      if (!bootstrapResponse.ok || bootstrap.ok !== true) {
+        throw new Error((bootstrap.errors ?? ['deployment bootstrap failed']).join('\n'));
+      }
 
       await startBrowserNoteSurfaceApp(
         {
           documentReadyState: () => document.readyState,
           addEventListener: globalThis.addEventListener.bind(globalThis),
         },
-        {},
+        {
+          apiBaseUrl: bootstrap.apiBaseUrl,
+          workspaceId: bootstrap.workspaceId,
+          userId: bootstrap.userId,
+          noteId: bootstrap.noteId,
+        },
       );
     </script>
   </body>

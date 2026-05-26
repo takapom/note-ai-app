@@ -6,6 +6,7 @@ export type { NoteBlockCommandPort } from '../../note-model/noteBlockCommandPort
 export type {
   MatchedWorkerRoute,
   MemoryReviewPort,
+  NoteStructureBackgroundDispatchResult,
   NoteStructureRoutePort,
   WorkerHttpRequest,
   WorkerHttpResponse,

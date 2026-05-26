@@ -33,7 +33,10 @@ export function renderThinRail(rail: NoteSurfaceViewModel['quietWriting']['thinR
   ].join('');
 }
 
-export function renderWritingChrome(chrome: NoteSurfaceViewModel['quietWriting']['writingChrome']): string {
+export function renderWritingChrome(
+  chrome: NoteSurfaceViewModel['quietWriting']['writingChrome'],
+  noteId: string,
+): string {
   const digestStatus = chrome.digestStatus === undefined
     ? ''
     : `<p class="ann-writing-chrome__digest-status" data-digest-status-kind="${escapeAttribute(chrome.digestStatusKind ?? 'unavailable')}" role="status">${escapeHtml(chrome.digestStatus)}</p>`;
@@ -50,6 +53,7 @@ export function renderWritingChrome(chrome: NoteSurfaceViewModel['quietWriting']
     '</div>',
     '</div>',
     '<div class="ann-writing-chrome__actions" aria-label="ノート操作">',
+    `<button type="button" class="ann-text-button ann-writing-chrome__organize" data-action="manual_organize" data-target="writing_chrome" data-note-id="${escapeAttribute(noteId)}">整理</button>`,
     '<button type="button" class="ann-text-button ann-writing-chrome__share">共有</button>',
     '<button type="button" class="ann-icon-button ann-writing-chrome__more" aria-label="その他"><span aria-hidden="true">…</span></button>',
     '</div>',
