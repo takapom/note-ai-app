@@ -76,7 +76,7 @@ export function renderReEntrySurface(
     `<span class="ann-re-entry__direction-summary">${escapeHtml(direction.summary)}</span>`,
     direction.sourceAvailable
       ? '<span class="ann-re-entry__direction-source" data-source-available="true">出典あり</span>'
-      : '<span class="ann-re-entry__direction-source" data-source-available="false">出典なし</span>',
+      : '',
     '</button>',
     '</li>',
   ].join('')).join('');
@@ -170,7 +170,7 @@ export function renderCarriedContextTray(tray: NoteSurfaceViewModel['quietWritin
     '<article class="ann-carried-context-tray__item" data-inline-memory-candidate="true">',
     `<p class="ann-carried-context-tray__statement">${escapeHtml(candidate.statement)}</p>`,
     candidate.sourcePreview === undefined
-      ? '<p class="ann-carried-context-tray__source" data-source-available="false">出典なし</p>'
+      ? ''
       : `<p class="ann-carried-context-tray__source">${escapeHtml(candidate.sourcePreview)}</p>`,
     candidate.actionState === 'idle'
       ? ''

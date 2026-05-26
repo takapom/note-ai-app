@@ -24,7 +24,6 @@ export function AiAssistBlock({ block, onInspectSource, onToggleEditing, onDelet
       ) : (
         <div className="ann-block-text" role="document" aria-readonly="true">{block.text}</div>
       )}
-      {aiAssist.sourceInspectable ? null : <p className="ann-ai-assist-block__source" data-source-available="false">出典なし</p>}
       <div className="ann-inline-actions" data-action-group="ai_assist">
         {aiAssist.sourceInspectable ? <button type="button" data-action="inspect_source" data-target="ai_assist_block" data-block-id={block.id} onClick={onInspectSource}>出典</button> : null}
         <button type="button" data-action="edit" data-target="ai_assist_block" data-block-id={block.id} onClick={onToggleEditing}>{aiAssist.editing ? '完了' : '編集'}</button>

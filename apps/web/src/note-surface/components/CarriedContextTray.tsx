@@ -18,9 +18,7 @@ export function CarriedContextTray({ tray, onRemember, onReject }: CarriedContex
         {tray.candidates.map((candidate) => (
           <article className="ann-carried-context-tray__item" data-inline-memory-candidate="true" key={candidate.id}>
             <p className="ann-carried-context-tray__statement">{candidate.statement}</p>
-            {candidate.sourcePreview === undefined ? (
-              <p className="ann-carried-context-tray__source" data-source-available="false">出典なし</p>
-            ) : (
+            {candidate.sourcePreview === undefined ? null : (
               <p className="ann-carried-context-tray__source">{candidate.sourcePreview}</p>
             )}
             <div className="ann-inline-actions" data-action-group="memory_candidate">

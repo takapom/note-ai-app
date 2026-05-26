@@ -111,9 +111,6 @@ function renderAiAssistBlock(block: NoteBlockViewModel): string {
       aiAssist.actionStates[action.id] ?? 'idle',
     ))
     .join('');
-  const sourceAvailability = aiAssist.sourceInspectable
-    ? ''
-    : '<p class="ann-ai-assist-block__source" data-source-available="false">出典なし</p>';
   const body = aiAssist.editing
     ? `<div class="ann-block-text" data-block-editor-content="true" data-editor-composition-state="idle" role="textbox" aria-readonly="false" contenteditable="true">${escapeHtml(block.text)}</div>`
     : `<div class="ann-block-text" role="document" aria-readonly="true">${escapeHtml(block.text)}</div>`;
@@ -122,7 +119,6 @@ function renderAiAssistBlock(block: NoteBlockViewModel): string {
     `<section class="ann-ai-assist-block" data-inline-ai-block="true" data-ai-assist-kind="${escapeAttribute(aiAssist.kind)}" data-block-origin="ai" data-editing="${aiAssist.editing}">`,
     `<div class="ann-inline-label" aria-label="整理由来">${escapeHtml(aiAssist.label)}</div>`,
     body,
-    sourceAvailability,
     `<div class="ann-inline-actions" data-action-group="ai_assist">${controls}</div>`,
     aiAssist.editing
       ? '<p class="ann-ai-assist-block__hint">編集した提案はこのノート内の表示に反映されます。削除で提案を閉じられます。</p>'
