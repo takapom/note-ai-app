@@ -17,6 +17,7 @@ import type {
 interface CreateQuietWritingSurfaceOptions {
   note: Pick<NoteContract, 'id' | 'title'>;
   nextOpenDigest: NextOpenDigestViewModel;
+  returnLayerVisible: boolean;
   returnLayerOpen: boolean;
   blocks: readonly NoteBlockViewModel[];
   aiStatus: NoteSurfaceAiStatus;
@@ -27,13 +28,17 @@ interface CreateQuietWritingSurfaceOptions {
 export function createQuietWritingSurfaceViewModel(
   options: CreateQuietWritingSurfaceOptions,
 ): QuietWritingSurfaceViewModel {
-  const returnLayer = createReturnLayerViewModel(options.nextOpenDigest, options.returnLayerOpen);
+  const visibleDigest = options.returnLayerVisible
+    ? options.nextOpenDigest
+    : createHiddenDigestViewModel(options.nextOpenDigest);
+  const returnLayer = createReturnLayerViewModel(visibleDigest, options.returnLayerOpen);
   const directions = createReEntryDirections(returnLayer);
 
   return {
     kind: 'QuietWritingSurface',
+    returnLayerVisible: options.returnLayerVisible,
     thinRail: createThinRailViewModel(options.note, options.workspaceName, options.recentThoughts),
-    writingChrome: createWritingChromeViewModel(options.aiStatus, returnLayer, options.nextOpenDigest),
+    writingChrome: createWritingChromeViewModel(options.aiStatus, returnLayer, visibleDigest),
     reEntrySurface: {
       kind: 'ReEntrySurface',
       visible: !options.returnLayerOpen && returnLayer.available,
@@ -42,6 +47,18 @@ export function createQuietWritingSurfaceViewModel(
     },
     returnLayer,
     carriedContextTray: createCarriedContextTrayViewModel(options.blocks),
+  };
+}
+
+function createHiddenDigestViewModel(digest: NextOpenDigestViewModel): NextOpenDigestViewModel {
+  const { loadState: _loadState, ...rest } = digest;
+
+  return {
+    ...rest,
+    available: false,
+    expanded: false,
+    sections: [],
+    emptyState: 'unavailable',
   };
 }
 

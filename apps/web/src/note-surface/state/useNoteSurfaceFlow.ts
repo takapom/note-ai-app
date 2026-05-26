@@ -53,7 +53,7 @@ export const defaultNoteSurfaceSettings: NoteSurfaceSettings = {
   authoringShortcutsEnabled: true,
   focusNewNoteBody: true,
   digestAutoOpen: true,
-  memoryCandidatesVisible: true,
+  memoryCandidatesVisible: false,
   sourceButtonsAlwaysVisible: true,
   writingDensity: 'standard',
   theme: 'system',
@@ -175,10 +175,12 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     aiStatus,
     editingBlockIds,
     sourceSpanIdByBlockId: {},
+    memoryCandidatesVisible: settings.memoryCandidatesVisible,
+    returnLayerVisible: false,
     nextOpenDigest: digestAvailable ? createDemoDigestInput(activeNoteText) : { available: false },
     returnLayerOpen,
     provenancePopover: provenanceOpen ? createDemoProvenanceInput(activeNoteText) : { open: false },
-  }), [activeNote, activeNoteText, aiStatus, digestAvailable, editingBlockIds, provenanceOpen, returnLayerOpen, visibleRecentThoughts]);
+  }), [activeNote, activeNoteText, aiStatus, digestAvailable, editingBlockIds, provenanceOpen, returnLayerOpen, settings.memoryCandidatesVisible, visibleRecentThoughts]);
 
   const markActiveNoteChanged = useCallback((updater: (note: LocalNote) => LocalNote) => {
     setWorkspace((current) => ({

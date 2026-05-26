@@ -17,6 +17,9 @@ export interface NoteSurfaceProductViewState {
   aiStatus?: NoteSurfaceAiStatus;
   editingBlockIds?: readonly string[];
   sourceSpanIdByBlockId?: Readonly<Record<string, string>>;
+  inlineAiProjectionsVisible?: boolean;
+  memoryCandidatesVisible?: boolean;
+  returnLayerVisible?: boolean;
   nextOpenDigest?: NextOpenDigestInput;
   expandedDigest?: boolean;
   provenancePopover?: ProvenancePopoverInput;
@@ -107,6 +110,13 @@ function createViewOptions(
     ...(viewState?.aiStatus === undefined ? {} : { aiStatus: viewState.aiStatus }),
     ...(viewState?.editingBlockIds === undefined ? {} : { editingBlockIds: viewState.editingBlockIds }),
     ...(sourceSpanIdByBlockId === undefined ? {} : { sourceSpanIdByBlockId }),
+    ...(viewState?.inlineAiProjectionsVisible === undefined
+      ? {}
+      : { inlineAiProjectionsVisible: viewState.inlineAiProjectionsVisible }),
+    ...(viewState?.memoryCandidatesVisible === undefined
+      ? {}
+      : { memoryCandidatesVisible: viewState.memoryCandidatesVisible }),
+    ...(viewState?.returnLayerVisible === undefined ? {} : { returnLayerVisible: viewState.returnLayerVisible }),
     ...(viewState?.nextOpenDigest === undefined ? {} : { nextOpenDigest: viewState.nextOpenDigest }),
     ...(viewState?.expandedDigest === undefined ? {} : { expandedDigest: viewState.expandedDigest }),
     ...(viewState?.provenancePopover === undefined ? {} : { provenancePopover: viewState.provenancePopover }),

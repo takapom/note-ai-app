@@ -29,8 +29,8 @@
 - NoteSurface DOM host adapter。実 DOM API を所有する薄い adapter として、root HTML 差し替え、delegated action click binding、render event descriptor による dataset 補完だけを行う。
 - NoteSurface browser deployment embedding adapter。`apps/web/src/browserNoteSurfaceMount.ts` だけが browser global の `document` / `fetch`、mount target query、deployment-supplied metadata extraction を薄く所有し、NoteSurface application boundary に caller supplied root / fetch-like binding / product mount options として渡す。root dataset の `data-api-base-url`、`data-workspace-id`、`data-note-id`、optional `data-user-id`、`data-workspace-name`、`data-expanded-digest`、`data-view-state-json`、`data-projection-maps-json` は deployment adapter の volatile detail であり、NoteSurface application boundary や domain policy ではない。
 - NoteSurface browser app entry deployment bootstrap。`apps/web/src/browserNoteSurfaceAppEntry.ts` は deployment descriptor から注入された browser runtime で mount adapter を起動するだけの bootstrap であり、NoteSurface application boundary や domain policy ではない。import-time side effect、framework / bundler package ownership、provider SDK、auth policy、ID generation、canonical Note / Section / Block の直接 mutation を所有しない。
-- AI Assist Blocks のレンダリング。
-- 次回オープンダイジェストコンポーネントのふるまい。
+- AI Assist Blocks のレンダリング。通常の writing surface では二次 AI projection を前景化せず、caller supplied view state が明示した場合だけ inline projection として表示します。
+- 次回オープンダイジェストコンポーネントのふるまい。通常の writing surface では前回整理の re-entry / return layer を自動表示せず、caller supplied view state が明示した場合だけ表示します。
 - Organized layer の通常表示と、Capture layer 復元用の控えめな history affordance。
 - Provenance popover の配置。
 - Note Header の title / description 表示。
@@ -48,9 +48,9 @@
 - MVP に永続的な AI チャットパネルを追加しないでください。
 - MVP に AI モード切り替えを追加しないでください。
 - NoteSurface view model は Note Model semantics を所有せず、`contexts/note-model` の document validation を消費してください。
-- AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングされます。
+- AI Assist Blocks は、独立した AI パネルではなく block renderer によってレンダリングできます。ただし default writing surface では表示せず、明示的な view option がある場合だけ inline projection として出します。
 - AI Assist / Memory candidate actions は user intent と API intent の model に留め、provider call や user-authored block の直接 mutation を持たせないでください。
-- AI Assist Blocks はユーザーの個別承認を必須にせず、AI-origin projection として note surface 内に表示されます。必須 controls は `出典`（source がある場合）、`編集`、`削除` であり、`採用` は AI block を表示するための必須 action ではありません。
+- AI Assist Blocks はユーザーの個別承認を必須にしません。表示される場合の controls は `出典`（source がある場合）、`編集`、`削除` であり、`採用` は AI block を表示するための必須 action ではありません。source がない場合に `出典なし` のような negative label を通常表示へ出さないでください。
 - Markdown-compatible authoring shortcuts は UI 入力 affordance です。Web は Markdown string を canonical note storage として扱わず、入力を backend-owned Block / Section model へ渡す意図に留めてください。
 - API intent mapping は dependency-free request descriptor に留め、Worker 実装、generated OpenAPI、provider call、auth policy を import しないでください。
 - API transport は request descriptor を注入された fetch-like binding に渡すだけに留め、Worker 実装、generated OpenAPI、provider call、auth policy、user-authored block の直接 mutation を import / 所有しないでください。
@@ -91,11 +91,11 @@
 - HTML renderer は各 editable block に block identity と status region の DOM hooks を出してください。editable block は `data-editor-layout-stability="block-identity"`、contenteditable surface は `data-editor-composition-state="idle"` を持ち、status region は `data-editor-status-region="fixed"`、`data-editor-layout-stability="status-reserved"`、`data-editor-save-status`、`aria-live="polite"`、`aria-atomic="true"` を持ち、retry 可能な error では `data-retry-available="true"` と `data-retry-action="save_block"` を出します。これは HTML contract 上の hook であり、実 Selection API による cursor preservation / real browser layout stability は browser guard 側で確認してください。
 - Public browser artifact は status region の min-height と block layout の安定寸法を持つ最小 CSS を含めてください。これは deployment shell の visual contract であり、NoteSurface application boundary に framework / provider / Worker policy を追加しないでください。
 - Memory edit / delete / snooze API intents は Worker request descriptor だけを作り、snooze は backend domain action の hold route に対応付けてください。
-- Next Open Digest は compact / expandable にし、missing digest から fake content を作らないでください。
+- Next Open Digest は表示される場合 compact / expandable にし、missing digest から fake content を作らないでください。default writing surface では digest projection を保持しても re-entry / return layer を前景化しません。
 - NoteSurface は default layer を Organized layer として扱ってください。Capture layer は MVP では読み取り用履歴であり、常時表示の Raw / Organized 二面 editor を主 UI にしないでください。
 - Organization history affordance は AI/provider call や user-authored block の直接 mutation を行わず、復元・履歴確認の入口だけを表現してください。
 - Provenance popover は bounded excerpt と source metadata だけを持ち、full note / full workspace dump を持たせないでください。
 - バックグラウンド構造化中も、執筆フローは応答性を保たなければなりません。
 - AI Assist Block 挿入はカーソル位置を奪ってはなりません。
 - 入力中に AI 由来の layout shift を発生させてはいけません。
-- Memory candidate block はノート内で承認/拒否できなければなりません。
+- Memory candidate block は、表示される場合にノート内で承認/拒否できなければなりません。default writing surface では候補を前景化せず、明示的な view option がある場合だけ memory candidate block / carried context tray として表示します。

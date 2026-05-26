@@ -41,14 +41,20 @@ export function createNoteSurfaceViewModel(
     editingBlockIds,
     sortedBlocks,
     options.sourceSpanIdByBlockId,
-  ));
+  )).filter((block) => isVisibleWritingSurfaceBlock(block, options));
   const nextOpenDigest = createNextOpenDigestViewModel(options.nextOpenDigest, false);
-  const returnLayerOpen = nextOpenDigest.available
+  const returnLayerVisible = options.returnLayerVisible === true;
+  const returnLayerOpen = returnLayerVisible && nextOpenDigest.available
     ? (options.returnLayerOpen ?? options.expandedDigest ?? false)
     : false;
+  const surfaceNextOpenDigest = {
+    ...nextOpenDigest,
+    expanded: returnLayerOpen,
+  };
   const quietWriting = createQuietWritingSurfaceViewModel({
     note: document.note,
-    nextOpenDigest,
+    nextOpenDigest: surfaceNextOpenDigest,
+    returnLayerVisible,
     returnLayerOpen,
     blocks,
     aiStatus: options.aiStatus ?? 'saved',
@@ -84,10 +90,7 @@ export function createNoteSurfaceViewModel(
       kind: 'NoteSurface',
       noteHeader: createNoteHeaderViewModel(document.note, sectionBoundaries),
       organizationLayer: createOrganizationLayerViewModel(options.organizationLayer),
-      nextOpenDigest: {
-        ...nextOpenDigest,
-        expanded: returnLayerOpen,
-      },
+      nextOpenDigest: surfaceNextOpenDigest,
       blockEditor: {
         kind: 'BlockEditor',
         acceptsUserInput: true,
@@ -105,6 +108,21 @@ export function createNoteSurfaceViewModel(
     },
     excludedSurfaces: createExcludedSurfacesGuard(),
   };
+}
+
+function isVisibleWritingSurfaceBlock(
+  block: NoteSurfaceViewModel['noteSurface']['blocks'][number],
+  options: CreateNoteSurfaceViewModelOptions,
+): boolean {
+  if (block.memoryCandidate !== undefined) {
+    return options.memoryCandidatesVisible === true;
+  }
+
+  if (block.aiAssist !== undefined) {
+    return options.inlineAiProjectionsVisible === true;
+  }
+
+  return true;
 }
 
 function createOrganizationLayerViewModel(
@@ -137,15 +155,27 @@ export function validateNoteSurfaceDocument(document: unknown): readonly string[
 }
 
 export function refreshQuietWritingProjection(model: NoteSurfaceViewModel): NoteSurfaceViewModel {
-  const returnLayerOpen = model.noteSurface.nextOpenDigest.expanded;
+  const returnLayerVisible = model.quietWriting.returnLayerVisible;
+  const nextOpenDigest = returnLayerVisible
+    ? model.noteSurface.nextOpenDigest
+    : {
+        ...model.noteSurface.nextOpenDigest,
+        expanded: false,
+      };
+  const returnLayerOpen = returnLayerVisible && nextOpenDigest.expanded;
   return {
     ...model,
+    noteSurface: {
+      ...model.noteSurface,
+      nextOpenDigest,
+    },
     quietWriting: createQuietWritingSurfaceViewModel({
       note: {
         id: model.noteSurface.noteHeader.noteId,
         title: model.noteSurface.noteHeader.title,
       },
-      nextOpenDigest: model.noteSurface.nextOpenDigest,
+      nextOpenDigest,
+      returnLayerVisible,
       returnLayerOpen,
       blocks: model.noteSurface.blocks,
       aiStatus: model.topBar.aiStatus,

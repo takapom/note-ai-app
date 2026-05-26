@@ -47,6 +47,9 @@ export interface CreateNoteSurfaceViewModelOptions {
   aiStatus?: NoteSurfaceAiStatus;
   editingBlockIds?: readonly string[];
   sourceSpanIdByBlockId?: Readonly<Record<string, string>>;
+  inlineAiProjectionsVisible?: boolean;
+  memoryCandidatesVisible?: boolean;
+  returnLayerVisible?: boolean;
   activeNoteId?: string;
   nextOpenDigest?: NextOpenDigestInput;
   expandedDigest?: boolean;
@@ -67,6 +70,7 @@ export interface NoteSurfaceViewModel {
 
 export interface QuietWritingSurfaceViewModel {
   kind: 'QuietWritingSurface';
+  returnLayerVisible: boolean;
   thinRail: ThinRailViewModel;
   writingChrome: WritingChromeViewModel;
   reEntrySurface: ReEntrySurfaceViewModel;
