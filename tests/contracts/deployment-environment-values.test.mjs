@@ -92,6 +92,9 @@ test('Worker env interfaces declare optional deployment-supplied bindings withou
   for (const key of ['TURSO', 'TURSO_CLIENT', 'AGENT_LOCAL_SQL']) {
     assert.match(entrypointEnv, new RegExp(`\\b${key}\\?:\\s*WorkerTursoClient\\b`));
   }
+  for (const key of ['TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN', 'LIBSQL_DATABASE_URL', 'LIBSQL_AUTH_TOKEN']) {
+    assert.match(entrypointEnv, new RegExp(`\\b${key}\\?:\\s*string\\b`));
+  }
 
   assert.doesNotMatch(entrypointEnv, /=\s*["'][^"']+["']/);
   assert.doesNotMatch(authBoundaryEnv, /=\s*["'][^"']+["']/);

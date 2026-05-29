@@ -12,6 +12,7 @@ import {
 } from './cloudflareNoteAgentRoutePort.ts';
 import { createMemoryPorts } from './memoryPorts.ts';
 import { createNoteModelPorts } from './noteModelPorts.ts';
+import { resolveWorkerTursoClient } from './workerTursoClientFactory.ts';
 import { readTursoClient, type WorkerTursoClient } from './workerTursoSqlExecutor.ts';
 
 export type { WorkerTursoClient } from './workerTursoSqlExecutor.ts';
@@ -28,7 +29,7 @@ export function createWorkerRuntimePorts(input: {
   env: WorkerRuntimePortEnv;
   agentLocalSql?: WorkerTursoClient;
 }): WorkerHttpRouterPorts {
-  const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
+  const tursoClient = resolveWorkerTursoClient(input.env);
   const agentLocalClient = readTursoClient(input.agentLocalSql) ?? readTursoClient(input.env.AGENT_LOCAL_SQL);
   const noteAgent = readNoteAgentNamespaceFromEnv(input.env);
   const workspaceBrainAgent = readWorkspaceBrainAgentNamespaceFromEnv(input.env);

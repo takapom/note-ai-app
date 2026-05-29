@@ -25,7 +25,13 @@ async function main() {
     if (wrangler === undefined) {
       throw new SetupFailure('worker:local --serve-only cannot use WORKER_LOCAL_URL; unset WORKER_LOCAL_URL so Wrangler can be launched.');
     }
-    const child = startWrangler({ wrangler, config: baseConfig, stdio: 'inherit' });
+    const child = startWrangler({
+      wrangler,
+      config: baseConfig,
+      stdio: 'inherit',
+      authSecret: readServeOnlyAuthSecret(),
+      vars: readServeOnlyTursoVars(),
+    });
     await waitForChildExit(child);
     return;
   }
@@ -52,6 +58,45 @@ async function main() {
       await stopChild(child);
     }
   }
+}
+
+function readServeOnlyTursoVars() {
+  const databaseUrl = readFirstOptionalStringEnv(
+    'WORKER_LOCAL_TURSO_DATABASE_URL',
+    'LOCAL_TURSO_DATABASE_URL',
+    'TURSO_DATABASE_URL',
+    'LIBSQL_DATABASE_URL',
+  );
+  const authToken = readFirstOptionalStringEnv(
+    'WORKER_LOCAL_TURSO_AUTH_TOKEN',
+    'LOCAL_TURSO_AUTH_TOKEN',
+    'TURSO_AUTH_TOKEN',
+    'LIBSQL_AUTH_TOKEN',
+  );
+  return {
+    ...(databaseUrl === undefined ? {} : { TURSO_DATABASE_URL: databaseUrl }),
+    ...(authToken === undefined ? {} : { TURSO_AUTH_TOKEN: authToken }),
+  };
+}
+
+function readServeOnlyAuthSecret() {
+  return readOptionalStringEnv('WORKER_LOCAL_AUTH_SECRET')
+    ?? readOptionalStringEnv('WORKER_SMOKE_AUTH_SECRET');
+}
+
+function readFirstOptionalStringEnv(...names) {
+  for (const name of names) {
+    const value = readOptionalStringEnv(name);
+    if (value !== undefined) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function readOptionalStringEnv(name) {
+  const value = process.env[name];
+  return value === undefined || value.trim() === '' ? undefined : value;
 }
 
 main().catch((error) => {

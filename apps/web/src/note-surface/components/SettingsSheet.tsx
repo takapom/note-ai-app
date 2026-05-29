@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import type { NoteSurfaceSettings, NoteSurfaceSettingsPatch, SettingsSheetStatus } from '../state/useNoteSurfaceFlow.ts';
+import type { NoteSurfaceSettings, NoteSurfaceSettingsPatch, SettingsSheetStatus } from '../state/noteSurfaceSettings.ts';
 
 interface SettingsSheetProps {
   open: boolean;

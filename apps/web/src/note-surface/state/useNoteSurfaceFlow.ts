@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createNoteSurfaceViewModel } from '../noteSurfacePresenter.ts';
 import type { NoteSurfaceAiStatus, NoteSurfaceViewModel } from '../viewModelTypes.ts';
-import { createDemoDigestInput, createDemoProvenanceInput, DEMO_PLACEHOLDER_TEXT } from '../demo/demoNoteSurfaceData.ts';
+import { DEMO_PLACEHOLDER_TEXT } from '../demo/demoNoteSurfaceData.ts';
 import {
-  appendBlockAfter,
   createEmptyNote,
   createInitialWorkspace,
-  createLocalDocument,
   createRecentThoughts,
   hasWritableContent,
-  mergeBlockIntoPrevious,
   NEW_NOTE_TITLE,
-  normalizeBlockInput,
   readNoteText,
   readStoredWorkspace,
   resolveActiveNote,
@@ -19,47 +14,29 @@ import {
   type LocalNote,
   type LocalNoteWorkspace,
 } from './localNoteWorkspace.ts';
+import {
+  applyLocalNoteSurfaceEditorKey,
+  localNoteSurfaceEditorSavedState,
+  resolveLocalNoteSurfaceEditorDraft,
+  saveLocalNoteSurfaceEditorDraft,
+} from './localNoteSurfaceEditorCommands.ts';
+import {
+  createLocalNoteSurfaceSettingsStatus,
+  createLocalNoteSurfaceViewModel,
+  resolveLocalNoteSurfaceFlowState,
+  type NoteSurfaceFlowState,
+} from './localNoteSurfaceFlowPresenter.ts';
+import { focusEditableBlockSoon } from './noteSurfaceFocusScheduler.ts';
+import {
+  defaultNoteSurfaceSettings,
+  readStoredSettings,
+  writeStoredSettings,
+  type NoteSurfaceSettings,
+  type NoteSurfaceSettingsPatch,
+  type SettingsSheetStatus,
+} from './noteSurfaceSettings.ts';
 
 type TimerHandle = ReturnType<typeof setTimeout>;
-
-export type NoteSurfaceFlowState = 'write' | 'writing' | 'return' | 'provenance';
-export type WritingDensitySetting = 'standard' | 'spacious';
-export type ThemeSetting = 'system' | 'light' | 'dark';
-export type MotionSetting = 'system' | 'reduced';
-export type SettingsSheetPositionSetting = 'left' | 'right';
-
-export interface NoteSurfaceSettings {
-  authoringShortcutsEnabled: boolean;
-  focusNewNoteBody: boolean;
-  digestAutoOpen: boolean;
-  memoryCandidatesVisible: boolean;
-  sourceButtonsAlwaysVisible: boolean;
-  writingDensity: WritingDensitySetting;
-  theme: ThemeSetting;
-  motion: MotionSetting;
-  settingsSheetPosition: SettingsSheetPositionSetting;
-}
-
-export type NoteSurfaceSettingsPatch = Partial<NoteSurfaceSettings>;
-
-export interface SettingsSheetStatus {
-  localDraftStatus: string;
-  digestStatus: string;
-}
-
-export const NOTE_SURFACE_SETTINGS_STORAGE_KEY = 'ai-native-note.settings.v1';
-
-export const defaultNoteSurfaceSettings: NoteSurfaceSettings = {
-  authoringShortcutsEnabled: true,
-  focusNewNoteBody: true,
-  digestAutoOpen: true,
-  memoryCandidatesVisible: false,
-  sourceButtonsAlwaysVisible: true,
-  writingDensity: 'standard',
-  theme: 'system',
-  motion: 'system',
-  settingsSheetPosition: 'right',
-};
 
 export interface EditableBlockInput {
   blockId: string;
@@ -110,17 +87,6 @@ export interface NoteSurfaceFlowController {
   onManualOrganize(): void;
 }
 
-function focusEditableBlockSoon(blockId: string | undefined): void {
-  if (blockId === undefined) {
-    return;
-  }
-  globalThis.setTimeout(() => {
-    const target = globalThis.document.querySelector<HTMLElement>(`[data-block-id="${blockId}"] [data-block-editor-content="true"]`);
-    target?.focus();
-  }, 80);
-}
-
-
 export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
   const [workspace, setWorkspace] = useState<LocalNoteWorkspace>(createInitialWorkspace);
   const [editingBlockIds, setEditingBlockIds] = useState<readonly string[]>([]);
@@ -166,21 +132,18 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
   }, [hydrated, settings]);
 
   const activeNote = useMemo(() => resolveActiveNote(workspace), [workspace]);
-  const activeNoteText = useMemo(() => readNoteText(activeNote), [activeNote]);
   const visibleRecentThoughts = useMemo(() => createRecentThoughts(workspace, searchQuery), [workspace, searchQuery]);
 
-  const model = useMemo(() => createNoteSurfaceViewModel(createLocalDocument(activeNote), {
-    workspaceName: 'ANN',
-    recentThoughts: visibleRecentThoughts,
+  const model = useMemo(() => createLocalNoteSurfaceViewModel({
+    activeNote,
     aiStatus,
     editingBlockIds,
-    sourceSpanIdByBlockId: {},
-    memoryCandidatesVisible: settings.memoryCandidatesVisible,
-    returnLayerVisible: false,
-    nextOpenDigest: digestAvailable ? createDemoDigestInput(activeNoteText) : { available: false },
+    digestAvailable,
     returnLayerOpen,
-    provenancePopover: provenanceOpen ? createDemoProvenanceInput(activeNoteText) : { open: false },
-  }), [activeNote, activeNoteText, aiStatus, digestAvailable, editingBlockIds, provenanceOpen, returnLayerOpen, settings.memoryCandidatesVisible, visibleRecentThoughts]);
+    provenanceOpen,
+    memoryCandidatesVisible: settings.memoryCandidatesVisible,
+    recentThoughts: visibleRecentThoughts,
+  }), [activeNote, aiStatus, digestAvailable, editingBlockIds, provenanceOpen, returnLayerOpen, settings.memoryCandidatesVisible, visibleRecentThoughts]);
 
   const markActiveNoteChanged = useCallback((updater: (note: LocalNote) => LocalNote) => {
     setWorkspace((current) => ({
@@ -189,58 +152,49 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     }));
   }, []);
 
-  const updateBlockText = useCallback((blockId: string, text: string, transform: boolean) => {
-    latestDraftByBlockIdRef.current.set(blockId, text);
+  const applyEditorSavedState = useCallback(() => {
+    setEditingBlockIds(localNoteSurfaceEditorSavedState.editingBlockIds);
+    setAiStatus(localNoteSurfaceEditorSavedState.aiStatus);
+    setDigestAvailable(localNoteSurfaceEditorSavedState.digestAvailable);
+    setReturnLayerOpen(localNoteSurfaceEditorSavedState.returnLayerOpen);
+    setProvenanceOpen(localNoteSurfaceEditorSavedState.provenanceOpen);
+  }, []);
+
+  const clearLocalSaveTimer = useCallback(() => {
     if (saveTimerRef.current !== undefined) {
       clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = undefined;
     }
+  }, []);
+
+  const updateBlockText = useCallback((blockId: string, text: string, transform: boolean) => {
+    latestDraftByBlockIdRef.current.set(blockId, text);
+    clearLocalSaveTimer();
     markActiveNoteChanged((note) => {
-      const nextBlocks = note.blocks.map((block) => block.id === blockId ? normalizeBlockInput(block, text, transform) : block);
-      const nextNote = { ...note, blocks: nextBlocks, updatedLabel: 'いま更新', organizedResultReady: false };
-      return {
-        ...nextNote,
-        organizedResultReady: hasWritableContent(nextNote),
-      };
+      return saveLocalNoteSurfaceEditorDraft(note, { blockId, text, transform }).note;
     });
-    setEditingBlockIds([]);
-    setAiStatus('saved');
-    setDigestAvailable(false);
-    setReturnLayerOpen(false);
-    setProvenanceOpen(false);
-  }, [markActiveNoteChanged]);
+    applyEditorSavedState();
+  }, [applyEditorSavedState, clearLocalSaveTimer, markActiveNoteChanged]);
 
   const scheduleLocalSave = useCallback((blockId: string, text: string) => {
     latestDraftByBlockIdRef.current.set(blockId, text);
-    if (saveTimerRef.current !== undefined) {
-      clearTimeout(saveTimerRef.current);
-    }
+    clearLocalSaveTimer();
     saveTimerRef.current = setTimeout(() => {
       markActiveNoteChanged((note) => {
-        const nextBlocks = note.blocks.map((block) => block.id === blockId ? normalizeBlockInput(block, text, false) : block);
-        const nextNote = { ...note, blocks: nextBlocks, updatedLabel: 'いま更新', organizedResultReady: false };
-        return {
-          ...nextNote,
-          organizedResultReady: hasWritableContent(nextNote),
-        };
+        return saveLocalNoteSurfaceEditorDraft(note, { blockId, text, transform: false }).note;
       });
-      setEditingBlockIds([]);
-      setAiStatus('saved');
-      setDigestAvailable(false);
-      setReturnLayerOpen(false);
-      setProvenanceOpen(false);
+      applyEditorSavedState();
     }, 900);
-  }, [markActiveNoteChanged]);
+  }, [applyEditorSavedState, clearLocalSaveTimer, markActiveNoteChanged]);
 
-  const flowState = resolveFlowState({
-    note: activeNote,
+  const flowState = resolveLocalNoteSurfaceFlowState({
+    activeNote,
     returnLayerOpen,
     provenanceOpen,
   });
-  const settingsStatus = useMemo(() => ({
-    localDraftStatus: hydrated ? 'ローカル保存中' : '読み込み中',
-    digestStatus: activeNote.organizedResultReady && hasWritableContent(activeNote)
-      ? '次に戻る入口があります'
-      : '整理待ちはありません',
+  const settingsStatus = useMemo(() => createLocalNoteSurfaceSettingsStatus({
+    activeNote,
+    hydrated,
   }), [activeNote, hydrated]);
 
   return {
@@ -289,39 +243,47 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
       scheduleLocalSave(input.blockId, input.text);
     },
     onEditableBlur(input) {
-      const draft = input.text.length > 0 ? input.text : (latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text);
+      const draft = resolveLocalNoteSurfaceEditorDraft({
+        text: input.text,
+        latestDraft: latestDraftByBlockIdRef.current.get(input.blockId),
+      });
       updateBlockText(input.blockId, draft, settings.authoringShortcutsEnabled);
     },
     onEditableKeyDown(input) {
-      if ((input.key === 'Backspace' || input.key === 'Delete') && !input.shiftKey && input.caretOffset === 0) {
-        const draft = latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text;
-        if (saveTimerRef.current !== undefined) {
-          clearTimeout(saveTimerRef.current);
-        }
-        const mergeResult = mergeBlockIntoPrevious(activeNote, input.blockId, draft, setWorkspace);
-        if (mergeResult !== undefined) {
-          latestDraftByBlockIdRef.current.delete(input.blockId);
-          latestDraftByBlockIdRef.current.delete(mergeResult.mergedIntoBlockId);
-          setPendingFocusBlockId(mergeResult.mergedIntoBlockId);
-          setPendingFocusOffset(mergeResult.caretOffset);
-          setEditingBlockIds([]);
-          setAiStatus('saved');
-          setDigestAvailable(false);
-          setReturnLayerOpen(false);
-          setProvenanceOpen(false);
-        }
+      const commandInput = {
+        ...input,
+        latestDraft: latestDraftByBlockIdRef.current.get(input.blockId),
+        authoringShortcutsEnabled: settings.authoringShortcutsEnabled,
+      };
+      const planned = applyLocalNoteSurfaceEditorKey(activeNote, commandInput);
+      if (planned.kind === 'none') {
         return;
       }
 
-      if (input.key !== 'Enter' || input.shiftKey) {
+      clearLocalSaveTimer();
+      markActiveNoteChanged((note) => {
+        const result = applyLocalNoteSurfaceEditorKey(note, commandInput);
+        return result.kind === 'none' ? note : result.note;
+      });
+      applyEditorSavedState();
+
+      if (planned.kind === 'merged') {
+        for (const blockId of planned.clearDraftBlockIds) {
+          latestDraftByBlockIdRef.current.delete(blockId);
+        }
+        setPendingFocusBlockId(planned.mergedIntoBlockId);
+        setPendingFocusOffset(planned.caretOffset);
         return;
       }
-      const draft = input.text.length > 0 ? input.text : (latestDraftByBlockIdRef.current.get(input.blockId) ?? input.text);
-      updateBlockText(input.blockId, draft, settings.authoringShortcutsEnabled);
-      const nextBlockId = appendBlockAfter(activeNote, input.blockId, setWorkspace);
-      setPendingFocusBlockId(nextBlockId);
+
+      const draft = resolveLocalNoteSurfaceEditorDraft({
+        text: input.text,
+        latestDraft: commandInput.latestDraft,
+      });
+      latestDraftByBlockIdRef.current.set(input.blockId, draft);
+      setPendingFocusBlockId(planned.nextBlockId);
       setPendingFocusOffset(undefined);
-      focusEditableBlockSoon(nextBlockId);
+      focusEditableBlockSoon(planned.nextBlockId);
     },
     onOpenRecentThought(noteId) {
       const target = workspace.notes.find((note) => note.id === noteId);
@@ -422,67 +384,4 @@ export function useNoteSurfaceFlow(): NoteSurfaceFlowController {
     setCommandMenuOpen(false);
     setSettingsOpen(false);
   }
-}
-
-export function readStoredSettings(): NoteSurfaceSettings | undefined {
-  try {
-    const raw = globalThis.localStorage.getItem(NOTE_SURFACE_SETTINGS_STORAGE_KEY);
-    if (raw === null) {
-      return undefined;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<NoteSurfaceSettings>;
-    return normalizeStoredSettings(parsed);
-  } catch {
-    return undefined;
-  }
-}
-
-export function writeStoredSettings(settings: NoteSurfaceSettings): void {
-  try {
-    globalThis.localStorage.setItem(NOTE_SURFACE_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Local settings are convenience preferences; writing must stay available without them.
-  }
-}
-
-function normalizeStoredSettings(candidate: Partial<NoteSurfaceSettings>): NoteSurfaceSettings {
-  return {
-    authoringShortcutsEnabled: typeof candidate.authoringShortcutsEnabled === 'boolean'
-      ? candidate.authoringShortcutsEnabled
-      : defaultNoteSurfaceSettings.authoringShortcutsEnabled,
-    focusNewNoteBody: typeof candidate.focusNewNoteBody === 'boolean'
-      ? candidate.focusNewNoteBody
-      : defaultNoteSurfaceSettings.focusNewNoteBody,
-    digestAutoOpen: typeof candidate.digestAutoOpen === 'boolean'
-      ? candidate.digestAutoOpen
-      : defaultNoteSurfaceSettings.digestAutoOpen,
-    memoryCandidatesVisible: typeof candidate.memoryCandidatesVisible === 'boolean'
-      ? candidate.memoryCandidatesVisible
-      : defaultNoteSurfaceSettings.memoryCandidatesVisible,
-    sourceButtonsAlwaysVisible: typeof candidate.sourceButtonsAlwaysVisible === 'boolean'
-      ? candidate.sourceButtonsAlwaysVisible
-      : defaultNoteSurfaceSettings.sourceButtonsAlwaysVisible,
-    writingDensity: candidate.writingDensity === 'spacious' ? 'spacious' : defaultNoteSurfaceSettings.writingDensity,
-    theme: candidate.theme === 'light' || candidate.theme === 'dark' ? candidate.theme : defaultNoteSurfaceSettings.theme,
-    motion: candidate.motion === 'reduced' ? 'reduced' : defaultNoteSurfaceSettings.motion,
-    settingsSheetPosition: candidate.settingsSheetPosition === 'left' ? 'left' : defaultNoteSurfaceSettings.settingsSheetPosition,
-  };
-}
-
-function resolveFlowState(input: {
-  note: LocalNote;
-  returnLayerOpen: boolean;
-  provenanceOpen: boolean;
-}): NoteSurfaceFlowState {
-  if (input.provenanceOpen) {
-    return 'provenance';
-  }
-  if (input.returnLayerOpen) {
-    return 'return';
-  }
-  if (hasWritableContent(input.note)) {
-    return 'writing';
-  }
-  return 'write';
 }

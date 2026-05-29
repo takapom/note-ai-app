@@ -54,6 +54,7 @@
 - `docs/records/ADR/ADR-0003-block-section-document-model.md`
 - `docs/records/ADR/ADR-0004-bounded-context-map.md`
 - `docs/records/MVP-acceptance-gap-review-2026-05-18.md`
+- `docs/records/MVP-acceptance-review-2026-05-28.md`
 - `docs/records/README.md`
 - `docs/records/backend-architecture-refactor-plan-2026-05-20.md`
 - `docs/records/backend-ddd-hardening-issues-2026-05-19.md`

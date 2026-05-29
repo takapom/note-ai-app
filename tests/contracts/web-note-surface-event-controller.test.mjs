@@ -353,8 +353,13 @@ test('event controller converts transport exceptions into transport errors', asy
 });
 
 test('event controller source stays dependency-free and does not own runtime or mutation behavior', async () => {
-  const source = await readFile(new URL('../../apps/web/src/noteSurfaceEventController.ts', import.meta.url), 'utf8');
+  const facadeSource = await readFile(new URL('../../apps/web/src/noteSurfaceEventController.ts', import.meta.url), 'utf8');
+  const source = await readFile(
+    new URL('../../apps/web/src/runtime/actions/noteSurfaceEventController.ts', import.meta.url),
+    'utf8',
+  );
 
+  assert.match(facadeSource, /export \* from '\.\/runtime\/actions\/noteSurfaceEventController\.ts'/);
   assert.match(source, /export function createNoteSurfaceEventController/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);

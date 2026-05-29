@@ -4,6 +4,7 @@ import { TursoOperationAuditExecutor } from '../../ai-operations/tursoOperationA
 import type { StructureJobProcessorFlowInput } from '../../ai-operations/structure-job/structureJobProcessorFlow.ts';
 import { createAgentLocalPorts } from './agentLocalPorts.ts';
 import { createContextAssemblyPorts } from './contextAssemblyPorts.ts';
+import { resolveWorkerTursoClient } from './workerTursoClientFactory.ts';
 import { readTursoClient } from './workerTursoSqlExecutor.ts';
 import type { WorkerRuntimePortEnv } from './workerRuntimePortEnv.ts';
 
@@ -21,7 +22,7 @@ export function createWorkspaceBrainStructureJobProcessorOptions(input: {
   agentLocalSql?: unknown;
   now: number;
 }): WorkerWorkspaceBrainProcessorOptionsResult {
-  const tursoClient = readTursoClient(input.env.TURSO) ?? readTursoClient(input.env.TURSO_CLIENT);
+  const tursoClient = resolveWorkerTursoClient(input.env);
   const agentLocalClient = readTursoClient(input.agentLocalSql) ?? readTursoClient(input.env.AGENT_LOCAL_SQL);
   const providerRegistry = readProviderRegistry(input.env.WORKSPACE_BRAIN_OPERATION_PROVIDER_REGISTRY);
   const snapshot = readOperationRouterSnapshot(input.env.WORKSPACE_BRAIN_OPERATION_ROUTER_SNAPSHOT);

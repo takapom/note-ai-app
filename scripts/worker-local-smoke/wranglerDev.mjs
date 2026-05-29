@@ -51,7 +51,7 @@ export async function requireWrangler() {
   return command;
 }
 
-export function startWrangler({ wrangler, config, stdio, authSecret }) {
+export function startWrangler({ wrangler, config, stdio, authSecret, vars }) {
   const args = [
     'dev',
     '--port',
@@ -63,6 +63,9 @@ export function startWrangler({ wrangler, config, stdio, authSecret }) {
   ];
   if (authSecret !== undefined) {
     args.push('--var', `WORKER_AUTH_SHARED_SECRET:${authSecret}`);
+  }
+  for (const [name, value] of Object.entries(vars ?? {})) {
+    args.push('--var', `${name}:${value}`);
   }
   const child = spawn(wrangler, args, {
     cwd: process.cwd(),

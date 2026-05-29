@@ -20,6 +20,7 @@ architecture、bounded context、document model、scheduler、AI operation、run
 | Record | 主題 | 関連する active contracts |
 | --- | --- | --- |
 | `MVP-acceptance-gap-review-2026-05-18.md` | MVP acceptance の gap review と issue draft | `docs/contracts/mvp-acceptance.md`, `docs/contracts/mvp-scope.md`, `docs/contracts/verification-lanes.md` |
+| `MVP-acceptance-review-2026-05-28.md` | MVP acceptance 17 項目の current review と traceability gap | `docs/contracts/mvp-acceptance.md`, `docs/contracts/superset-codex-workflow.md`, `docs/contracts/verification-lanes.md` |
 | `backend-ddd-hardening-issues-2026-05-19.md` | backend runtime / persistence / Agent queue hardening issue drafts | `docs/contracts/backend-runtime.md`, `docs/contracts/repository-topology.md`, `docs/contracts/cloudflare-agents-turso.md`, `docs/contracts/data-model.md`, `docs/contracts/api-events.md`, `docs/contracts/verification-lanes.md` |
 | `backend-readiness-review-2026-05-19.md` | backend readiness completion evidence | `docs/contracts/backend-runtime.md`, `docs/contracts/cloudflare-agents-turso.md`, `docs/contracts/repository-topology.md` |
 | `local-cloudworker-agents-issues-2026-05-19.md` | local Cloudflare Worker / Durable Object Agents smoke and issue drafts | `docs/contracts/backend-runtime.md`, `docs/contracts/cloudflare-agents-turso.md`, `docs/contracts/verification-lanes.md` |

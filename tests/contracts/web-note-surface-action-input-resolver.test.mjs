@@ -312,11 +312,16 @@ test('action input resolver integrates with the event controller without owning 
 });
 
 test('action input resolver source stays dependency-free and does not own backend actions', async () => {
-  const source = await readFile(
+  const facadeSource = await readFile(
     new URL('../../apps/web/src/noteSurfaceActionInputResolver.ts', import.meta.url),
     'utf8',
   );
+  const source = await readFile(
+    new URL('../../apps/web/src/runtime/actions/noteSurfaceActionInputResolver.ts', import.meta.url),
+    'utf8',
+  );
 
+  assert.match(facadeSource, /export \* from '\.\/runtime\/actions\/noteSurfaceActionInputResolver\.ts'/);
   assert.match(source, /export function createNoteSurfaceActionInputResolver/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);
