@@ -42,6 +42,11 @@ export interface RecentThoughtInput {
   active?: boolean;
 }
 
+export interface ThinRailNoteLibraryStatusInput {
+  state: 'empty' | 'failed' | 'invalid';
+  label: string;
+}
+
 export interface CreateNoteSurfaceViewModelOptions {
   workspaceName?: string;
   aiStatus?: NoteSurfaceAiStatus;
@@ -55,6 +60,7 @@ export interface CreateNoteSurfaceViewModelOptions {
   expandedDigest?: boolean;
   returnLayerOpen?: boolean;
   recentThoughts?: readonly RecentThoughtInput[];
+  noteLibraryStatus?: ThinRailNoteLibraryStatusInput;
   provenancePopover?: ProvenancePopoverInput;
   organizationLayer?: OrganizationLayerInput;
 }
@@ -82,6 +88,7 @@ export interface ThinRailViewModel {
   kind: 'ThinRail';
   workspaceName: string;
   recentThoughts: readonly RecentThoughtViewModel[];
+  noteLibraryStatus?: ThinRailNoteLibraryStatusInput;
 }
 
 export interface RecentThoughtViewModel {

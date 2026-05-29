@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import { NoteDocumentBlockCommandPort } from '../../apps/worker/src/note-model/noteBlockCommandPort.ts';
 import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
+import { InMemoryNoteListPort } from '../../apps/worker/src/note-model/noteListPort.ts';
 import { createWorkerFetchHandler } from '../../apps/worker/src/runtime/http/workerEntrypoint.ts';
 import { noteDocumentFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
@@ -34,6 +35,7 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
 
   const initialDocument = structuredClone(noteDocumentFixture);
   const persistence = new InMemoryNoteDocumentPersistencePort([initialDocument]);
+  const noteList = new InMemoryNoteListPort([initialDocument]);
   const noteBlocks = new NoteDocumentBlockCommandPort(persistence);
   const boundNoteBlocks = {
     createBlock(input) {
@@ -60,6 +62,7 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
 
       return {
         noteDocument: persistence,
+        noteList,
         noteBlocks: boundNoteBlocks,
         noteStructureRoute: {
           async runNoteStructureRoute(input) {
@@ -106,10 +109,12 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
   assert.match(rootElement.innerHTML, /The MVP should protect writing flow before adding integrations\./);
   assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes'],
     ['GET', 'https://worker.example.test/notes/note_001/digest'],
   ]);
   assert.deepEqual(workerRequests.map((request) => [request.method, request.path]), [
     ['GET', '/notes/note_001'],
+    ['GET', '/notes'],
     ['GET', '/notes/note_001/digest'],
   ]);
 
@@ -130,6 +135,7 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
 
   assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes'],
     ['GET', 'https://worker.example.test/notes/note_001/digest'],
     ['PATCH', 'https://worker.example.test/blocks/block_paragraph_001'],
   ]);
@@ -164,6 +170,7 @@ test('hosted note surface static artifact reaches Worker endpoint for initial lo
 
   assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes'],
     ['GET', 'https://worker.example.test/notes/note_001/digest'],
     ['PATCH', 'https://worker.example.test/blocks/block_paragraph_001'],
     ['POST', 'https://worker.example.test/notes/note_001/structure/manual'],
@@ -241,6 +248,7 @@ test('hosted note surface uses Worker env bindings for canonical and Agent-local
 
   assert.deepEqual(fetchCalls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/notes/note_001'],
+    ['GET', 'https://worker.example.test/notes'],
     ['GET', 'https://worker.example.test/notes/note_001/digest'],
     ['PATCH', 'https://worker.example.test/blocks/block_paragraph_001'],
   ]);

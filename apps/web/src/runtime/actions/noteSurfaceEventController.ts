@@ -17,6 +17,7 @@ import type { NoteSurfaceHtmlRenderEventDescriptor } from '../../noteSurfaceHtml
 
 export type NoteSurfaceEventControllerApiIntent =
   | NoteSurfaceHtmlRenderEventDescriptor['apiIntent']
+  | 'GET /notes/:noteId'
   | 'POST /notes/:noteId/blocks'
   | 'PATCH /blocks/:blockId'
   | 'DELETE /blocks/:blockId'
@@ -302,6 +303,20 @@ function createApiIntentInput(
           intent,
           noteId,
           blockId,
+        },
+      };
+    }
+    case 'note.read': {
+      const noteId = requireResolvedString(resolved, 'noteId', apiIntent, errors);
+      if (noteId === undefined) {
+        return { ok: false, errors };
+      }
+      return {
+        ok: true,
+        value: {
+          ...base,
+          intent,
+          noteId,
         },
       };
     }

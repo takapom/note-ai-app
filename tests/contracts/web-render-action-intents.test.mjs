@@ -10,6 +10,7 @@ import {
   isMemoryEditApiIntent,
   isMemoryReviewApiIntent,
   isNoteLifecycleApiIntent,
+  isNoteReadApiIntent,
   isProvenanceLookupApiIntent,
   matchesRenderApiIntentKind,
   resolveRenderApiIntentKind,
@@ -20,6 +21,7 @@ test('render action intents resolve canonical and Worker route aliases to produc
   assert.equal(resolveRenderApiIntentKind('POST /ai-operations/:operationId/dismiss'), 'ai_assist.dismiss');
   assert.equal(resolveRenderApiIntentKind('POST /memory/:memoryId/hold'), 'memory.snooze');
   assert.equal(resolveRenderApiIntentKind('PATCH /blocks/:blockId'), 'block.update');
+  assert.equal(resolveRenderApiIntentKind('GET /notes/:noteId'), 'note.read');
   assert.equal(resolveRenderApiIntentKind('POST /notes/:noteId/structure/manual'), 'note.manual_structure');
   assert.equal(resolveRenderApiIntentKind('POST /external/action'), undefined);
 });
@@ -30,6 +32,7 @@ test('render action intents keep caller predicates at product intent granularity
   assert.equal(isMemoryEditApiIntent('POST /memory/:memoryId/edit'), true);
   assert.equal(isMemoryReviewApiIntent('POST /memory/:memoryId/delete'), true);
   assert.equal(isBlockUpdateApiIntent('PATCH /blocks/:blockId'), true);
+  assert.equal(isNoteReadApiIntent('GET /notes/:noteId'), true);
   assert.equal(isDigestReadApiIntent('GET /notes/:noteId/digest'), true);
   assert.equal(isNoteLifecycleApiIntent('note.manual_structure'), true);
   assert.equal(isProvenanceLookupApiIntent('POST /provenance/source'), true);

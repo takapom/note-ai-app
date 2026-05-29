@@ -11,6 +11,19 @@ const metadata = {
   noteId: 'note_001',
 };
 
+function createNoteListBody(noteId) {
+  return {
+    ok: true,
+    notes: [{
+      noteId,
+      title: noteDocumentFixture.note.title,
+      descriptionEffective: noteDocumentFixture.note.descriptionEffective,
+      createdAt: noteDocumentFixture.note.createdAt,
+      updatedAt: noteDocumentFixture.note.updatedAt,
+    }],
+  };
+}
+
 test('browser note surface mount resolves root and fetch then delegates snapshot and digest mounting', async () => {
   const root = createFakeRoot();
   const calls = [];
@@ -25,6 +38,11 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
         body: {
           document: structuredClone(noteDocumentFixture),
         },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: createNoteListBody('note_001'),
       },
       {
         ok: true,
@@ -67,6 +85,7 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
   assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
   ]);
 
@@ -76,9 +95,10 @@ test('browser note surface mount resolves root and fetch then delegates snapshot
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 3);
+  await waitFor(() => calls.length === 4);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_from_browser_mount/dismiss'],
   ]);
@@ -119,6 +139,11 @@ test('browser note surface mount reads deployment metadata from the root dataset
       {
         ok: true,
         status: 200,
+        body: createNoteListBody('note_from_dataset'),
+      },
+      {
+        ok: true,
+        status: 200,
         body: {
           ok: true,
           result: {
@@ -142,6 +167,7 @@ test('browser note surface mount reads deployment metadata from the root dataset
   assert.match(root.innerHTML, /Dataset digest is visible\./);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset/digest'],
   ]);
 
@@ -151,9 +177,10 @@ test('browser note surface mount reads deployment metadata from the root dataset
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 3);
+  await waitFor(() => calls.length === 4);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_from_dataset/digest'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_from_dataset/dismiss'],
   ]);
@@ -185,6 +212,11 @@ test('browser note surface mount explicit options override root dataset metadata
         body: {
           document: structuredClone(noteDocumentFixture),
         },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: createNoteListBody('note_from_options'),
       },
       {
         ok: true,
@@ -225,6 +257,7 @@ test('browser note surface mount explicit options override root dataset metadata
   assert.doesNotMatch(root.innerHTML, /Dataset Workspace/);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_options'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_from_options/digest'],
   ]);
 
@@ -234,9 +267,10 @@ test('browser note surface mount explicit options override root dataset metadata
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 3);
+  await waitFor(() => calls.length === 4);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_from_options'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_from_options/digest'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_from_options/dismiss'],
   ]);

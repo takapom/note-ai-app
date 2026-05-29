@@ -16,6 +16,12 @@ export function renderThinRail(rail: NoteSurfaceViewModel['quietWriting']['thinR
     '</button>',
     '</li>',
   ].join('')).join('');
+  const status = rail.noteLibraryStatus === undefined
+    ? ''
+    : `<p class="ann-thin-rail__status" data-note-library-state="${escapeAttribute(rail.noteLibraryStatus.state)}" role="status">${escapeHtml(rail.noteLibraryStatus.label)}</p>`;
+  const empty = rail.recentThoughts.length === 0
+    ? '<li class="ann-thin-rail__empty">メモはまだありません</li>'
+    : '';
 
   return [
     '<aside class="ann-thin-rail" data-region="thinRail" aria-label="最近の思考">',
@@ -23,7 +29,8 @@ export function renderThinRail(rail: NoteSurfaceViewModel['quietWriting']['thinR
     '<div class="ann-thin-rail__mark" aria-hidden="true">ANN</div>',
     '<nav class="ann-thin-rail__nav">',
     '<p class="ann-thin-rail__label">最近</p>',
-    `<ul class="ann-thin-rail__list">${thoughts}</ul>`,
+    status,
+    `<ul class="ann-thin-rail__list">${thoughts}${empty}</ul>`,
     '</nav>',
     '<div class="ann-thin-rail__tools" aria-label="ツール">',
     '<button type="button" class="ann-icon-button" data-action="open_search" data-target="thin_rail" aria-label="検索"><span class="ann-icon-button__glyph" aria-hidden="true">⌕</span></button>',

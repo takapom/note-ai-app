@@ -37,6 +37,15 @@ export function ThinRail({
       <div className="ann-thin-rail__mark" aria-hidden="true">ANN</div>
       <nav className="ann-thin-rail__nav">
         <p className="ann-thin-rail__label">最近</p>
+        {rail.noteLibraryStatus === undefined ? null : (
+          <p
+            className="ann-thin-rail__status"
+            data-note-library-state={rail.noteLibraryStatus.state}
+            role="status"
+          >
+            {rail.noteLibraryStatus.label}
+          </p>
+        )}
         {searchOpen ? (
           <label className="ann-thin-rail__search">
             <span className="ann-visually-hidden">メモを検索</span>

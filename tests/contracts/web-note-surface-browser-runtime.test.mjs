@@ -240,6 +240,67 @@ test('browser runtime sends manual organize actions then reads backend digest pr
   ]);
 });
 
+test('browser runtime reopens note snapshots from the note library rail', async () => {
+  const calls = [];
+  const host = createHost();
+  const reopenedDocument = createReopenedDocument();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Research direction',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    }),
+    eventController: createController(calls, undefined, (url) => {
+      if (url.endsWith('/notes/note_002')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            document: reopenedDocument,
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        body: { handled: true },
+      };
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const reopenEvent = host.events.find((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.noteId === 'note_002'
+  ));
+  assert.ok(reopenEvent);
+
+  const result = await host.handler(reopenEvent);
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-surface="single-note" data-note-id="note_002"/);
+  assert.match(host.html, /Reopened note/);
+  assert.match(host.html, /This note was loaded through the note library\./);
+  assert.match(host.html, /data-note-id="note_002" aria-current="true"/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['GET', 'https://worker.example.test/api/notes/note_002'],
+  ]);
+});
+
 test('browser runtime marks manual organize failures without inventing a digest', async () => {
   const host = createHost();
   const runtime = createNoteSurfaceBrowserRuntime({
@@ -1035,6 +1096,9 @@ function createController(calls, beforeFetch, responseFor) {
       if (event.target === 'next_open_digest') {
         return { noteId: 'note_001' };
       }
+      if (event.target === 'thin_rail') {
+        return { noteId: event.noteId };
+      }
       if (event.target === 'writing_chrome') {
         return { noteId: event.noteId ?? 'note_001' };
       }
@@ -1109,5 +1173,32 @@ function createMemoryCandidateDocument() {
     },
   ];
 
+  return document;
+}
+
+function createReopenedDocument() {
+  const document = structuredClone(noteDocumentFixture);
+  document.note = {
+    ...document.note,
+    id: 'note_002',
+    title: 'Reopened note',
+    descriptionEffective: 'Loaded from the backend note list.',
+  };
+  document.sections = document.sections.map((section) => ({
+    ...section,
+    noteId: 'note_002',
+  }));
+  document.blocks = document.blocks
+    .filter((block) => block.origin === 'user')
+    .map((block) => ({
+      ...block,
+      noteId: 'note_002',
+      plainText: block.id === 'block_paragraph_001'
+        ? 'This note was loaded through the note library.'
+        : block.plainText,
+      contentJson: block.id === 'block_paragraph_001'
+        ? { text: 'This note was loaded through the note library.' }
+        : block.contentJson,
+    }));
   return document;
 }

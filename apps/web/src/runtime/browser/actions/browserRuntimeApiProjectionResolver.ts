@@ -1,4 +1,7 @@
-import { parseNextOpenDigestInput } from '../../../noteSurface.ts';
+import {
+  parseNextOpenDigestInput,
+  validateNoteSurfaceDocument,
+} from '../../../noteSurface.ts';
 import type { NoteSurfaceEventControllerResult } from '../../../noteSurfaceEventController.ts';
 import {
   readNoteSurfaceRenderActionDescriptor,
@@ -10,6 +13,7 @@ import {
   isDigestReadApiIntent,
   isMemoryEditApiIntent,
   isMemoryReviewApiIntent,
+  isNoteReadApiIntent,
   isProvenanceLookupApiIntent,
 } from '../../actions/renderActionIntents.ts';
 import { readString } from '../browserRuntimeDescriptor.ts';
@@ -17,7 +21,10 @@ import {
   readMemoryProjection,
   readProvenanceProjection,
 } from '../browserRuntimePayload.ts';
-import type { SuccessfulApiProjectionAction } from './browserRuntimeActionTypes.ts';
+import type {
+  NoteSurfaceDocumentInput,
+  SuccessfulApiProjectionAction,
+} from './browserRuntimeActionTypes.ts';
 
 export function resolveSuccessfulApiProjectionAction(
   eventDescriptor: unknown,
@@ -40,6 +47,20 @@ export function resolveSuccessfulApiProjectionAction(
   }
 
   const body = controllerResult.transportResult?.body;
+
+  if (
+    action === 'open_recent_thought'
+    && target === 'thin_rail'
+    && isNoteReadApiIntent(apiIntent)
+  ) {
+    const noteId = descriptor.noteId;
+    const document = readNoteDocumentProjection(body);
+    if (noteId === undefined || document === undefined) {
+      return undefined;
+    }
+
+    return { action, target, noteId, document };
+  }
 
   if (
     action === 'read_digest'
@@ -101,6 +122,19 @@ export function resolveSuccessfulApiProjectionAction(
   }
 
   return undefined;
+}
+
+function readNoteDocumentProjection(body: unknown): NoteSurfaceDocumentInput | undefined {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return undefined;
+  }
+
+  const document = (body as { document?: unknown }).document;
+  if (validateNoteSurfaceDocument(document).length > 0) {
+    return undefined;
+  }
+
+  return document as NoteSurfaceDocumentInput;
 }
 
 export function resolveDigestReadFailureProjectionAction(

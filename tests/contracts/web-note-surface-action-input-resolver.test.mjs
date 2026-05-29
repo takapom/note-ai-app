@@ -118,6 +118,12 @@ test('action input resolver returns note lifecycle ids with event note id before
   });
 
   assert.deepEqual(resolveActionInput({
+    action: 'open_recent_thought',
+    target: 'thin_rail',
+    noteId: 'note_event_000',
+    apiIntent: 'GET /notes/:noteId',
+  }), { noteId: 'note_event_000' });
+  assert.deepEqual(resolveActionInput({
     action: 'read_digest',
     target: 'next_open_digest',
     noteId: 'note_event_001',
@@ -272,6 +278,12 @@ test('action input resolver integrates with the event controller without owning 
       apiIntent: 'POST /memory/:memoryId/edit',
     },
     {
+      action: 'open_recent_thought',
+      target: 'thin_rail',
+      noteId: 'note_recent_001',
+      apiIntent: 'GET /notes/:noteId',
+    },
+    {
       action: 'read_digest',
       target: 'next_open_digest',
       apiIntent: 'GET /notes/:noteId/digest',
@@ -300,6 +312,7 @@ test('action input resolver integrates with the event controller without owning 
     }],
     ['POST', '/ai-operations/operation_001/accept', undefined],
     ['POST', '/memory/memory_001/edit', { content: 'Remember the source-backed editor preference.' }],
+    ['GET', '/notes/note_recent_001', undefined],
     ['GET', '/notes/note_active_001/digest', undefined],
     ['POST', '/notes/note_active_001/structure/manual', undefined],
     ['POST', '/provenance/source', {

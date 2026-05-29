@@ -11,6 +11,17 @@ const metadata = {
   noteId: 'note_001',
 };
 
+const noteListResponse = {
+  ok: true,
+  notes: [{
+    noteId: noteDocumentFixture.note.id,
+    title: noteDocumentFixture.note.title,
+    descriptionEffective: noteDocumentFixture.note.descriptionEffective,
+    createdAt: noteDocumentFixture.note.createdAt,
+    updatedAt: noteDocumentFixture.note.updatedAt,
+  }],
+};
+
 test('HTTP product app loads the snapshot then mounts and dispatches clicks through caller supplied transport', async () => {
   const root = createFakeRoot();
   const calls = [];
@@ -41,6 +52,7 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
   assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
   ]);
 
   root.click(createActionElement({
@@ -49,9 +61,10 @@ test('HTTP product app loads the snapshot then mounts and dispatches clicks thro
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 2);
+  await waitFor(() => calls.length === 3);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_001/dismiss'],
   ]);
 });
@@ -131,9 +144,10 @@ test('HTTP product app passes caller supplied view state and projection maps thr
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 2);
+  await waitFor(() => calls.length === 3);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/dismiss'],
   ]);
 });
@@ -166,6 +180,9 @@ function createFetchLike(calls, snapshotResponse) {
       ok: true,
       status: 200,
       async json() {
+        if (init.method === 'GET' && url.endsWith('/notes')) {
+          return noteListResponse;
+        }
         if (init.method === 'GET') {
           return snapshotResponse;
         }

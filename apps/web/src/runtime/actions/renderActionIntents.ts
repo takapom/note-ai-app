@@ -11,6 +11,7 @@ const renderApiIntentAliases: Readonly<Record<string, NoteSurfaceApiIntentKind>>
   'POST /notes/:noteId/blocks': 'block.create',
   'PATCH /blocks/:blockId': 'block.update',
   'DELETE /blocks/:blockId': 'block.delete',
+  'GET /notes/:noteId': 'note.read',
   'POST /notes/:noteId/leave': 'note.leave',
   'POST /notes/:noteId/structure/manual': 'note.manual_structure',
   'GET /notes/:noteId/digest': 'digest.read',
@@ -25,6 +26,7 @@ const renderApiIntentAliases: Readonly<Record<string, NoteSurfaceApiIntentKind>>
   'block.create': 'block.create',
   'block.update': 'block.update',
   'block.delete': 'block.delete',
+  'note.read': 'note.read',
   'note.leave': 'note.leave',
   'note.manual_structure': 'note.manual_structure',
   'digest.read': 'digest.read',
@@ -74,6 +76,10 @@ export function isBlockUpdateApiIntent(apiIntent: string): boolean {
 
 export function isDigestReadApiIntent(apiIntent: string): boolean {
   return matchesRenderApiIntentKind(apiIntent, 'digest.read');
+}
+
+export function isNoteReadApiIntent(apiIntent: string): boolean {
+  return matchesRenderApiIntentKind(apiIntent, 'note.read');
 }
 
 export function isNoteLifecycleApiIntent(apiIntent: string): boolean {

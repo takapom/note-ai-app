@@ -5,6 +5,28 @@ import test from 'node:test';
 import { createNoteSurfaceHttpDigestProductProvider } from '../../apps/web/src/noteSurfaceHttpDigestProductProvider.ts';
 import { noteDocumentFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
+const noteListResponse = {
+  ok: true,
+  status: 200,
+  body: {
+    ok: true,
+    notes: [{
+      noteId: noteDocumentFixture.note.id,
+      title: noteDocumentFixture.note.title,
+      descriptionEffective: noteDocumentFixture.note.descriptionEffective,
+      createdAt: noteDocumentFixture.note.createdAt,
+      updatedAt: noteDocumentFixture.note.updatedAt,
+    }],
+  },
+};
+
+const expectedRecentThoughts = [{
+  id: noteDocumentFixture.note.id,
+  title: noteDocumentFixture.note.title,
+  updatedLabel: '2025-11-24 更新',
+  active: true,
+}];
+
 test('HTTP digest product provider merges unavailable digest projection into product view state', async () => {
   const calls = [];
   const provider = createNoteSurfaceHttpDigestProductProvider({
@@ -40,13 +62,15 @@ test('HTTP digest product provider merges unavailable digest projection into pro
 
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
   ]);
-  assert.deepEqual(calls[1].init.headers, {
+  assert.deepEqual(calls[2].init.headers, {
     'X-Workspace-Id': 'workspace_001',
     'X-User-Id': 'user_001',
   });
   assert.deepEqual(snapshot.viewState, {
+    recentThoughts: expectedRecentThoughts,
     workspaceName: 'Research Workspace',
     nextOpenDigest: {
       available: false,
@@ -121,6 +145,7 @@ test('HTTP digest product provider copies only plain digest arrays from wrapped 
   assert.deepEqual(snapshot, {
     document: noteDocumentFixture,
     viewState: {
+      recentThoughts: expectedRecentThoughts,
       nextOpenDigest: {
         available: true,
         loadState: 'provided',
@@ -166,8 +191,10 @@ test('HTTP digest product provider skips digest GET when base snapshot already h
 
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
   ]);
   assert.deepEqual(snapshot.viewState, {
+    recentThoughts: expectedRecentThoughts,
     workspaceName: 'Embedded Workspace',
     nextOpenDigest: {
       available: true,
@@ -234,6 +261,7 @@ test('HTTP digest product provider preserves digest load failures without invent
     const snapshot = await provider.loadInitialState();
 
     assert.deepEqual(snapshot.viewState, {
+      recentThoughts: expectedRecentThoughts,
       nextOpenDigest: failureCase.expected,
     });
   }
@@ -269,6 +297,7 @@ test('HTTP digest product provider treats malformed digest items as invalid body
   const snapshot = await provider.loadInitialState();
 
   assert.deepEqual(snapshot.viewState, {
+    recentThoughts: expectedRecentThoughts,
     nextOpenDigest: {
       available: false,
       loadState: 'invalid_body',
@@ -330,7 +359,7 @@ test('HTTP digest product provider source stays framework-neutral and limited to
 function createFetchLike(calls, responses) {
   return async (url, init) => {
     calls.push({ url, init });
-    const response = responses.shift();
+    const response = url.endsWith('/notes') ? noteListResponse : responses.shift();
     assert.ok(response, `unexpected request: ${init.method} ${url}`);
     return {
       ok: response.ok,

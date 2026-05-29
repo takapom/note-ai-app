@@ -5,6 +5,24 @@ import test from 'node:test';
 import { createNoteSurfaceHttpProductProvider } from '../../apps/web/src/noteSurfaceHttpProductProvider.ts';
 import { noteDocumentFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 
+const noteListBody = {
+  ok: true,
+  notes: [{
+    noteId: noteDocumentFixture.note.id,
+    title: noteDocumentFixture.note.title,
+    descriptionEffective: noteDocumentFixture.note.descriptionEffective,
+    createdAt: noteDocumentFixture.note.createdAt,
+    updatedAt: noteDocumentFixture.note.updatedAt,
+  }],
+};
+
+const expectedRecentThoughts = [{
+  id: noteDocumentFixture.note.id,
+  title: noteDocumentFixture.note.title,
+  updatedLabel: '2025-11-24 更新',
+  active: true,
+}];
+
 test('HTTP product provider loads the initial note snapshot through GET note document boundary', async () => {
   const calls = [];
   const provider = createNoteSurfaceHttpProductProvider({
@@ -44,10 +62,21 @@ test('HTTP product provider loads the initial note snapshot through GET note doc
         },
       },
     },
+    {
+      url: 'https://worker.example.test/api/notes',
+      init: {
+        method: 'GET',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+        },
+      },
+    },
   ]);
   assert.deepEqual(snapshot, {
     document: noteDocumentFixture,
     viewState: {
+      recentThoughts: expectedRecentThoughts,
       workspaceName: 'Research Workspace',
       expandedDigest: true,
     },
@@ -93,6 +122,7 @@ test('HTTP product provider copies optional product snapshot fields from the not
   assert.deepEqual(snapshot, {
     document: noteDocumentFixture,
     viewState: {
+      recentThoughts: expectedRecentThoughts,
       workspaceName: 'Worker Workspace',
       aiStatus: 'saved',
       expandedDigest: false,
@@ -146,6 +176,7 @@ test('HTTP product provider lets caller supplied product snapshot fields overrid
   const snapshot = await provider.loadInitialState();
 
   assert.deepEqual(snapshot.viewState, {
+    recentThoughts: expectedRecentThoughts,
     workspaceName: 'Embedded Workspace',
     expandedDigest: true,
   });
@@ -155,6 +186,37 @@ test('HTTP product provider lets caller supplied product snapshot fields overrid
       block_ai_question_001: 'operation_from_embedding',
     },
   });
+});
+
+test('HTTP product provider keeps the note snapshot loadable when the note library read fails', async () => {
+  const provider = createNoteSurfaceHttpProductProvider({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike([], {
+      ok: true,
+      status: 200,
+      body: {
+        document: structuredClone(noteDocumentFixture),
+      },
+    }, {
+      ok: false,
+      status: 503,
+      body: {
+        errors: ['note list unavailable'],
+      },
+    }),
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+  });
+
+  const snapshot = await provider.loadInitialState();
+
+  assert.deepEqual(snapshot.viewState, {
+    noteLibraryStatus: {
+      state: 'failed',
+      label: 'メモ一覧を読み込めませんでした',
+    },
+  });
+  assert.equal(snapshot.document.note.id, 'note_001');
 });
 
 test('HTTP product provider rejects invalid optional product snapshot fields as structured errors', async () => {
@@ -293,7 +355,7 @@ test('HTTP product provider rejects missing document in the base response as str
   );
 });
 
-test('HTTP product provider source stays framework-neutral and limited to the initial note snapshot boundary', async () => {
+test('HTTP product provider source stays framework-neutral and limited to read-only note snapshot and library boundaries', async () => {
   const source = await readFile(
     new URL('../../apps/web/src/noteSurfaceHttpProductProvider.ts', import.meta.url),
     'utf8',
@@ -302,6 +364,7 @@ test('HTTP product provider source stays framework-neutral and limited to the in
   assert.match(source, /export function createNoteSurfaceHttpProductProvider/);
   assert.match(source, /createNoteSurfaceApiClient/);
   assert.match(source, /apiClient\.getNote\(\{ noteId: options\.noteId \}\)/);
+  assert.match(source, /apiClient\.listNotes\(\)/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*apps\/worker/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*generated/);
   assert.doesNotMatch(source, /from\s+['"][^'"]*(ai-sdk|openai|anthropic|google|mistral|cohere)/i);
@@ -314,14 +377,21 @@ test('HTTP product provider source stays framework-neutral and limited to the in
   assert.doesNotMatch(source, /encodeURIComponent/);
 });
 
-function createFetchLike(calls, response) {
+function createFetchLike(calls, response, listResponse = {
+  ok: true,
+  status: 200,
+  body: noteListBody,
+}) {
   return async (url, init) => {
     calls.push({ url, init });
+    const resolvedResponse = url.endsWith('/notes')
+      ? listResponse
+      : response;
     return {
-      ok: response.ok,
-      status: response.status,
+      ok: resolvedResponse.ok,
+      status: resolvedResponse.status,
       async json() {
-        return response.body;
+        return resolvedResponse.body;
       },
     };
   };

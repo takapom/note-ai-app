@@ -1,4 +1,10 @@
-import type { NextOpenDigestInput, ProvenancePopoverInput } from '../../../noteSurface.ts';
+import type {
+  createNoteSurfaceViewModel,
+  NextOpenDigestInput,
+  ProvenancePopoverInput,
+} from '../../../noteSurface.ts';
+
+export type NoteSurfaceDocumentInput = Parameters<typeof createNoteSurfaceViewModel>[0];
 
 export type LocalProjectionAction =
   | { action: 'expand_digest' | 'collapse_digest'; target: 'next_open_digest' }
@@ -11,6 +17,7 @@ export type LocalProjectionAction =
 
 export type SuccessfulApiProjectionAction =
   | LocalProjectionAction
+  | { action: 'open_recent_thought'; target: 'thin_rail'; noteId: string; document: NoteSurfaceDocumentInput }
   | { action: 'read_digest'; target: 'next_open_digest'; digest: NextOpenDigestInput }
   | { action: 'lookup_provenance'; target: 'provenance_popover'; provenance: ProvenancePopoverInput }
   | {

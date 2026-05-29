@@ -108,15 +108,9 @@ export function createNoteSurfaceApiClient(options: NoteSurfaceApiClientOptions)
       });
     },
     getNote(input) {
-      const errors = validatePathId('noteId', input.noteId);
-      if (errors.length > 0) {
-        return Promise.resolve({ ok: false, status: 0, errors });
-      }
-
-      return transport.send({
-        method: 'GET',
-        path: `/notes/${input.noteId}`,
-        headers: createMetadataHeaders(options),
+      return sendIntent(transport, options, {
+        intent: 'note.read',
+        noteId: input.noteId,
       });
     },
     createBlock(input) {
@@ -242,26 +236,4 @@ function createMetadataHeaders(options: NoteSurfaceApiClientOptions): Record<str
     'X-Workspace-Id': options.workspaceId,
     ...(options.userId === undefined ? {} : { 'X-User-Id': options.userId }),
   };
-}
-
-function validatePathId(fieldName: string, value: unknown): readonly string[] {
-  if (!isStableRuntimeId(value)) {
-    return [`${fieldName} must be a stable non-sentinel runtime id`];
-  }
-
-  return [];
-}
-
-function isStableRuntimeId(value: unknown): value is string {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const normalized = value.trim();
-  return (
-    normalized.length > 0 &&
-    normalized === value &&
-    /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(normalized) &&
-    !/(^|_)(unset|unknown|null|undefined|nan|sentinel|placeholder)($|_)/i.test(normalized)
-  );
 }

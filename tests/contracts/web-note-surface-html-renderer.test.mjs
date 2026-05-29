@@ -50,6 +50,7 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-layout="single_note_surface"/);
   assert.match(html, /ann-app--quiet-writing/);
   assert.match(html, /data-region="thinRail"/);
+  assert.match(html, /data-action="open_recent_thought" data-target="thin_rail" data-note-id="note_001"/);
   assert.match(html, /data-action="manual_organize" data-target="writing_chrome" data-note-id="note_001"/);
   assert.match(html, /data-surface="single-note"/);
   assert.match(html, /data-component="block-editor"/);
@@ -82,6 +83,11 @@ test('HTML renderer emits the note surface, editor, inline AI, memory, digest, a
   assert.match(html, /data-component="provenance-popover" data-open="true"/);
   assert.match(html, /data-action="close_provenance" data-target="provenance_popover"/);
 
+  assert.equal(events.some((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.apiIntent === 'note.read'
+  )), true);
   assert.equal(events.some((event) => (
     event.target === 'writing_chrome'
     && event.action === 'manual_organize'

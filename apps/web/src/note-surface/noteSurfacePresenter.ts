@@ -60,6 +60,7 @@ export function createNoteSurfaceViewModel(
     aiStatus: options.aiStatus ?? 'saved',
     workspaceName: options.workspaceName,
     ...(options.recentThoughts === undefined ? {} : { recentThoughts: options.recentThoughts }),
+    ...(options.noteLibraryStatus === undefined ? {} : { noteLibraryStatus: options.noteLibraryStatus }),
   });
 
   return {
@@ -180,6 +181,10 @@ export function refreshQuietWritingProjection(model: NoteSurfaceViewModel): Note
       blocks: model.noteSurface.blocks,
       aiStatus: model.topBar.aiStatus,
       workspaceName: model.topBar.workspaceName,
+      recentThoughts: model.quietWriting.thinRail.recentThoughts,
+      ...(model.quietWriting.thinRail.noteLibraryStatus === undefined
+        ? {}
+        : { noteLibraryStatus: model.quietWriting.thinRail.noteLibraryStatus }),
     }),
   };
 }

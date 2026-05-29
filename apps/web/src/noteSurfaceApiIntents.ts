@@ -11,6 +11,7 @@ export type NoteSurfaceApiIntentKind =
   | 'block.create'
   | 'block.update'
   | 'block.delete'
+  | 'note.read'
   | 'note.leave'
   | 'note.manual_structure'
   | 'digest.read'
@@ -78,6 +79,11 @@ export interface NoteLeaveApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   cause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
 }
 
+export interface NoteReadApiIntentInput extends NoteSurfaceApiIntentBaseInput {
+  intent: 'note.read';
+  noteId: string;
+}
+
 export interface NoteManualStructureApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   intent: 'note.manual_structure';
   noteId: string;
@@ -107,6 +113,7 @@ export type NoteSurfaceApiIntentInput =
   | BlockCreateApiIntentInput
   | BlockUpdateApiIntentInput
   | BlockDeleteApiIntentInput
+  | NoteReadApiIntentInput
   | NoteLeaveApiIntentInput
   | NoteManualStructureApiIntentInput
   | DigestApiIntentInput
@@ -123,6 +130,7 @@ const supportedIntents = new Set<NoteSurfaceApiIntentKind>([
   'block.create',
   'block.update',
   'block.delete',
+  'note.read',
   'note.leave',
   'note.manual_structure',
   'digest.read',
@@ -251,6 +259,13 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         body: {
           noteId: getStringField(input, 'noteId'),
         },
+      });
+    case 'note.read':
+      validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      return requestResult(errors, {
+        method: 'GET',
+        path: `/notes/${getStringField(input, 'noteId')}`,
+        headers: createMetadataHeaders(input),
       });
     case 'note.leave':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);

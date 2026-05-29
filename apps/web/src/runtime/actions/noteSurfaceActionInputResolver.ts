@@ -11,6 +11,7 @@ import {
   isMemoryEditApiIntent,
   isMemoryReviewApiIntent,
   isNoteLifecycleApiIntent,
+  isNoteReadApiIntent,
   isProvenanceLookupApiIntent,
 } from './renderActionIntents.ts';
 
@@ -67,6 +68,10 @@ export function createNoteSurfaceActionInputResolver(
     }
 
     if (isDigestReadApiIntent(event.apiIntent)) {
+      return readDigestNoteInput(options, event);
+    }
+
+    if (isNoteReadApiIntent(event.apiIntent)) {
       return readDigestNoteInput(options, event);
     }
 

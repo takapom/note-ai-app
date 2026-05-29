@@ -125,7 +125,7 @@ test('note surface API client rejects invalid ids before calling fetch-like bind
   });
 
   assert.equal(getNote.ok, false);
-  assert.deepEqual(getNote.errors, ['noteId must be a stable non-sentinel runtime id']);
+  assert.deepEqual(getNote.errors, ['noteId must be a single path segment']);
   assert.equal(deleteBlock.ok, false);
   assert.match(deleteBlock.errors.join('\n'), /blockId must be a single path segment/);
   assert.equal(fetchCalls, 0);

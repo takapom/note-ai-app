@@ -11,6 +11,21 @@ import { renderBlockEditorActionLabel, renderReturnLayerActionLabel } from './ht
 export function createRenderEvents(model: NoteSurfaceViewModel): readonly NoteSurfaceHtmlRenderEventDescriptor[] {
   const events: NoteSurfaceHtmlRenderEventDescriptor[] = [];
 
+  for (const thought of model.quietWriting.thinRail.recentThoughts) {
+    events.push({
+      action: 'open_recent_thought',
+      target: 'thin_rail',
+      label: thought.title,
+      dataAction: 'open_recent_thought',
+      noteId: thought.id,
+      apiIntent: 'note.read',
+      emitsAiProviderCall: false,
+      mutatesUserAuthoredBlock: false,
+      hiddenProfiling: false,
+      automaticActiveMemory: false,
+    });
+  }
+
   const returnLayer = model.quietWriting.returnLayer;
   if (returnLayer.open) {
     for (const returnAction of ['defer_return_layer', 'close_return_layer'] as const) {
