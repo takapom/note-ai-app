@@ -135,6 +135,13 @@ test('action input resolver returns note lifecycle ids with event note id before
     apiIntent: 'digest.read',
   }), { noteId: 'note_active_001' });
   assert.deepEqual(resolveActionInput({
+    action: 'leave_note',
+    target: 'thin_rail',
+    noteId: 'note_event_003',
+    noteLeaveCause: 'tab_switch',
+    apiIntent: 'note.leave',
+  }), { noteId: 'note_event_003', noteLeaveCause: 'tab_switch' });
+  assert.deepEqual(resolveActionInput({
     action: 'manual_organize',
     target: 'writing_chrome',
     noteId: 'note_event_002',

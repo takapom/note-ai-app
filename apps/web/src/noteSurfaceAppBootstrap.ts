@@ -8,6 +8,7 @@ import {
   createNoteSurfaceActionInputResolver,
   type NoteSurfaceActionInputResolverOptions,
 } from './noteSurfaceActionInputResolver.ts';
+import { createNoteSurfaceResolverOptionsFromDocument } from './noteSurfaceResolverOptionsFromDocument.ts';
 import {
   createNoteSurfaceApiTransport,
   type NoteSurfaceApiFetchLike,
@@ -80,10 +81,21 @@ export function createNoteSurfaceAppBootstrap(
         baseUrl: validation.apiBaseUrl,
         fetchLike: options.fetchLike,
       });
-      const resolveActionInput = createNoteSurfaceActionInputResolver({
-        activeNoteId: model.noteSurface.noteHeader.noteId,
-        ...(options.resolverOptions ?? {}),
-      });
+      let resolverOptions = createInitialResolverOptions(
+        model.noteSurface.noteHeader.noteId,
+        options.resolverOptions,
+      );
+      const resolveActionInput = (event: Parameters<ReturnType<typeof createNoteSurfaceActionInputResolver>>[0]) => (
+        createNoteSurfaceActionInputResolver(resolverOptions)(event)
+      );
+      const updateResolverOptionsFromOpenedDocument: NonNullable<
+        NoteSurfaceAppBootstrapRuntimeOptions['onOpenDocumentProjection']
+      > = (projection) => {
+        const resolved = createResolverOptionsFromOpenedDocument(projection);
+        if (resolved.ok) {
+          resolverOptions = resolved.options;
+        }
+      };
       const eventController = createNoteSurfaceEventController({
         workspaceId: options.workspaceId,
         ...(options.userId === undefined ? {} : { userId: options.userId }),
@@ -95,6 +107,7 @@ export function createNoteSurfaceAppBootstrap(
         model,
         eventController,
         host,
+        onOpenDocumentProjection: updateResolverOptionsFromOpenedDocument,
       });
       const mounted = await runtime.mount();
 
@@ -103,6 +116,44 @@ export function createNoteSurfaceAppBootstrap(
         runtime,
       };
     },
+  };
+}
+
+type NoteSurfaceAppBootstrapRuntimeOptions = Parameters<typeof createNoteSurfaceBrowserRuntime>[0];
+type OpenDocumentProjection = Parameters<
+  NonNullable<NoteSurfaceAppBootstrapRuntimeOptions['onOpenDocumentProjection']>
+>[0];
+
+function createResolverOptionsFromOpenedDocument(
+  projection: OpenDocumentProjection,
+) {
+  return createNoteSurfaceResolverOptionsFromDocument({
+    document: projection.document,
+    ...(projection.projectionMaps?.activeNoteId === undefined
+      ? {}
+      : { activeNoteId: projection.projectionMaps.activeNoteId }),
+    ...(projection.projectionMaps?.operationIdByBlockId === undefined
+      ? {}
+      : { operationIdByBlockId: projection.projectionMaps.operationIdByBlockId }),
+    ...(projection.projectionMaps?.memoryIdByBlockId === undefined
+      ? {}
+      : { memoryIdByBlockId: projection.projectionMaps.memoryIdByBlockId }),
+    ...(projection.projectionMaps?.sourceSpanIdByBlockId === undefined
+      ? {}
+      : { sourceSpanIdByBlockId: projection.projectionMaps.sourceSpanIdByBlockId }),
+    ...(projection.projectionMaps?.memoryEditContentByBlockId === undefined
+      ? {}
+      : { memoryEditContentByBlockId: projection.projectionMaps.memoryEditContentByBlockId }),
+  });
+}
+
+function createInitialResolverOptions(
+  activeNoteId: string,
+  resolverOptions: NoteSurfaceActionInputResolverOptions | undefined,
+): NoteSurfaceActionInputResolverOptions {
+  return {
+    activeNoteId,
+    ...(resolverOptions ?? {}),
   };
 }
 

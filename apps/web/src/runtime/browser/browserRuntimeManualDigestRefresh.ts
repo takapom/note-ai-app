@@ -10,6 +10,7 @@ type ManualStructureDigestRefreshInput = {
   model: NoteSurfaceViewModel;
   noteId: string;
   eventController: NoteSurfaceEventController;
+  expanded?: boolean;
 };
 
 type ManualStructureDigestRefreshResult = {
@@ -35,7 +36,10 @@ export async function refreshManualStructureDigestProjection(
 
     if (digestProjectionAction !== undefined) {
       return {
-        model: applyManualStructureDigestProjection(input.model, digestProjectionAction),
+        model: applyManualStructureDigestProjection(input.model, {
+          ...digestProjectionAction,
+          ...(input.expanded === undefined ? {} : { expanded: input.expanded }),
+        }),
         refreshed: true,
       };
     }
@@ -43,7 +47,10 @@ export async function refreshManualStructureDigestProjection(
     const failedDigestAction = resolveDigestReadFailureProjectionAction(digestDescriptor);
     if (failedDigestAction !== undefined) {
       return {
-        model: applyManualStructureDigestProjection(input.model, failedDigestAction),
+        model: applyManualStructureDigestProjection(input.model, {
+          ...failedDigestAction,
+          ...(input.expanded === undefined ? {} : { expanded: input.expanded }),
+        }),
         refreshed: true,
       };
     }

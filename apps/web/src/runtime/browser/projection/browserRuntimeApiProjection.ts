@@ -6,7 +6,10 @@ import {
   type CreateNoteSurfaceViewModelOptions,
   type NoteSurfaceViewModel,
 } from '../../../noteSurface.ts';
-import type { SuccessfulApiProjectionAction } from '../actions/browserRuntimeActionTypes.ts';
+import type {
+  BrowserRuntimeOpenNoteViewOptions,
+  SuccessfulApiProjectionAction,
+} from '../actions/browserRuntimeActionTypes.ts';
 import { applyLocalProjectionAction } from './browserRuntimeLocalProjection.ts';
 
 export function applySuccessfulApiProjectionAction(
@@ -27,14 +30,14 @@ export function applySuccessfulApiProjectionAction(
     case 'open_recent_thought':
       return createNoteSurfaceViewModel(
         action.document,
-        createOpenRecentThoughtViewOptions(model, action.noteId),
+        createOpenRecentThoughtViewOptions(model, action),
       );
     case 'read_digest':
       return refreshQuietWritingProjection({
         ...model,
         noteSurface: {
           ...model.noteSurface,
-          nextOpenDigest: createNextOpenDigestViewModel(action.digest, true),
+          nextOpenDigest: createNextOpenDigestViewModel(action.digest, action.expanded ?? true),
         },
       });
     case 'lookup_provenance':
@@ -88,8 +91,12 @@ export function applySuccessfulApiProjectionAction(
 
 function createOpenRecentThoughtViewOptions(
   model: NoteSurfaceViewModel,
-  noteId: string,
+  action: Extract<SuccessfulApiProjectionAction, { action: 'open_recent_thought' }>,
 ): CreateNoteSurfaceViewModelOptions {
+  const responseViewOptions = action.viewOptions ?? {};
+  const sourceSpanIdByBlockId = responseViewOptions.sourceSpanIdByBlockId
+    ?? action.projectionMaps?.sourceSpanIdByBlockId;
+
   return {
     workspaceName: model.topBar.workspaceName,
     aiStatus: 'saved',
@@ -97,10 +104,19 @@ function createOpenRecentThoughtViewOptions(
       id: thought.id,
       title: thought.title,
       updatedLabel: thought.updatedLabel,
-      active: thought.id === noteId,
+      active: thought.id === action.noteId,
     })),
     ...(model.quietWriting.thinRail.noteLibraryStatus === undefined
       ? {}
       : { noteLibraryStatus: model.quietWriting.thinRail.noteLibraryStatus }),
+    ...responseViewOptionsWithoutSourceSpans(responseViewOptions),
+    ...(sourceSpanIdByBlockId === undefined ? {} : { sourceSpanIdByBlockId }),
   };
+}
+
+function responseViewOptionsWithoutSourceSpans(
+  viewOptions: BrowserRuntimeOpenNoteViewOptions,
+): BrowserRuntimeOpenNoteViewOptions {
+  const { sourceSpanIdByBlockId: _sourceSpanIdByBlockId, ...rest } = viewOptions;
+  return rest;
 }
