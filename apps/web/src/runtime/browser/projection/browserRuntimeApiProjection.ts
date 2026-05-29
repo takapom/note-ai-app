@@ -1,7 +1,9 @@
 import {
   createNextOpenDigestViewModel,
+  createNoteSurfaceViewModel,
   createProvenancePopoverViewModel,
   refreshQuietWritingProjection,
+  type CreateNoteSurfaceViewModelOptions,
   type NoteSurfaceViewModel,
 } from '../../../noteSurface.ts';
 import type { SuccessfulApiProjectionAction } from '../actions/browserRuntimeActionTypes.ts';
@@ -22,6 +24,11 @@ export function applySuccessfulApiProjectionAction(
     case 'save_block':
     case 'close_provenance':
       return applyLocalProjectionAction(model, action);
+    case 'open_recent_thought':
+      return createNoteSurfaceViewModel(
+        action.document,
+        createOpenRecentThoughtViewOptions(model, action.noteId),
+      );
     case 'read_digest':
       return refreshQuietWritingProjection({
         ...model,
@@ -77,4 +84,23 @@ export function applySuccessfulApiProjectionAction(
         },
       });
   }
+}
+
+function createOpenRecentThoughtViewOptions(
+  model: NoteSurfaceViewModel,
+  noteId: string,
+): CreateNoteSurfaceViewModelOptions {
+  return {
+    workspaceName: model.topBar.workspaceName,
+    aiStatus: 'saved',
+    recentThoughts: model.quietWriting.thinRail.recentThoughts.map((thought) => ({
+      id: thought.id,
+      title: thought.title,
+      updatedLabel: thought.updatedLabel,
+      active: thought.id === noteId,
+    })),
+    ...(model.quietWriting.thinRail.noteLibraryStatus === undefined
+      ? {}
+      : { noteLibraryStatus: model.quietWriting.thinRail.noteLibraryStatus }),
+  };
 }

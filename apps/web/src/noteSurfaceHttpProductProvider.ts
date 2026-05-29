@@ -1,7 +1,12 @@
 import {
   createNoteSurfaceApiClient,
+  type NoteSurfaceApiClient,
 } from './runtime/api-client/noteSurfaceApiClient.ts';
 import type { NoteSurfaceApiFetchLike } from './noteSurfaceApiTransport.ts';
+import {
+  createFailedNoteLibraryStatus,
+  createNoteLibraryViewStateFromListBody,
+} from './note-surface/noteLibraryPresenter.ts';
 import type {
   NoteSurfaceProductProvider,
   NoteSurfaceProductStateInput,
@@ -66,12 +71,15 @@ export function createNoteSurfaceHttpProductProvider(
       if (snapshotErrors.length > 0) {
         throw new NoteSurfaceHttpProductProviderError(snapshotErrors);
       }
+      const noteLibraryViewState = await loadNoteLibraryViewState(apiClient, options.noteId);
+      const viewState = mergeOptionalViewState(
+        noteLibraryViewState,
+        options.viewState ?? (responseViewState.value as NoteSurfaceProductViewState | undefined),
+      );
 
       return {
         document,
-        ...(options.viewState === undefined && responseViewState.value === undefined
-          ? {}
-          : { viewState: options.viewState ?? (responseViewState.value as NoteSurfaceProductViewState) }),
+        ...(viewState === undefined ? {} : { viewState }),
         ...(options.projectionMaps === undefined && responseProjectionMaps.value === undefined
           ? {}
           : {
@@ -81,6 +89,35 @@ export function createNoteSurfaceHttpProductProvider(
       };
     },
   };
+}
+
+async function loadNoteLibraryViewState(
+  apiClient: NoteSurfaceApiClient,
+  activeNoteId: string,
+): Promise<NoteSurfaceProductViewState | undefined> {
+  const result = await apiClient.listNotes();
+  if (!result.ok) {
+    return {
+      noteLibraryStatus: createFailedNoteLibraryStatus(),
+    };
+  }
+
+  const presented = createNoteLibraryViewStateFromListBody(result.body, activeNoteId);
+  return mergeOptionalViewState(
+    presented.recentThoughts === undefined
+      ? undefined
+      : { recentThoughts: presented.recentThoughts },
+    presented.noteLibraryStatus === undefined
+      ? undefined
+      : { noteLibraryStatus: presented.noteLibraryStatus },
+  );
+}
+
+function mergeOptionalViewState(
+  ...states: readonly (NoteSurfaceProductViewState | undefined)[]
+): NoteSurfaceProductViewState | undefined {
+  const merged = Object.assign({}, ...states.filter((state): state is NoteSurfaceProductViewState => state !== undefined));
+  return Object.keys(merged).length === 0 ? undefined : merged;
 }
 
 function validateOptions(options: NoteSurfaceHttpProductProviderOptions): readonly string[] {

@@ -20,6 +20,8 @@ export interface NoteSurfaceProductViewState {
   inlineAiProjectionsVisible?: boolean;
   memoryCandidatesVisible?: boolean;
   returnLayerVisible?: boolean;
+  recentThoughts?: CreateNoteSurfaceViewModelOptions['recentThoughts'];
+  noteLibraryStatus?: CreateNoteSurfaceViewModelOptions['noteLibraryStatus'];
   nextOpenDigest?: NextOpenDigestInput;
   expandedDigest?: boolean;
   provenancePopover?: ProvenancePopoverInput;
@@ -117,6 +119,8 @@ function createViewOptions(
       ? {}
       : { memoryCandidatesVisible: viewState.memoryCandidatesVisible }),
     ...(viewState?.returnLayerVisible === undefined ? {} : { returnLayerVisible: viewState.returnLayerVisible }),
+    ...(viewState?.recentThoughts === undefined ? {} : { recentThoughts: viewState.recentThoughts }),
+    ...(viewState?.noteLibraryStatus === undefined ? {} : { noteLibraryStatus: viewState.noteLibraryStatus }),
     ...(viewState?.nextOpenDigest === undefined ? {} : { nextOpenDigest: viewState.nextOpenDigest }),
     ...(viewState?.expandedDigest === undefined ? {} : { expandedDigest: viewState.expandedDigest }),
     ...(viewState?.provenancePopover === undefined ? {} : { provenancePopover: viewState.provenancePopover }),

@@ -143,6 +143,18 @@
         color: var(--ann-ink-faint);
       }
 
+      .ann-thin-rail__status {
+        margin: 0 0 0.625rem;
+        color: var(--ann-ink-muted);
+        font-size: var(--ann-type-meta-size);
+        line-height: var(--ann-line-meta);
+      }
+
+      .ann-thin-rail__status[data-note-library-state='failed'],
+      .ann-thin-rail__status[data-note-library-state='invalid'] {
+        color: var(--ann-danger);
+      }
+
       .ann-thin-rail__search {
         display: block;
         margin-bottom: 0.625rem;

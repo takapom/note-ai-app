@@ -23,6 +23,7 @@ interface CreateQuietWritingSurfaceOptions {
   aiStatus: NoteSurfaceAiStatus;
   workspaceName?: string | undefined;
   recentThoughts?: readonly RecentThoughtInput[] | undefined;
+  noteLibraryStatus?: ThinRailViewModel['noteLibraryStatus'] | undefined;
 }
 
 export function createQuietWritingSurfaceViewModel(
@@ -37,7 +38,12 @@ export function createQuietWritingSurfaceViewModel(
   return {
     kind: 'QuietWritingSurface',
     returnLayerVisible: options.returnLayerVisible,
-    thinRail: createThinRailViewModel(options.note, options.workspaceName, options.recentThoughts),
+    thinRail: createThinRailViewModel(
+      options.note,
+      options.workspaceName,
+      options.recentThoughts,
+      options.noteLibraryStatus,
+    ),
     writingChrome: createWritingChromeViewModel(options.aiStatus, returnLayer, visibleDigest),
     reEntrySurface: {
       kind: 'ReEntrySurface',
@@ -66,6 +72,7 @@ function createThinRailViewModel(
   note: Pick<NoteContract, 'id' | 'title'>,
   workspaceName: string | undefined,
   recentThoughts: readonly RecentThoughtInput[] | undefined,
+  noteLibraryStatus: ThinRailViewModel['noteLibraryStatus'] | undefined,
 ): ThinRailViewModel {
   const thoughts = recentThoughts ?? [{
     id: note.id,
@@ -83,6 +90,7 @@ function createThinRailViewModel(
       updatedLabel: thought.updatedLabel,
       active: thought.active ?? thought.id === note.id,
     })),
+    ...(noteLibraryStatus === undefined ? {} : { noteLibraryStatus }),
   };
 }
 

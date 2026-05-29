@@ -137,11 +137,11 @@ test('event controller sends block create and delete requests from caller-resolv
   ]);
 });
 
-test('event controller sends digest read and provenance lookup actions from caller-resolved ids', async () => {
+test('event controller sends note read digest read and provenance lookup actions from caller-resolved ids', async () => {
   const calls = [];
   const controller = createController(calls, (event) => {
-    if (event.target === 'next_open_digest' || event.target === 'writing_chrome') {
-      return { noteId: 'note_001' };
+    if (event.target === 'thin_rail' || event.target === 'next_open_digest' || event.target === 'writing_chrome') {
+      return { noteId: event.noteId ?? 'note_001' };
     }
     return {
       provenance: {
@@ -153,6 +153,12 @@ test('event controller sends digest read and provenance lookup actions from call
     };
   });
 
+  const noteRead = await controller.handleRenderEvent({
+    action: 'open_recent_thought',
+    target: 'thin_rail',
+    noteId: 'note_recent_001',
+    apiIntent: 'GET /notes/:noteId',
+  });
   const digest = await controller.handleRenderEvent({
     action: 'read_digest',
     target: 'next_open_digest',
@@ -170,10 +176,12 @@ test('event controller sends digest read and provenance lookup actions from call
     apiIntent: 'provenance.lookup',
   });
 
+  assert.equal(noteRead.ok, true);
   assert.equal(digest.ok, true);
   assert.equal(manualStructure.ok, true);
   assert.equal(provenance.ok, true);
   assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
+    ['GET', '/notes/note_recent_001', undefined],
     ['GET', '/notes/note_001/digest', undefined],
     ['POST', '/notes/note_001/structure/manual', undefined],
     ['POST', '/provenance/source', {

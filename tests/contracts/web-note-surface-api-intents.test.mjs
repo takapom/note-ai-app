@@ -283,7 +283,27 @@ test('block update rejects blank content and invalid block ids before request de
   assert.deepEqual(invalidBlock.errors, ['blockId must be a single path segment']);
 });
 
-test('digest read maps to the next-open digest GET route', () => {
+test('note read lifecycle and digest intents map to Note Worker routes', () => {
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
+      intent: 'note.read',
+      ...metadata,
+      noteId: 'note_001',
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'GET',
+        path: '/notes/note_001',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+        },
+      },
+      errors: [],
+    },
+  );
+
   assert.deepEqual(
     createNoteSurfaceApiRequest({
       intent: 'note.leave',

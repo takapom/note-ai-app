@@ -31,6 +31,7 @@ export type NoteSurfaceHtmlAction =
   | 'close_return_layer'
   | 'defer_return_layer'
   | 'continue_writing'
+  | 'open_recent_thought'
   | 'manual_organize'
   | 'close_provenance'
   | 'open_organization_history';

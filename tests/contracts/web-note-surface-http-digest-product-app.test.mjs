@@ -11,6 +11,21 @@ const metadata = {
   noteId: 'note_001',
 };
 
+const noteListResponse = {
+  ok: true,
+  status: 200,
+  body: {
+    ok: true,
+    notes: [{
+      noteId: noteDocumentFixture.note.id,
+      title: noteDocumentFixture.note.title,
+      descriptionEffective: noteDocumentFixture.note.descriptionEffective,
+      createdAt: noteDocumentFixture.note.createdAt,
+      updatedAt: noteDocumentFixture.note.updatedAt,
+    }],
+  },
+};
+
 test('HTTP digest product app loads snapshot then digest, mounts digest HTML, and dispatches clicks through caller projection maps', async () => {
   const root = createFakeRoot();
   const calls = [];
@@ -74,6 +89,7 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
   assert.equal(root.listeners.click.length, 1);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
   ]);
 
@@ -83,9 +99,10 @@ test('HTTP digest product app loads snapshot then digest, mounts digest HTML, an
     blockId: 'block_ai_question_001',
   }));
 
-  await waitFor(() => calls.length === 3);
+  await waitFor(() => calls.length === 4);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
     ['POST', 'https://worker.example.test/api/ai-operations/operation_from_caller/dismiss'],
   ]);
@@ -128,6 +145,7 @@ test('HTTP digest product app skips digest GET when caller supplies next open di
   assert.match(root.innerHTML, /Use the caller supplied digest\./);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
   ]);
 });
 
@@ -169,6 +187,7 @@ test('HTTP digest product app still mounts when digest projection is unavailable
   assert.match(root.innerHTML, /整理の取得に失敗しました/);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
     ['GET', 'https://worker.example.test/api/notes/note_001'],
+    ['GET', 'https://worker.example.test/api/notes'],
     ['GET', 'https://worker.example.test/api/notes/note_001/digest'],
   ]);
 });
@@ -237,7 +256,7 @@ function createFetchLike(calls, responses) {
       };
     }
 
-    const response = responses.shift();
+    const response = url.endsWith('/notes') ? noteListResponse : responses.shift();
     assert.ok(response, `unexpected request: ${init.method} ${url}`);
     return {
       ok: response.ok,
