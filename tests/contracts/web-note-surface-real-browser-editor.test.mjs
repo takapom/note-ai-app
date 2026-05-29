@@ -211,6 +211,18 @@ async function createNoteSurfaceServer() {
       return;
     }
 
+    if (requestUrl.pathname === '/__ann/bootstrap' && request.method === 'GET') {
+      const origin = `http://127.0.0.1:${server.address().port}`;
+      responseJson(response, {
+        ok: true,
+        apiBaseUrl: `${origin}/api/`,
+        workspaceId: 'workspace_001',
+        userId: 'user_001',
+        noteId: 'note_001',
+      });
+      return;
+    }
+
     if (requestUrl.pathname.startsWith('/assets/')) {
       try {
         const asset = await readFile(new URL(`.${requestUrl.pathname}`, assetsRoot));

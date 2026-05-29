@@ -1,11 +1,8 @@
 import {
-  refreshQuietWritingProjection,
   resolveContinueWritingFocusBlockId,
   withInlineBlockActionState,
-  withReturnLayerOpen,
-  type NoteSurfaceViewModel,
 } from '../../noteSurface.ts';
-import { renderNoteSurfaceHtml, type NoteSurfaceHtmlRenderResult } from '../../noteSurfaceHtmlRenderer.ts';
+import { renderNoteSurfaceHtml } from '../../noteSurfaceHtmlRenderer.ts';
 import type { NoteSurfaceEventControllerResult } from '../../noteSurfaceEventController.ts';
 import {
   isInputCompositionSaveBlocked,
@@ -19,7 +16,6 @@ import {
 import {
   applyEditorSaveFailed,
   applyEditorSaveStarted,
-  applyManualStructureDigestProjection,
   applyLocalProjectionAction,
   applyManualStructureFailed,
   applyManualStructureStarted,
@@ -30,9 +26,13 @@ import { toBoundaryErrors } from './browserRuntimeErrors.ts';
 import type {
   NoteSurfaceBrowserRuntime,
   NoteSurfaceBrowserRuntimeActionResult,
-  NoteSurfaceBrowserRuntimeMountResult,
   NoteSurfaceBrowserRuntimeOptions,
 } from './browserRuntimeTypes.ts';
+import {
+  mountBrowserRuntimeModel,
+  renderBrowserRuntimeModel,
+} from './browserRuntimeRenderCycle.ts';
+import { refreshManualStructureDigestProjection } from './browserRuntimeManualDigestRefresh.ts';
 
 export function createNoteSurfaceBrowserRuntime(
   options: NoteSurfaceBrowserRuntimeOptions,
@@ -218,29 +218,15 @@ export function createNoteSurfaceBrowserRuntime(
     action: { noteId: string },
     controllerResult: NoteSurfaceEventControllerResult,
   ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
-    const digestDescriptor = {
-      action: 'read_digest',
-      target: 'next_open_digest',
+    const refreshResult = await refreshManualStructureDigestProjection({
+      model: currentModel,
       noteId: action.noteId,
-      apiIntent: 'digest.read',
-    };
+      eventController: options.eventController,
+    });
+    currentModel = refreshResult.model;
 
-    try {
-      const digestResult = await options.eventController.handleRenderEvent(digestDescriptor);
-      const digestProjectionAction = digestResult.ok
-        ? resolveSuccessfulApiProjectionAction(digestDescriptor, digestResult)
-        : resolveDigestReadFailureProjectionAction(digestDescriptor);
-
-      if (digestProjectionAction !== undefined) {
-        currentModel = applyManualStructureDigestProjection(currentModel, digestProjectionAction);
-        return renderCurrentModel(controllerResult);
-      }
-    } catch {
-      const failedDigestAction = resolveDigestReadFailureProjectionAction(digestDescriptor);
-      if (failedDigestAction !== undefined) {
-        currentModel = applyManualStructureDigestProjection(currentModel, failedDigestAction);
-        return renderCurrentModel(controllerResult);
-      }
+    if (refreshResult.refreshed) {
+      return renderCurrentModel(controllerResult);
     }
 
     return {
@@ -254,67 +240,23 @@ export function createNoteSurfaceBrowserRuntime(
   async function renderCurrentModel(
     controllerResult?: NoteSurfaceEventControllerResult,
   ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
-    let rendered: NoteSurfaceHtmlRenderResult;
-    try {
-      rendered = render(currentModel);
-    } catch (error) {
-      return {
-        ok: false,
-        status: 'render_error',
-        errors: toBoundaryErrors(error),
-      };
-    }
-
-    try {
-      await options.host.setHtml(rendered.html);
-      await options.host.bindActionEvents(rendered.events, handleAction);
-    } catch (error) {
-      return {
-        ok: false,
-        status: 'host_error',
-        errors: toBoundaryErrors(error),
-      };
-    }
-
-    return {
-      ok: true,
-      status: 'handled',
+    return renderBrowserRuntimeModel({
+      model: currentModel,
+      render,
+      host: options.host,
+      handleAction,
       ...(controllerResult === undefined ? {} : { controllerResult }),
-      errors: [],
-    };
+    });
   }
 
   return {
-    async mount(): Promise<NoteSurfaceBrowserRuntimeMountResult> {
-      let rendered: NoteSurfaceHtmlRenderResult;
-      try {
-        rendered = render(currentModel);
-      } catch (error) {
-        return {
-          ok: false,
-          status: 'render_error',
-          errors: toBoundaryErrors(error),
-        };
-      }
-
-      try {
-        await options.host.setHtml(rendered.html);
-        await options.host.bindActionEvents(rendered.events, handleAction);
-      } catch (error) {
-        return {
-          ok: false,
-          status: 'host_error',
-          errors: toBoundaryErrors(error),
-        };
-      }
-
-      return {
-        ok: true,
-        status: 'mounted',
-        html: rendered.html,
-        events: rendered.events,
-        errors: [],
-      };
+    mount() {
+      return mountBrowserRuntimeModel({
+        model: currentModel,
+        render,
+        host: options.host,
+        handleAction,
+      });
     },
     handleAction,
   };

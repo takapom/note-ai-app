@@ -23,6 +23,11 @@ import {
   type CloudflareAgentRpcResult,
 } from './agentRpcResults.ts';
 import {
+  localSmokeWorkspaceBrainRpcObservedResult,
+  mapNoteStructureRouteHandlerResultToRpc,
+  mapWorkspaceBrainProcessorResultToRpc,
+} from './cloudflareDurableObjectRpcMapping.ts';
+import {
   persistWorkspaceBrainAlarmProcessCommand,
   readWorkspaceBrainAlarmProcessCommand,
   scheduleWorkspaceBrainProcessingAlarm,
@@ -114,18 +119,7 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
       ports,
     });
 
-    return {
-      ok: result.ok,
-      accepted: result.errors.length === 0,
-      reason: result.triggerReason ?? result.route,
-      scheduledJobIds: result.scheduledJobs.map((job) => job.id),
-      scheduledJobs: result.scheduledJobs,
-      providerCalls: result.providerCalls,
-      operationRoutingCalls: result.operationRoutingCalls,
-      auditWrites: result.auditWrites,
-      noteSotMutations: [],
-      errors: result.errors,
-    };
+    return mapNoteStructureRouteHandlerResultToRpc(result);
   }
 
   async applyAgentLocalSchemaCommand(
@@ -264,37 +258,13 @@ export class WorkspaceBrainAgent extends DurableObject<WorkerEntrypointEnv> {
     const options = await readWorkspaceBrainProcessorOptions(this.workerEnv, input, agentLocalSql.executor);
     if (!options.ok) {
       if (isLocalAgentSmokeEnabled(this.workerEnv)) {
-        return {
-          ok: true,
-          accepted: true,
-          reason: 'local_smoke_workspace_brain_rpc_observed',
-          scheduledJobIds: [],
-          providerCalls: [],
-          operationRoutingCalls: [],
-          auditWrites: [],
-          noteSotMutations: [],
-          errors: [],
-        };
+        return localSmokeWorkspaceBrainRpcObservedResult();
       }
       return rejectedRpcResult(options.reason, options.errors);
     }
 
     const result = await this.runtimeDelegate.processNextQueuedStructureJob(input, options.options);
-    if (!('claim' in result)) {
-      return rejectedRpcResult('invalid_workspace_brain_process_command', result.errors);
-    }
-
-    return {
-      ok: result.ok,
-      accepted: result.errors.length === 0,
-      reason: result.reason,
-      scheduledJobIds: result.claim.job === undefined ? [] : [result.claim.job.id],
-      providerCalls: result.providerCalls,
-      operationRoutingCalls: result.operationRoutingCalls,
-      auditWrites: result.auditWrites,
-      noteSotMutations: [],
-      errors: result.errors,
-    };
+    return mapWorkspaceBrainProcessorResultToRpc(result);
   }
 
   async applyAgentLocalSchemaCommand(

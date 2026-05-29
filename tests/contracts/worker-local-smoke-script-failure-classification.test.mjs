@@ -16,6 +16,15 @@ test('local smoke script injects only required local Worker vars into script-lau
 
   assert.match(wranglerSource, /'--var'[\s\S]*`LOCAL_AGENT_SMOKE_ENABLED:\$\{process\.env\.LOCAL_AGENT_SMOKE_ENABLED\s*\?\?\s*'1'\}`/);
   assert.match(wranglerSource, /args\.push\('--var',\s*`WORKER_AUTH_SHARED_SECRET:\$\{authSecret\}`\)/);
+  assert.match(wranglerSource, /Object\.entries\(vars\s*\?\?\s*\{\}\)/);
+  assert.match(entrypointSource, /WORKER_LOCAL_AUTH_SECRET/);
+  assert.match(entrypointSource, /WORKER_SMOKE_AUTH_SECRET/);
+  assert.match(entrypointSource, /WORKER_LOCAL_TURSO_DATABASE_URL/);
+  assert.match(entrypointSource, /LOCAL_TURSO_DATABASE_URL/);
+  assert.match(entrypointSource, /TURSO_DATABASE_URL/);
+  assert.match(entrypointSource, /WORKER_LOCAL_TURSO_AUTH_TOKEN/);
+  assert.match(entrypointSource, /LOCAL_TURSO_AUTH_TOKEN/);
+  assert.match(entrypointSource, /TURSO_AUTH_TOKEN/);
   assert.match(wranglerSource, /WRANGLER_LOG_PATH:\s*process\.env\.WRANGLER_LOG_PATH\s*\?\?\s*defaultWranglerLogPath/);
   assert.match(wranglerSource, /WRANGLER_REGISTRY_PATH:\s*process\.env\.WRANGLER_REGISTRY_PATH\s*\?\?\s*defaultWranglerRegistryPath/);
   assert.match(wranglerSource, /WRANGLER_CI_DISABLE_CONFIG_WATCHING:\s*process\.env\.WRANGLER_CI_DISABLE_CONFIG_WATCHING\s*\?\?\s*'true'/);
@@ -229,6 +238,7 @@ function sanitizedProcessEnv() {
     Object.entries(process.env).filter(([key]) => (
       !key.startsWith('WORKER_')
       && key !== 'LOCAL_AGENT_SMOKE_ENABLED'
+      && !/^(?:LOCAL_)?(?:TURSO|LIBSQL)_/.test(key)
       && key !== 'WRANGLER_BIN'
     )),
   );

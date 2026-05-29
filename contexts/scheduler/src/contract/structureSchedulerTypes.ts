@@ -164,11 +164,13 @@ export interface StructurePlanRequestValidationResult {
 
 export const noteCloseFlowSteps = [
   'latest_blocks_save',
+  'capture_entry_append',
   'note_session_ended',
   'dirty_sections_discovery',
   'structure_job_enqueue',
   'background_structuring',
   'operations_saved_applied',
+  'organized_note_version_prepared',
   'next_open_digest_prepared',
 ] as const;
 

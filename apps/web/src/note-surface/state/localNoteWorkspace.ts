@@ -64,34 +64,55 @@ export function appendBlockAfter(
   setWorkspace: (updater: (current: LocalNoteWorkspace) => LocalNoteWorkspace) => void,
 ): string {
   const noteId = activeNote.id;
-  const nextBlockId = createNextBlockId(activeNote);
+  const planned = appendLocalNoteBlockAfter(activeNote, afterBlockId);
   setWorkspace((current) => ({
     ...current,
     notes: current.notes.map((note) => {
       if (note.id !== noteId) {
         return note;
       }
-      const nextBlock: LocalNoteBlock = { id: nextBlockId, type: 'paragraph', text: '' };
-      const index = note.blocks.findIndex((block) => block.id === afterBlockId);
-      const insertIndex = index < 0 ? note.blocks.length : index + 1;
-      return {
-        ...note,
-        updatedLabel: 'いま更新',
-        organizedResultReady: false,
-        blocks: [
-          ...note.blocks.slice(0, insertIndex),
-          nextBlock,
-          ...note.blocks.slice(insertIndex),
-        ],
-      };
+      const next = appendLocalNoteBlockAfter(note, afterBlockId);
+      return next.note;
     }),
   }));
-  return nextBlockId;
+  return planned.nextBlockId;
+}
+
+export interface AppendLocalNoteBlockAfterResult {
+  note: LocalNote;
+  nextBlockId: string;
+}
+
+export function appendLocalNoteBlockAfter(
+  note: LocalNote,
+  afterBlockId: string,
+): AppendLocalNoteBlockAfterResult {
+  const nextBlockId = createNextBlockId(note);
+  const nextBlock: LocalNoteBlock = { id: nextBlockId, type: 'paragraph', text: '' };
+  const index = note.blocks.findIndex((block) => block.id === afterBlockId);
+  const insertIndex = index < 0 ? note.blocks.length : index + 1;
+  return {
+    note: {
+      ...note,
+      updatedLabel: 'いま更新',
+      organizedResultReady: false,
+      blocks: [
+        ...note.blocks.slice(0, insertIndex),
+        nextBlock,
+        ...note.blocks.slice(insertIndex),
+      ],
+    },
+    nextBlockId,
+  };
 }
 
 export interface MergeBlockIntoPreviousResult {
   mergedIntoBlockId: string;
   caretOffset: number;
+}
+
+export interface MergeLocalNoteBlockIntoPreviousResult extends MergeBlockIntoPreviousResult {
+  note: LocalNote;
 }
 
 export function mergeBlockIntoPrevious(
@@ -101,13 +122,10 @@ export function mergeBlockIntoPrevious(
   setWorkspace: (updater: (current: LocalNoteWorkspace) => LocalNoteWorkspace) => void,
 ): MergeBlockIntoPreviousResult | undefined {
   const noteId = activeNote.id;
-  const blockIndex = activeNote.blocks.findIndex((block) => block.id === blockId);
-  if (blockIndex <= 0) {
+  const planned = mergeLocalNoteBlockIntoPrevious(activeNote, blockId, currentText);
+  if (planned === undefined) {
     return undefined;
   }
-
-  const previousBlock = activeNote.blocks[blockIndex - 1];
-  const caretOffset = previousBlock.text.length;
   setWorkspace((current) => ({
     ...current,
     notes: current.notes.map((note) => {
@@ -115,31 +133,47 @@ export function mergeBlockIntoPrevious(
         return note;
       }
 
-      const currentIndex = note.blocks.findIndex((block) => block.id === blockId);
-      if (currentIndex <= 0) {
-        return note;
-      }
-
-      const targetIndex = currentIndex - 1;
-      const targetBlock = note.blocks[targetIndex];
-      const nextNote = {
-        ...note,
-        updatedLabel: 'いま更新',
-        organizedResultReady: false,
-        blocks: [
-          ...note.blocks.slice(0, targetIndex),
-          { ...targetBlock, text: `${targetBlock.text}${currentText}` },
-          ...note.blocks.slice(currentIndex + 1),
-        ],
-      };
-      return {
-        ...nextNote,
-        organizedResultReady: hasWritableContent(nextNote),
-      };
+      return mergeLocalNoteBlockIntoPrevious(note, blockId, currentText)?.note ?? note;
     }),
   }));
 
-  return { mergedIntoBlockId: previousBlock.id, caretOffset };
+  return {
+    mergedIntoBlockId: planned.mergedIntoBlockId,
+    caretOffset: planned.caretOffset,
+  };
+}
+
+export function mergeLocalNoteBlockIntoPrevious(
+  note: LocalNote,
+  blockId: string,
+  currentText: string,
+): MergeLocalNoteBlockIntoPreviousResult | undefined {
+  const currentIndex = note.blocks.findIndex((block) => block.id === blockId);
+  if (currentIndex <= 0) {
+    return undefined;
+  }
+
+  const targetIndex = currentIndex - 1;
+  const targetBlock = note.blocks[targetIndex];
+  const nextNote = {
+    ...note,
+    updatedLabel: 'いま更新',
+    organizedResultReady: false,
+    blocks: [
+      ...note.blocks.slice(0, targetIndex),
+      { ...targetBlock, text: `${targetBlock.text}${currentText}` },
+      ...note.blocks.slice(currentIndex + 1),
+    ],
+  };
+
+  return {
+    note: {
+      ...nextNote,
+      organizedResultReady: hasWritableContent(nextNote),
+    },
+    mergedIntoBlockId: targetBlock.id,
+    caretOffset: targetBlock.text.length,
+  };
 }
 
 function createNextBlockId(note: LocalNote): string {
@@ -173,6 +207,27 @@ export function normalizeBlockInput(block: LocalNoteBlock, text: string, transfo
     return { ...plainBlock, type: 'quote', text: shortcut.content };
   }
   return { ...plainBlock, type: block.type === 'heading' ? 'paragraph' : block.type, text: shortcut.content };
+}
+
+export function updateLocalNoteBlockText(
+  note: LocalNote,
+  blockId: string,
+  text: string,
+  transform: boolean,
+): LocalNote {
+  const nextBlocks = note.blocks.map((block) => (
+    block.id === blockId ? normalizeBlockInput(block, text, transform) : block
+  ));
+  const nextNote = {
+    ...note,
+    blocks: nextBlocks,
+    updatedLabel: 'いま更新',
+    organizedResultReady: false,
+  };
+  return {
+    ...nextNote,
+    organizedResultReady: hasWritableContent(nextNote),
+  };
 }
 
 function withoutHeadingLevel(block: LocalNoteBlock): Omit<LocalNoteBlock, 'headingLevel'> {

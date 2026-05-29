@@ -6,7 +6,7 @@ import {
   defaultNoteSurfaceSettings,
   readStoredSettings,
   writeStoredSettings,
-} from '../../apps/web/src/note-surface/state/useNoteSurfaceFlow.ts';
+} from '../../apps/web/src/note-surface/state/noteSurfaceSettings.ts';
 
 test('web note surface settings persist frontend-owned MVP preferences locally', () => {
   const storage = installLocalStorageMock();
