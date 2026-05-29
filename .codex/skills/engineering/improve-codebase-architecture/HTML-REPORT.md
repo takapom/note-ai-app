@@ -1,6 +1,6 @@
 # HTML レポート形式
 
-アーキテクチャレビューは、OS の一時ディレクトリに置く単一の自己完結 HTML ファイルとして描画する。Tailwind と Mermaid はどちらも CDN から読み込む。Mermaid はグラフ状の図を安定して扱う。手作りの div と inline SVG は、より編集的なビジュアルに使う。例: mass diagram、cross-section。両方を混ぜる。すべてを Mermaid に寄せすぎないこと。汎用的に見え始める。
+アーキテクチャレビューは、OS の一時ディレクトリに置く単一の自己完結 HTML ファイルとして描画し日本語で説明文は書くこと。Tailwind と Mermaid はどちらも CDN から読み込む。Mermaid はグラフ状の図を安定して扱う。手作りの div と inline SVG は、より編集的なビジュアルに使う。例: mass diagram、cross-section。両方を混ぜる。すべてを Mermaid に寄せすぎないこと。汎用的に見え始める。
 
 ## Scaffold
 
