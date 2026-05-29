@@ -42,6 +42,7 @@ export interface NoteSurfaceResolvedActionInput {
   blockId?: string;
   content?: string;
   noteId?: string;
+  noteLeaveCause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
   provenance?: NoteSurfaceProvenanceActionInput;
 }
 
@@ -358,6 +359,7 @@ function createApiIntentInput(
           ...base,
           intent,
           noteId,
+          ...(resolved?.noteLeaveCause === undefined ? {} : { cause: resolved.noteLeaveCause }),
         },
       };
     }

@@ -1,9 +1,12 @@
 import {
   resolveContinueWritingFocusBlockId,
   withInlineBlockActionState,
+  type NoteSurfaceViewModel,
 } from '../../noteSurface.ts';
 import { renderNoteSurfaceHtml } from '../../noteSurfaceHtmlRenderer.ts';
 import type { NoteSurfaceEventControllerResult } from '../../noteSurfaceEventController.ts';
+import { readNoteSurfaceRenderActionDescriptor } from '../actions/renderActionDescriptor.ts';
+import { isNoteReadApiIntent } from '../actions/renderActionIntents.ts';
 import {
   isInputCompositionSaveBlocked,
   resolveBlockUpdateProjectionAction,
@@ -55,6 +58,11 @@ export function createNoteSurfaceBrowserRuntime(
         options.host.focusWritingBlock?.(focusBlockId);
       }
       return rendered;
+    }
+
+    const noteSwitchAction = resolveNoteSwitchLifecycleAction(currentModel, eventDescriptor);
+    if (noteSwitchAction !== undefined) {
+      return handleNoteSwitchLifecycle(noteSwitchAction, eventDescriptor);
     }
 
     const pendingSaveAction = resolveBlockUpdateProjectionAction(eventDescriptor);
@@ -237,6 +245,86 @@ export function createNoteSurfaceBrowserRuntime(
     };
   }
 
+  async function handleNoteSwitchLifecycle(
+    action: NoteSwitchLifecycleAction,
+    eventDescriptor: unknown,
+  ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
+    if (action.fromNoteId === action.toNoteId) {
+      return {
+        ok: true,
+        status: 'handled',
+        errors: [],
+      };
+    }
+
+    await sendBestEffortTabSwitchLeave(action.fromNoteId);
+
+    let readResult: NoteSurfaceEventControllerResult;
+    try {
+      readResult = await options.eventController.handleRenderEvent(eventDescriptor);
+    } catch (error) {
+      return {
+        ok: false,
+        status: 'controller_error',
+        errors: toBoundaryErrors(error),
+      };
+    }
+    if (!readResult.ok) {
+      return {
+        ok: false,
+        status: 'controller_error',
+        controllerResult: readResult,
+        errors: readResult.errors.length > 0
+          ? readResult.errors
+          : [`event controller returned ${readResult.status}`],
+      };
+    }
+
+    const projectionAction = resolveSuccessfulApiProjectionAction(eventDescriptor, readResult);
+    if (projectionAction?.action !== 'open_recent_thought') {
+      return {
+        ok: false,
+        status: 'controller_error',
+        controllerResult: readResult,
+        errors: ['note read response did not include a valid note document projection'],
+      };
+    }
+
+    options.onOpenDocumentProjection?.({
+      document: projectionAction.document,
+      ...(projectionAction.projectionMaps === undefined ? {} : { projectionMaps: projectionAction.projectionMaps }),
+    });
+    currentModel = applySuccessfulApiProjectionAction(currentModel, projectionAction);
+    const openedRender = await renderCurrentModel(readResult);
+    if (!openedRender.ok) {
+      return openedRender;
+    }
+
+    const refreshResult = await refreshManualStructureDigestProjection({
+      model: currentModel,
+      noteId: projectionAction.noteId,
+      eventController: options.eventController,
+      expanded: false,
+    });
+    currentModel = refreshResult.model;
+
+    return refreshResult.refreshed ? renderCurrentModel(readResult) : openedRender;
+  }
+
+  async function sendBestEffortTabSwitchLeave(noteId: string): Promise<void> {
+    try {
+      await options.eventController.handleRenderEvent({
+        action: 'leave_note',
+        target: 'thin_rail',
+        noteId,
+        noteLeaveCause: 'tab_switch',
+        apiIntent: 'note.leave',
+      });
+    } catch {
+      // Tab switch should not be blocked by a missed background structuring trigger.
+    }
+  }
+
   async function renderCurrentModel(
     controllerResult?: NoteSurfaceEventControllerResult,
   ): Promise<NoteSurfaceBrowserRuntimeActionResult> {
@@ -259,5 +347,30 @@ export function createNoteSurfaceBrowserRuntime(
       });
     },
     handleAction,
+  };
+}
+
+interface NoteSwitchLifecycleAction {
+  fromNoteId: string;
+  toNoteId: string;
+}
+
+function resolveNoteSwitchLifecycleAction(
+  model: NoteSurfaceViewModel,
+  eventDescriptor: unknown,
+): NoteSwitchLifecycleAction | undefined {
+  const descriptor = readNoteSurfaceRenderActionDescriptor(eventDescriptor);
+  if (
+    descriptor?.action !== 'open_recent_thought'
+    || descriptor.target !== 'thin_rail'
+    || descriptor.noteId === undefined
+    || !isNoteReadApiIntent(descriptor.apiIntent)
+  ) {
+    return undefined;
+  }
+
+  return {
+    fromNoteId: model.noteSurface.noteHeader.noteId,
+    toNoteId: descriptor.noteId,
   };
 }

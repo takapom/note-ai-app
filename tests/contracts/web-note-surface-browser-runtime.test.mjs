@@ -271,10 +271,24 @@ test('browser runtime reopens note snapshots from the note library rail', async 
           },
         };
       }
+      if (url.endsWith('/notes/note_002/digest')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            available: true,
+            unresolvedQuestions: [{
+              id: 'digest_reopen_question_001',
+              text: 'Resume from the reopened note digest.',
+              sourceBlockId: 'block_paragraph_001',
+            }],
+          },
+        };
+      }
 
       return {
         ok: true,
-        status: 200,
+        status: 202,
         body: { handled: true },
       };
     }),
@@ -296,8 +310,82 @@ test('browser runtime reopens note snapshots from the note library rail', async 
   assert.match(host.html, /Reopened note/);
   assert.match(host.html, /This note was loaded through the note library\./);
   assert.match(host.html, /data-note-id="note_002" aria-current="true"/);
+  assert.match(host.html, /data-component="next-open-digest" data-available="true" data-expanded="false"/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    [
+      'POST',
+      'https://worker.example.test/api/notes/note_001/leave',
+      JSON.stringify({ cause: 'tab_switch' }),
+    ],
+    ['GET', 'https://worker.example.test/api/notes/note_002', undefined],
+    ['GET', 'https://worker.example.test/api/notes/note_002/digest', undefined],
+  ]);
+});
+
+test('browser runtime does not block note switching when tab switch leave transport fails', async () => {
+  const calls = [];
+  const host = createHost();
+  const reopenedDocument = createReopenedDocument();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Research direction',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    }),
+    eventController: createController(calls, undefined, (url) => {
+      if (url.endsWith('/notes/note_001/leave')) {
+        return {
+          ok: false,
+          status: 503,
+          body: { ok: false, errors: ['leave unavailable'] },
+        };
+      }
+      if (url.endsWith('/notes/note_002')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            document: reopenedDocument,
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        body: { available: false },
+      };
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const reopenEvent = host.events.find((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.noteId === 'note_002'
+  ));
+  assert.ok(reopenEvent);
+
+  const result = await host.handler(reopenEvent);
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-surface="single-note" data-note-id="note_002"/);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['POST', 'https://worker.example.test/api/notes/note_001/leave'],
     ['GET', 'https://worker.example.test/api/notes/note_002'],
+    ['GET', 'https://worker.example.test/api/notes/note_002/digest'],
   ]);
 });
 
@@ -1094,10 +1182,13 @@ function createController(calls, beforeFetch, responseFor) {
         };
       }
       if (event.target === 'next_open_digest') {
-        return { noteId: 'note_001' };
+        return { noteId: event.noteId ?? 'note_001' };
       }
       if (event.target === 'thin_rail') {
-        return { noteId: event.noteId };
+        return {
+          noteId: event.noteId,
+          noteLeaveCause: event.noteLeaveCause,
+        };
       }
       if (event.target === 'writing_chrome') {
         return { noteId: event.noteId ?? 'note_001' };

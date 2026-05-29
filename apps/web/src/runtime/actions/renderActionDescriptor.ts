@@ -4,6 +4,7 @@ export interface NoteSurfaceRenderActionDescriptor {
   apiIntent: string;
   blockId?: string;
   noteId?: string;
+  noteLeaveCause?: string;
   blockType?: string;
   digestSectionId?: string;
   dataAction?: string;
@@ -50,6 +51,7 @@ export function normalizeNoteSurfaceRenderActionDescriptor(
       apiIntent: descriptor.apiIntent,
       ...optionalString('blockId', descriptor.blockId),
       ...optionalString('noteId', descriptor.noteId),
+      ...optionalString('noteLeaveCause', descriptor.noteLeaveCause),
       ...optionalString('blockType', descriptor.blockType),
       ...optionalString('digestSectionId', descriptor.digestSectionId),
       ...optionalString('dataAction', descriptor.dataAction),
@@ -79,6 +81,7 @@ export function readNoteSurfaceRenderActionDescriptor(
     apiIntent: descriptor.apiIntent ?? 'none',
     ...optionalString('blockId', descriptor.blockId),
     ...optionalString('noteId', descriptor.noteId),
+    ...optionalString('noteLeaveCause', descriptor.noteLeaveCause),
     ...optionalString('blockType', descriptor.blockType),
     ...optionalString('digestSectionId', descriptor.digestSectionId),
     ...optionalString('dataAction', descriptor.dataAction),
@@ -108,6 +111,7 @@ function readNoteSurfaceRenderActionDescriptorFromRecord(source: Record<string, 
   apiIntent?: string;
   blockId?: string;
   noteId?: string;
+  noteLeaveCause?: string;
   blockType?: string;
   digestSectionId?: string;
   dataAction?: string;
@@ -127,6 +131,10 @@ function readNoteSurfaceRenderActionDescriptorFromRecord(source: Record<string, 
     ...optionalString('apiIntent', readNonEmptyString(source, 'apiIntent') ?? readNonEmptyString(dataset, 'apiIntent')),
     ...optionalString('blockId', readNonEmptyString(source, 'blockId') ?? readNonEmptyString(dataset, 'blockId')),
     ...optionalString('noteId', readNonEmptyString(source, 'noteId') ?? readNonEmptyString(dataset, 'noteId')),
+    ...optionalString(
+      'noteLeaveCause',
+      readNonEmptyString(source, 'noteLeaveCause') ?? readNonEmptyString(dataset, 'noteLeaveCause'),
+    ),
     ...optionalString('blockType', readNonEmptyString(source, 'blockType') ?? readNonEmptyString(dataset, 'blockType')),
     ...optionalString(
       'digestSectionId',

@@ -1,24 +1,18 @@
 import {
-  createNextOpenDigestViewModel,
-  createProvenancePopoverViewModel,
-  parseNextOpenDigestInput,
-  refreshQuietWritingProjection,
-  resolveContinueWritingFocusBlockId,
-  withInlineBlockActionState,
-  withReturnLayerOpen,
-  type NextOpenDigestInput,
   type NoteSurfaceViewModel,
-  type ProvenancePopoverInput,
 } from '../../noteSurface.ts';
-import {
-  renderNoteSurfaceHtml,
-  type NoteSurfaceHtmlRenderEventDescriptor,
-  type NoteSurfaceHtmlRenderResult,
+import type {
+  NoteSurfaceHtmlRenderEventDescriptor,
+  NoteSurfaceHtmlRenderResult,
 } from '../../noteSurfaceHtmlRenderer.ts';
 import type {
   NoteSurfaceEventController,
   NoteSurfaceEventControllerResult,
 } from '../../noteSurfaceEventController.ts';
+import type {
+  BrowserRuntimeProjectionMaps,
+  NoteSurfaceDocumentInput,
+} from './actions/browserRuntimeActionTypes.ts';
 
 export type NoteSurfaceBrowserRuntimeRenderer = (
   model: NoteSurfaceViewModel,
@@ -42,6 +36,10 @@ export interface NoteSurfaceBrowserRuntimeOptions {
   render?: NoteSurfaceBrowserRuntimeRenderer;
   eventController: NoteSurfaceEventController;
   host: NoteSurfaceBrowserRuntimeHost;
+  onOpenDocumentProjection?(projection: {
+    document: NoteSurfaceDocumentInput;
+    projectionMaps?: BrowserRuntimeProjectionMaps;
+  }): void;
 }
 
 export type NoteSurfaceBrowserRuntimeMountStatus =

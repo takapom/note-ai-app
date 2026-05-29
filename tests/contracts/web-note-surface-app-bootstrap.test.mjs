@@ -90,6 +90,94 @@ test('app bootstrap sends editor save clicks as plain text block update requests
   ]);
 });
 
+test('app bootstrap refreshes resolver mappings from reopened note projections', async () => {
+  const root = createFakeRoot();
+  const calls = [];
+  const reopenedDocument = createReopenedDocumentWithAiBlock();
+  const app = createNoteSurfaceAppBootstrap({
+    document: structuredClone(noteDocumentFixture),
+    root,
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike(calls, (url) => {
+      if (url.endsWith('/notes/note_002')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            document: reopenedDocument,
+            viewState: {
+              inlineAiProjectionsVisible: true,
+            },
+            projectionMaps: {
+              activeNoteId: 'note_002',
+              operationIdByBlockId: {
+                block_ai_question_001: 'operation_002',
+              },
+            },
+          },
+        };
+      }
+      if (url.endsWith('/notes/note_002/digest')) {
+        return {
+          ok: true,
+          status: 200,
+          body: { available: false },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 202,
+        body: { handled: true },
+      };
+    }),
+    ...metadata,
+    viewOptions: {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Current note',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    },
+  });
+
+  const mounted = await app.mount();
+  assert.equal(mounted.ok, true);
+
+  root.click(createActionElement({
+    action: 'open_recent_thought',
+    target: 'thin_rail',
+    noteId: 'note_002',
+  }));
+
+  await waitFor(() => calls.length === 3);
+  assert.match(root.innerHTML, /data-surface="single-note" data-note-id="note_002"/);
+  assert.match(root.innerHTML, /data-action="delete" data-target="ai_assist_block"/);
+
+  root.click(createActionElement({
+    action: 'delete',
+    target: 'ai_assist_block',
+    blockId: 'block_ai_question_001',
+  }));
+
+  await waitFor(() => calls.length === 4);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['POST', 'https://worker.example.test/api/notes/note_001/leave'],
+    ['GET', 'https://worker.example.test/api/notes/note_002'],
+    ['GET', 'https://worker.example.test/api/notes/note_002/digest'],
+    ['POST', 'https://worker.example.test/api/ai-operations/operation_002/dismiss'],
+  ]);
+});
+
 test('app bootstrap rejects invalid options before root binding or fetch-like calls', async () => {
   const root = createFakeRoot();
   let fetchCalls = 0;
@@ -223,17 +311,40 @@ function createSaveActionElement(dataset, content) {
   return element;
 }
 
-function createFetchLike(calls) {
+function createFetchLike(calls, responseFor) {
   return async (url, init) => {
     calls.push({ url, init });
-    return {
+    const response = responseFor?.(url, init) ?? {
       ok: true,
       status: 200,
+      body: { handled: true },
+    };
+    return {
+      ok: response.ok,
+      status: response.status,
       async json() {
-        return { handled: true };
+        return response.body;
       },
     };
   };
+}
+
+function createReopenedDocumentWithAiBlock() {
+  const document = structuredClone(noteDocumentFixture);
+  document.note = {
+    ...document.note,
+    id: 'note_002',
+    title: 'Reopened note',
+  };
+  document.sections = document.sections.map((section) => ({
+    ...section,
+    noteId: 'note_002',
+  }));
+  document.blocks = document.blocks.map((block) => ({
+    ...block,
+    noteId: 'note_002',
+  }));
+  return document;
 }
 
 async function waitFor(predicate) {

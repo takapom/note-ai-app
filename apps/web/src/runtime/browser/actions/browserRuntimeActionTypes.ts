@@ -1,10 +1,31 @@
 import type {
+  CreateNoteSurfaceViewModelOptions,
   createNoteSurfaceViewModel,
   NextOpenDigestInput,
   ProvenancePopoverInput,
 } from '../../../noteSurface.ts';
 
 export type NoteSurfaceDocumentInput = Parameters<typeof createNoteSurfaceViewModel>[0];
+
+export interface BrowserRuntimeProjectionMaps {
+  activeNoteId?: string;
+  operationIdByBlockId?: Readonly<Record<string, string>>;
+  memoryIdByBlockId?: Readonly<Record<string, string>>;
+  sourceSpanIdByBlockId?: Readonly<Record<string, string>>;
+  memoryEditContentByBlockId?: Readonly<Record<string, unknown>>;
+}
+
+export type BrowserRuntimeOpenNoteViewOptions = Pick<
+  CreateNoteSurfaceViewModelOptions,
+  | 'workspaceName'
+  | 'aiStatus'
+  | 'sourceSpanIdByBlockId'
+  | 'inlineAiProjectionsVisible'
+  | 'memoryCandidatesVisible'
+  | 'returnLayerVisible'
+  | 'nextOpenDigest'
+  | 'expandedDigest'
+>;
 
 export type LocalProjectionAction =
   | { action: 'expand_digest' | 'collapse_digest'; target: 'next_open_digest' }
@@ -17,8 +38,15 @@ export type LocalProjectionAction =
 
 export type SuccessfulApiProjectionAction =
   | LocalProjectionAction
-  | { action: 'open_recent_thought'; target: 'thin_rail'; noteId: string; document: NoteSurfaceDocumentInput }
-  | { action: 'read_digest'; target: 'next_open_digest'; digest: NextOpenDigestInput }
+  | {
+      action: 'open_recent_thought';
+      target: 'thin_rail';
+      noteId: string;
+      document: NoteSurfaceDocumentInput;
+      viewOptions?: BrowserRuntimeOpenNoteViewOptions;
+      projectionMaps?: BrowserRuntimeProjectionMaps;
+    }
+  | { action: 'read_digest'; target: 'next_open_digest'; digest: NextOpenDigestInput; expanded?: boolean }
   | { action: 'lookup_provenance'; target: 'provenance_popover'; provenance: ProvenancePopoverInput }
   | {
       action: 'remember' | 'reject' | 'delete' | 'snooze';

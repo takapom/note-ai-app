@@ -76,7 +76,7 @@ export function createNoteSurfaceActionInputResolver(
     }
 
     if (isNoteLifecycleApiIntent(event.apiIntent)) {
-      return readDigestNoteInput(options, event);
+      return readNoteLifecycleInput(options, event);
     }
 
     if (isProvenanceLookupApiIntent(event.apiIntent)) {
@@ -136,6 +136,21 @@ function readDigestNoteInput(
   return typeof noteId === 'string' ? { noteId } : undefined;
 }
 
+function readNoteLifecycleInput(
+  options: NoteSurfaceActionInputResolverOptions,
+  event: NoteSurfaceEventControllerDescriptor,
+): NoteSurfaceResolvedActionInput | undefined {
+  const resolved = readDigestNoteInput(options, event);
+  if (resolved === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...resolved,
+    ...(isNoteLeaveCause(event.noteLeaveCause) ? { noteLeaveCause: event.noteLeaveCause } : {}),
+  };
+}
+
 function readActiveNoteId(
   lookup: NoteSurfaceActiveNoteIdLookup | undefined,
   event: NoteSurfaceEventControllerDescriptor,
@@ -171,4 +186,17 @@ function readTargetLookup<T>(
   }
 
   return typeof lookup === 'function' ? lookup(event.target, event) : lookup[event.target];
+}
+
+function isNoteLeaveCause(
+  value: unknown,
+): value is NonNullable<NoteSurfaceResolvedActionInput['noteLeaveCause']> {
+  return (
+    value === 'note_close'
+    || value === 'tab_switch'
+    || value === 'app_leave'
+    || value === 'note_closed'
+    || value === 'tab_switched'
+    || value === 'app_left'
+  );
 }

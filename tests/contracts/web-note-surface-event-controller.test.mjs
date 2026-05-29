@@ -141,7 +141,10 @@ test('event controller sends note read digest read and provenance lookup actions
   const calls = [];
   const controller = createController(calls, (event) => {
     if (event.target === 'thin_rail' || event.target === 'next_open_digest' || event.target === 'writing_chrome') {
-      return { noteId: event.noteId ?? 'note_001' };
+      return {
+        noteId: event.noteId ?? 'note_001',
+        noteLeaveCause: event.noteLeaveCause,
+      };
     }
     return {
       provenance: {
@@ -169,6 +172,13 @@ test('event controller sends note read digest read and provenance lookup actions
     target: 'writing_chrome',
     apiIntent: 'POST /notes/:noteId/structure/manual',
   });
+  const tabSwitchLeave = await controller.handleRenderEvent({
+    action: 'leave_note',
+    target: 'thin_rail',
+    noteId: 'note_recent_001',
+    noteLeaveCause: 'tab_switch',
+    apiIntent: 'note.leave',
+  });
   const provenance = await controller.handleRenderEvent({
     action: 'inspect_source',
     target: 'ai_assist_block',
@@ -179,11 +189,13 @@ test('event controller sends note read digest read and provenance lookup actions
   assert.equal(noteRead.ok, true);
   assert.equal(digest.ok, true);
   assert.equal(manualStructure.ok, true);
+  assert.equal(tabSwitchLeave.ok, true);
   assert.equal(provenance.ok, true);
   assert.deepEqual(calls.map((call) => [call.method, call.path, call.body]), [
     ['GET', '/notes/note_recent_001', undefined],
     ['GET', '/notes/note_001/digest', undefined],
     ['POST', '/notes/note_001/structure/manual', undefined],
+    ['POST', '/notes/note_recent_001/leave', { cause: 'tab_switch' }],
     ['POST', '/provenance/source', {
       sourceSpanId: 'span_001',
       sourceBlockId: 'block_source_001',
