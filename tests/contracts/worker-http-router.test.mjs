@@ -9,6 +9,7 @@ import {
 import { InMemoryMemoryCandidatePersistencePort } from '../../apps/worker/src/memory/memoryCandidateProposalBoundary.ts';
 import { InMemoryOperationProposalPersistencePort } from '../../apps/worker/src/ai-operations/operationProposalPort.ts';
 import { InMemoryNoteDocumentPersistencePort } from '../../apps/worker/src/note-model/noteDocumentPersistencePort.ts';
+import { InMemoryNoteListPort } from '../../apps/worker/src/note-model/noteListPort.ts';
 import { validOperationFixtures } from '../../contexts/ai-operations/src/contract/operationFixtures.ts';
 import { noteDocumentFixture, noteFixture } from '../../contexts/note-model/src/contract/noteFixtures.ts';
 import {
@@ -122,6 +123,28 @@ test('worker HTTP router delegates note document create get and update to the co
   assert.equal(get.status, 200);
   assert.equal(update.status, 200);
   assert.equal(update.body.document.note.title, 'Updated title');
+});
+
+test('worker HTTP router delegates note library list to the configured read port', async () => {
+  const noteList = new InMemoryNoteListPort([noteDocumentFixture]);
+
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'GET',
+    path: '/notes',
+  }, { noteList });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, {
+    ok: true,
+    notes: [{
+      noteId: noteFixture.id,
+      title: noteFixture.title,
+      descriptionEffective: noteFixture.descriptionEffective,
+      createdAt: noteFixture.createdAt,
+      updatedAt: noteFixture.updatedAt,
+    }],
+  });
 });
 
 test('worker HTTP router delegates block digest and memory routes to explicit ports', async () => {

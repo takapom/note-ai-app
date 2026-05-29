@@ -665,6 +665,43 @@ test('worker entrypoint default wiring persists notes through generic Turso exec
   });
 });
 
+test('worker entrypoint default wiring lists note summaries through generic Turso executor', async () => {
+  const executed = [];
+  const response = await handleWorkerFetch(new Request('https://worker.test/notes', {
+    method: 'GET',
+    headers: { 'x-workspace-id': noteFixture.workspaceId },
+  }), {
+    TURSO: {
+      async execute(statement) {
+        executed.push(statement);
+        return {
+          rows: [{
+            id: noteFixture.id,
+            workspace_id: noteFixture.workspaceId,
+            title: noteFixture.title,
+            description_effective: noteFixture.descriptionEffective,
+            created_at: noteFixture.createdAt,
+            updated_at: noteFixture.updatedAt,
+          }],
+        };
+      },
+    },
+  }, { now });
+
+  assert.equal(response.status, 200);
+  assert.match(executed[0].sql, /^select id, workspace_id, title, description_effective, created_at, updated_at from notes /);
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    notes: [{
+      noteId: noteFixture.id,
+      title: noteFixture.title,
+      descriptionEffective: noteFixture.descriptionEffective,
+      createdAt: noteFixture.createdAt,
+      updatedAt: noteFixture.updatedAt,
+    }],
+  });
+});
+
 test('worker entrypoint default wiring uses TURSO for operation proposal accept and dismiss routes', async () => {
   const executed = [];
   const auditRecord = makeOperationProposalAuditRecord('operation_proposal_001');

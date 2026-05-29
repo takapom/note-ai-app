@@ -5,6 +5,7 @@ import type { OperationApprovalRuntimeHandlerInput } from '../../ai-operations/o
 import type { MemoryCandidatePersistencePort } from '../../memory/memoryCandidateProposalBoundary.ts';
 import type { NoteLeaveCause, NoteStructureRouteHandlerResult, NoteStructureRouteKind } from '../../scheduler/noteStructureRouteHandler.ts';
 import type { NoteDocumentPersistencePort } from '../../note-model/noteDocumentPersistencePort.ts';
+import type { NoteListPort } from '../../note-model/noteListPort.ts';
 import type { NoteBlockCommandPort } from '../../note-model/noteBlockCommandPort.ts';
 import type { DigestReadPort } from '../../scheduler/nextOpenDigestReadPort.ts';
 import type { ProvenanceLookupPort } from '../../note-model/provenanceLookupPort.ts';
@@ -51,6 +52,7 @@ export interface WorkerRouteCommandResult {
 
 export interface WorkerHttpRouterPorts {
   noteDocument?: NoteDocumentPersistencePort;
+  noteList?: NoteListPort;
   noteBlocks?: NoteBlockCommandPort;
   noteStructureRoute?: NoteStructureRoutePort;
   noteStructure?: StructureTriggerSchedulerFlowInput['ports'];
