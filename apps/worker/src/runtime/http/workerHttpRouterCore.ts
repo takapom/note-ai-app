@@ -10,7 +10,7 @@ import type {
   WorkerHttpRouterPorts,
 } from './workerHttpRouterTypes.ts';
 import { bindCommand, delegateCommand } from './workerHttpCommandDelegation.ts';
-import { loadNoteDocumentRoute, saveNoteDocumentRoute } from './workerHttpNoteDocumentRoutes.ts';
+import { listNoteDocumentsRoute, loadNoteDocumentRoute, saveNoteDocumentRoute } from './workerHttpNoteDocumentRoutes.ts';
 import { runOperationApprovalRoute } from './workerHttpOperationApprovalRoutes.ts';
 import { runProvenanceLookupRoute } from './workerHttpProvenanceRoutes.ts';
 import { runStructureRoute } from './workerHttpStructureRoutes.ts';
@@ -36,7 +36,7 @@ export async function handleWorkerHttpRequest(
 
   switch (route.name) {
     case 'list_notes':
-      return notConfigured('note list port is not configured');
+      return listNoteDocumentsRoute(request, ports.noteList);
     case 'create_note':
       return saveNoteDocumentRoute(request, ports.noteDocument, 201);
     case 'get_note':

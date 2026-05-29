@@ -17,6 +17,7 @@ test('note surface API client maps note and block commands to Worker routes', as
     ...metadata,
   });
 
+  await client.listNotes();
   await client.getNote({ noteId: 'note_001' });
   await client.createBlock({
     noteId: 'note_001',
@@ -50,6 +51,7 @@ test('note surface API client maps note and block commands to Worker routes', as
   await client.deleteMemory({ memoryId: 'memory_delete_001' });
 
   assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    ['GET', 'https://worker.example.test/api/notes', undefined],
     ['GET', 'https://worker.example.test/api/notes/note_001', undefined],
     [
       'POST',

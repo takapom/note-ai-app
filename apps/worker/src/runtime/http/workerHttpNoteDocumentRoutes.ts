@@ -7,9 +7,34 @@ import type {
   NoteDocumentLoadResult,
   NoteDocumentPersistencePort,
 } from '../../note-model/noteDocumentPersistencePort.ts';
+import type { NoteListPort, NoteListResult } from '../../note-model/noteListPort.ts';
 import { isRecord } from './workerHttpRouteParsers.ts';
 import { badRequest, mapPortResult, notConfigured } from './workerHttpRouteResponses.ts';
 import type { WorkerHttpRequest, WorkerHttpResponse } from './workerHttpRouterTypes.ts';
+
+export async function listNoteDocumentsRoute(
+  request: WorkerHttpRequest,
+  port: NoteListPort | undefined,
+): Promise<WorkerHttpResponse> {
+  if (port === undefined) {
+    return notConfigured('note list port is not configured');
+  }
+
+  const result: NoteListResult = await port.listNotes({
+    workspaceId: request.workspaceId,
+  });
+  if (!result.ok) {
+    return badRequest(result.errors);
+  }
+
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      notes: result.notes ?? [],
+    },
+  };
+}
 
 export async function saveNoteDocumentRoute(
   request: WorkerHttpRequest,

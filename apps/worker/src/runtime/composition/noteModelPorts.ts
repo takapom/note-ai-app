@@ -3,6 +3,7 @@ import {
   TursoNoteDocumentPersistenceAdapter,
   type NoteDocumentSqlStatement,
 } from '../../note-model/noteDocumentSqlAdapter.ts';
+import { TursoNoteListSqlAdapter } from '../../note-model/noteListSqlAdapter.ts';
 import {
   TursoProvenanceLookupSqlAdapter,
   type ProvenanceLookupSqlStatement,
@@ -11,6 +12,7 @@ import { WorkerTursoSqlExecutor, type WorkerTursoClient } from './workerTursoSql
 
 export function createNoteModelPorts(tursoClient: WorkerTursoClient | undefined): {
   noteDocument?: TursoNoteDocumentPersistenceAdapter;
+  noteList?: TursoNoteListSqlAdapter;
   noteBlocks?: NoteDocumentBlockCommandPort;
   provenanceLookup?: TursoProvenanceLookupSqlAdapter;
 } {
@@ -22,6 +24,7 @@ export function createNoteModelPorts(tursoClient: WorkerTursoClient | undefined)
   const noteDocument = new TursoNoteDocumentPersistenceAdapter(tursoExecutor);
   return {
     noteDocument,
+    noteList: new TursoNoteListSqlAdapter(tursoExecutor),
     noteBlocks: new NoteDocumentBlockCommandPort(noteDocument),
     provenanceLookup: new TursoProvenanceLookupSqlAdapter({ executor: tursoExecutor }),
   };

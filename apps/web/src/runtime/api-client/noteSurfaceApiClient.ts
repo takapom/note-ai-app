@@ -18,6 +18,7 @@ export interface NoteSurfaceApiClientOptions {
 }
 
 export interface NoteSurfaceApiClient {
+  listNotes(): Promise<NoteSurfaceApiTransportResult>;
   getNote(input: NoteSurfaceGetNoteInput): Promise<NoteSurfaceApiTransportResult>;
   createBlock(input: NoteSurfaceCreateBlockInput): Promise<NoteSurfaceApiTransportResult>;
   patchBlock(input: NoteSurfacePatchBlockInput): Promise<NoteSurfaceApiTransportResult>;
@@ -99,6 +100,13 @@ export function createNoteSurfaceApiClient(options: NoteSurfaceApiClientOptions)
   });
 
   return {
+    listNotes() {
+      return transport.send({
+        method: 'GET',
+        path: '/notes',
+        headers: createMetadataHeaders(options),
+      });
+    },
     getNote(input) {
       const errors = validatePathId('noteId', input.noteId);
       if (errors.length > 0) {

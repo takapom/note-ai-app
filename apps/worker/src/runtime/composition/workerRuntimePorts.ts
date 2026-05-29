@@ -50,6 +50,7 @@ export function createWorkerRuntimePorts(input: {
 
   return {
     ...(noteModel.noteDocument === undefined ? {} : { noteDocument: noteModel.noteDocument }),
+    ...(noteModel.noteList === undefined ? {} : { noteList: noteModel.noteList }),
     ...(noteModel.noteBlocks === undefined ? {} : { noteBlocks: noteModel.noteBlocks }),
     ...(agentLocal.digestRead === undefined ? {} : { digestRead: agentLocal.digestRead }),
     ...(memory.memoryReview === undefined ? {} : { memoryReview: memory.memoryReview }),
