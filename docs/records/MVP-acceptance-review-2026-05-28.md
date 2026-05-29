@@ -13,7 +13,7 @@
 
 2026-05-28 時点では MVP complete はまだ宣言しない。repo-local の product/runtime/frontend acceptance は covered だが、GitHub issue / PR の traceability projection が最新状態に同期されていないため、#17 は blocking gap として残る。
 
-2026-05-29 追記: GitHub traceability projection は PR #7 と issue #1-#6 の close comment に同期済み。PR #7 の review / merge 後、main branch 上でも MVP acceptance #1-#17 を covered として扱える。
+2026-05-29 追記: GitHub traceability projection は PR #7 と issue #1-#6 の close comment に同期済み。PR #7 は merge 済みで、main branch 上でも MVP acceptance #1-#17 は covered として扱える。
 
 ## 検証結果
 
@@ -24,6 +24,9 @@
 - 2026-05-29: `npm run verify`: pass。
 - 2026-05-29: `gh issue list --repo takapom/note-ai-app --state all --limit 10`: issue #1-#6 は closed。
 - 2026-05-29: `gh pr view 7 --repo takapom/note-ai-app`: PR #7 `Prepare MVP acceptance traceability` は open。
+- 2026-05-29: PR #7 merge commit `433d0c8c9b6ba3466a20c17b3390ee511d5dd6e6` を main に fast-forward。
+- 2026-05-29: main branch 上で `npm run docs:register:check`: pass。
+- 2026-05-29: main branch 上で `npm run verify`: pass。
 
 ## Acceptance Status
 
@@ -45,17 +48,16 @@
 | 14 | Markdown-compatible authoring shortcuts で書ける。ただし Markdown は内部 SoT ではない | covered | Authoring shortcut normalization tests and Note Model canonical block persistence separation。 |
 | 15 | AI provider failure が発生しても note editing は継続できる | covered | Provider failure guards, browser runtime failure projection, real-browser editor guard。 |
 | 16 | `docs/contracts/mvp-acceptance.md` #16 の MVP 除外 surface が入っていない | covered | Renderer/static build/integration guards for MVP-excluded surfaces。 |
-| 17 | Codex task、Superset workspace、docs contract の traceability が維持される | covered in PR #7 | Repo docs/register/Superset task files are present。GitHub issue #1-#6 は current repo state と `npm run verify` evidence に基づき closed。PR #7 が acceptance review、real-browser guard、status reserved layout、runtime / frontend / local smoke updates を追跡する。 |
+| 17 | Codex task、Superset workspace、docs contract の traceability が維持される | covered | Repo docs/register/Superset task files are present。GitHub issue #1-#6 は current repo state と `npm run verify` evidence に基づき closed。PR #7 が acceptance review、real-browser guard、status reserved layout、runtime / frontend / local smoke updates を追跡し、main branch に merge 済み。 |
 
 ## Traceability Closure
 
 2026-05-29 に GitHub traceability projection を現在の repo 状態へ同期した。
 
 - issue #1-#6 は、current repo state と `npm run verify` pass を根拠として close 済み。
-- PR #7 がこの review record、real-browser test harness 修正、status reserved layout 修正、runtime / frontend / local smoke updates を追跡する。
-- `npm run docs:register:check` と `npm run verify` は PR #7 branch 上で pass。
+- PR #7 がこの review record、real-browser test harness 修正、status reserved layout 修正、runtime / frontend / local smoke updates を追跡し、main branch に merge 済み。
+- `npm run docs:register:check` と `npm run verify` は PR #7 branch 上、および merge 後の main branch 上で pass。
 
 ## Follow-up
 
-- PR #7 を review / merge する。
-- merge 後の main branch で `npm run docs:register:check` と `npm run verify` を再実行し、MVP complete 判定を main branch の証跡として固定する。
+- post-MVP planning に入る前に、必要なら release note / milestone 側へこの record を projection する。
