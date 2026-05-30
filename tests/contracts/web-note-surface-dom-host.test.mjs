@@ -137,6 +137,119 @@ test('DOM host preserves markdown-like shortcut text for backend-owned block upd
   assert.equal(handled[0].content, '## Backend owns structural conversion');
 });
 
+test('DOM host snapshots dirty user-authored block drafts without transforming text', () => {
+  const root = createFakeRoot({
+    articles: [
+      createBlockArticle({
+        blockId: 'block_paragraph_001',
+        origin: 'user',
+        saveStatus: 'dirty',
+        content: '  ## Backend owns this shortcut text  ',
+      }),
+      createBlockArticle({
+        blockId: 'block_paragraph_002',
+        origin: 'user',
+        saveStatus: 'error',
+        content: 'Retryable local draft.',
+      }),
+    ],
+  });
+  const host = createNoteSurfaceDomHost(root);
+
+  const drafts = host.readDirtyBlockDrafts();
+
+  assert.deepEqual(drafts, [
+    {
+      blockId: 'block_paragraph_001',
+      content: '  ## Backend owns this shortcut text  ',
+    },
+    {
+      blockId: 'block_paragraph_002',
+      content: 'Retryable local draft.',
+    },
+  ]);
+});
+
+test('DOM host excludes non-user, saved, and in-flight block drafts from snapshots', () => {
+  const root = createFakeRoot({
+    articles: [
+      createBlockArticle({
+        blockId: 'block_user_saved_001',
+        origin: 'user',
+        saveStatus: 'saved',
+        content: 'Already saved user text.',
+      }),
+      createBlockArticle({
+        blockId: 'block_user_saving_001',
+        origin: 'user',
+        saveStatus: 'saving',
+        content: 'In-flight user text.',
+      }),
+      createBlockArticle({
+        blockId: 'block_ai_001',
+        origin: 'ai',
+        saveStatus: 'dirty',
+        content: 'AI assist draft must not flush as user content.',
+      }),
+      createBlockArticle({
+        blockId: 'block_memory_001',
+        origin: 'ai',
+        saveStatus: 'error',
+        content: 'Memory candidate draft must not flush as user content.',
+      }),
+      createBlockArticle({
+        blockId: 'block_user_dirty_001',
+        origin: 'user',
+        saveStatus: 'dirty',
+        content: 'Only this user draft is eligible.',
+      }),
+    ],
+  });
+  const host = createNoteSurfaceDomHost(root);
+
+  const drafts = host.readDirtyBlockDrafts();
+
+  assert.deepEqual(drafts, [
+    {
+      blockId: 'block_user_dirty_001',
+      content: 'Only this user draft is eligible.',
+    },
+  ]);
+});
+
+test('DOM host marks dirty draft snapshots while input composition is active or pending', () => {
+  const article = createBlockArticle({
+    blockId: 'block_paragraph_001',
+    origin: 'user',
+    saveStatus: 'dirty',
+    content: 'IME draft text.',
+  });
+  const root = createFakeRoot({ articles: [article] });
+  const host = createNoteSurfaceDomHost(root);
+
+  root.fire('compositionstart', article.editorContent);
+  const active = host.readDirtyBlockDrafts();
+  root.fire('compositionend', article.editorContent);
+  const pending = host.readDirtyBlockDrafts();
+  root.fire('input', article.editorContent);
+  const idle = host.readDirtyBlockDrafts();
+
+  assert.deepEqual(active, [{
+    blockId: 'block_paragraph_001',
+    content: 'IME draft text.',
+    inputCompositionState: 'active',
+  }]);
+  assert.deepEqual(pending, [{
+    blockId: 'block_paragraph_001',
+    content: 'IME draft text.',
+    inputCompositionState: 'pending',
+  }]);
+  assert.deepEqual(idle, [{
+    blockId: 'block_paragraph_001',
+    content: 'IME draft text.',
+  }]);
+});
+
 test('DOM host marks save descriptors while block input composition is active or pending', () => {
   const root = createFakeRoot();
   const host = createNoteSurfaceDomHost(root);
@@ -271,9 +384,10 @@ test('DOM host source owns only the thin DOM adapter boundary', async () => {
   assert.doesNotMatch(source, /user_block\.direct_mutate|directUserBlockMutation|mutateUserAuthoredBlock|direct.*mutat/i);
 });
 
-function createFakeRoot() {
+function createFakeRoot(options = {}) {
   return {
     innerHTML: '',
+    articles: options.articles ?? [],
     listeners: {
       click: [],
       compositionstart: [],
@@ -299,6 +413,10 @@ function createFakeRoot() {
       for (const listener of this.listeners[type]) {
         listener({ target });
       }
+    },
+    querySelectorAll(selector) {
+      assert.equal(selector, 'article[data-block-id][data-block-origin="user"]');
+      return this.articles.filter((article) => article.dataset.blockOrigin === 'user');
     },
   };
 }
@@ -343,6 +461,29 @@ function createSaveActionElement(dataset, content) {
     },
   };
   return button;
+}
+
+function createBlockArticle({ blockId, origin, saveStatus, content }) {
+  const article = {
+    dataset: {
+      blockId,
+      blockOrigin: origin,
+      editorSaveStatus: saveStatus,
+    },
+    querySelector(selector) {
+      assert.equal(selector, '[data-block-editor-content="true"]');
+      return contentElement;
+    },
+  };
+  const contentElement = {
+    textContent: content,
+    closest(selector) {
+      assert.equal(selector, 'article[data-block-id]');
+      return article;
+    },
+  };
+  article.editorContent = contentElement;
+  return article;
 }
 
 function createRenderEvent(overrides) {

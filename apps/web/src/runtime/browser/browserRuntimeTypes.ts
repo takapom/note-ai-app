@@ -22,6 +22,12 @@ export type NoteSurfaceBrowserRuntimeActionHandler = (
   eventDescriptor: unknown,
 ) => Promise<NoteSurfaceBrowserRuntimeActionResult>;
 
+export interface NoteSurfaceDirtyBlockDraft {
+  blockId: string;
+  content: string;
+  inputCompositionState?: 'active' | 'pending';
+}
+
 export interface NoteSurfaceBrowserRuntimeHost {
   setHtml(html: string): void | Promise<void>;
   bindActionEvents(
@@ -29,6 +35,7 @@ export interface NoteSurfaceBrowserRuntimeHost {
     handler: NoteSurfaceBrowserRuntimeActionHandler,
   ): void | Promise<void>;
   focusWritingBlock?(blockId?: string): void;
+  readDirtyBlockDrafts?(): readonly NoteSurfaceDirtyBlockDraft[];
 }
 
 export interface NoteSurfaceBrowserRuntimeOptions {

@@ -1,11 +1,17 @@
 import type {
   NoteSurfaceBrowserRuntimeActionHandler,
+  NoteSurfaceDirtyBlockDraft,
   NoteSurfaceBrowserRuntimeHost,
 } from '../../noteSurfaceBrowserRuntime.ts';
 import type { NoteSurfaceHtmlRenderEventDescriptor } from '../../noteSurfaceHtmlRenderer.ts';
-import { createEventDescriptor, findActionElement, readClosestBlockId } from './domEventDescriptor.ts';
+import { createEventDescriptor, findActionElement, readClosestBlockId, readDatasetString } from './domEventDescriptor.ts';
 import { captureSelectionSnapshot, focusWritingSurface, restoreSelectionSnapshot } from './domSelection.ts';
-import type { NoteSurfaceDomCompositionEvent, NoteSurfaceDomClickEvent, NoteSurfaceDomHostRoot } from './domHostTypes.ts';
+import type {
+  NoteSurfaceDomActionElement,
+  NoteSurfaceDomCompositionEvent,
+  NoteSurfaceDomClickEvent,
+  NoteSurfaceDomHostRoot,
+} from './domHostTypes.ts';
 
 export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurfaceBrowserRuntimeHost {
   let removePreviousClickListener: (() => void) | undefined;
@@ -54,6 +60,13 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
       focusWritingSurface(root, blockId);
     },
 
+    readDirtyBlockDrafts(): readonly NoteSurfaceDirtyBlockDraft[] {
+      return readDirtyBlockDrafts(root, {
+        composingBlockIds,
+        pendingCompositionBlockIds,
+      });
+    },
+
     bindActionEvents(
       events: readonly NoteSurfaceHtmlRenderEventDescriptor[],
       handler: NoteSurfaceBrowserRuntimeActionHandler,
@@ -77,4 +90,71 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
       removePreviousClickListener = () => root.removeEventListener('click', clickListener);
     },
   };
+}
+
+function readDirtyBlockDrafts(
+  root: NoteSurfaceDomHostRoot,
+  composition: {
+    composingBlockIds: ReadonlySet<string>;
+    pendingCompositionBlockIds: ReadonlySet<string>;
+  },
+): readonly NoteSurfaceDirtyBlockDraft[] {
+  const rootElement = asActionElement(root);
+  const blockElements = readNodeList(rootElement?.querySelectorAll?.('article[data-block-id][data-block-origin="user"]'));
+  const drafts: NoteSurfaceDirtyBlockDraft[] = [];
+
+  for (const blockElement of blockElements) {
+    const block = asActionElement(blockElement);
+    const blockId = readDatasetString(block?.dataset ?? {}, 'blockId');
+    const saveStatus = readDatasetString(block?.dataset ?? {}, 'editorSaveStatus');
+    if (blockId === undefined || (saveStatus !== 'dirty' && saveStatus !== 'error')) {
+      continue;
+    }
+
+    const contentElement = asActionElement(block?.querySelector?.('[data-block-editor-content="true"]'));
+    if (typeof contentElement?.textContent !== 'string') {
+      continue;
+    }
+
+    const inputCompositionState = readInputCompositionState(blockId, composition);
+    drafts.push({
+      blockId,
+      content: contentElement.textContent,
+      ...(inputCompositionState === undefined ? {} : { inputCompositionState }),
+    });
+  }
+
+  return drafts;
+}
+
+function readInputCompositionState(
+  blockId: string,
+  composition: {
+    composingBlockIds: ReadonlySet<string>;
+    pendingCompositionBlockIds: ReadonlySet<string>;
+  },
+): NoteSurfaceDirtyBlockDraft['inputCompositionState'] {
+  if (composition.composingBlockIds.has(blockId)) {
+    return 'active';
+  }
+  if (composition.pendingCompositionBlockIds.has(blockId)) {
+    return 'pending';
+  }
+  return undefined;
+}
+
+function readNodeList(value: unknown): unknown[] {
+  if (value === undefined || value === null || typeof value !== 'object') {
+    return [];
+  }
+
+  return Array.from(value as ArrayLike<unknown>);
+}
+
+function asActionElement(value: unknown): NoteSurfaceDomActionElement | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined;
+  }
+
+  return value as NoteSurfaceDomActionElement;
 }
