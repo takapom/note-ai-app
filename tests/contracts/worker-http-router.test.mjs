@@ -354,6 +354,180 @@ test('worker HTTP router delegates note leave cause preservation to note structu
   );
 });
 
+test('worker HTTP router saves latest leave block updates before note structure dispatch', async () => {
+  const calls = [];
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    userId: 'user_001',
+    method: 'POST',
+    path: `/notes/${noteFixture.id}/leave`,
+    body: {
+      cause: 'app_leave',
+      latestBlockUpdates: [
+        {
+          blockId: 'block_paragraph_001',
+          content: '  Latest app leave draft.  ',
+        },
+        {
+          blockId: 'block_paragraph_002',
+          content: 'Second app leave draft.',
+        },
+      ],
+    },
+  }, {
+    noteBlocks: {
+      async updateBlock(input) {
+        calls.push(['updateBlock', input.blockId, input.noteId, input.body]);
+        return { ok: true, errors: [], body: { updated: true } };
+      },
+      async createBlock() {
+        throw new Error('leave latest updates must not create blocks');
+      },
+      async deleteBlock() {
+        throw new Error('leave latest updates must not delete blocks');
+      },
+    },
+    noteStructureRoute: {
+      async runNoteStructureRoute(input) {
+        calls.push(['noteStructureRoute', input.route, input.cause]);
+        return {
+          ok: true,
+          route: input.route,
+          triggerReason: 'app_left',
+          scheduledJobs: [{ id: 'structure_job_app_leave_001' }],
+          providerCalls: [],
+          operationRoutingCalls: [],
+          auditWrites: [],
+          errors: [],
+        };
+      },
+    },
+  });
+
+  assert.deepEqual(calls, [
+    [
+      'updateBlock',
+      'block_paragraph_001',
+      noteFixture.id,
+      {
+        noteId: noteFixture.id,
+        content: '  Latest app leave draft.  ',
+      },
+    ],
+    [
+      'updateBlock',
+      'block_paragraph_002',
+      noteFixture.id,
+      {
+        noteId: noteFixture.id,
+        content: 'Second app leave draft.',
+      },
+    ],
+    ['noteStructureRoute', 'note_leave', 'app_leave'],
+  ]);
+  assert.deepEqual(response, {
+    status: 202,
+    body: {
+      ok: true,
+      route: 'note_leave',
+      triggerReason: 'app_left',
+      scheduledJobs: [{ id: 'structure_job_app_leave_001' }],
+      errors: [],
+    },
+  });
+});
+
+test('worker HTTP router blocks note leave scheduling when latest block update fails', async () => {
+  let structureCalls = 0;
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: `/notes/${noteFixture.id}/leave`,
+    body: {
+      cause: 'app_leave',
+      latestBlockUpdates: [{
+        blockId: 'block_paragraph_001',
+        content: 'Draft rejected by Note Model command boundary.',
+      }],
+    },
+  }, {
+    noteBlocks: {
+      async updateBlock() {
+        return { ok: false, errors: ['block not found'] };
+      },
+      async createBlock() {
+        throw new Error('unexpected create');
+      },
+      async deleteBlock() {
+        throw new Error('unexpected delete');
+      },
+    },
+    noteStructureRoute: {
+      async runNoteStructureRoute() {
+        structureCalls += 1;
+        throw new Error('structure route must not run after latest save failure');
+      },
+    },
+  });
+
+  assert.equal(structureCalls, 0);
+  assert.deepEqual(response, {
+    status: 400,
+    body: {
+      ok: false,
+      errors: ['block not found'],
+    },
+  });
+});
+
+test('worker HTTP router rejects invalid latest leave block updates before ports', async () => {
+  let updateCalls = 0;
+  let structureCalls = 0;
+  const response = await handleWorkerHttpRequest({
+    ...baseRequest,
+    method: 'POST',
+    path: `/notes/${noteFixture.id}/leave`,
+    body: {
+      cause: 'app_leave',
+      latestBlockUpdates: [
+        {
+          blockId: 'block/paragraph/001',
+          content: 'Invalid block id.',
+        },
+        {
+          blockId: 'block_paragraph_002',
+          content: '   ',
+        },
+      ],
+    },
+  }, {
+    noteBlocks: {
+      async updateBlock() {
+        updateCalls += 1;
+        throw new Error('latest update validation should stop before noteBlocks');
+      },
+      async createBlock() {
+        throw new Error('unexpected create');
+      },
+      async deleteBlock() {
+        throw new Error('unexpected delete');
+      },
+    },
+    noteStructureRoute: {
+      async runNoteStructureRoute() {
+        structureCalls += 1;
+        throw new Error('structure route must not run after invalid latest updates');
+      },
+    },
+  });
+
+  assert.equal(updateCalls, 0);
+  assert.equal(structureCalls, 0);
+  assert.equal(response.status, 400);
+  assert.match(response.body.errors.join('\n'), /latestBlockUpdates\[0\]\.blockId/);
+  assert.match(response.body.errors.join('\n'), /latestBlockUpdates\[1\]\.content/);
+});
+
 test('worker HTTP router delegates note structure routes through route port before scheduler ports', async () => {
   const calls = [];
   const response = await handleWorkerHttpRequest({

@@ -38,6 +38,11 @@ export interface NoteSurfaceBrowserRuntimeHost {
   readDirtyBlockDrafts?(): readonly NoteSurfaceDirtyBlockDraft[];
 }
 
+export interface NoteSurfacePageLeaveSnapshot {
+  noteId: string;
+  dirtyBlockDrafts: readonly NoteSurfaceDirtyBlockDraft[];
+}
+
 export interface NoteSurfaceBrowserRuntimeOptions {
   model: NoteSurfaceViewModel;
   render?: NoteSurfaceBrowserRuntimeRenderer;
@@ -78,4 +83,5 @@ export interface NoteSurfaceBrowserRuntimeActionResult {
 export interface NoteSurfaceBrowserRuntime {
   mount(): Promise<NoteSurfaceBrowserRuntimeMountResult>;
   handleAction(eventDescriptor: unknown): Promise<NoteSurfaceBrowserRuntimeActionResult>;
+  readPageLeaveSnapshot(): NoteSurfacePageLeaveSnapshot;
 }

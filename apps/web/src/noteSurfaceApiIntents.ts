@@ -1,3 +1,8 @@
+import {
+  readLatestBlockUpdates,
+  type NoteLeaveLatestBlockUpdateInput,
+} from './noteSurfaceLatestBlockUpdates.ts';
+
 export type NoteSurfaceWorkerRequestMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export type NoteSurfaceApiIntentKind =
@@ -77,6 +82,7 @@ export interface NoteLeaveApiIntentInput extends NoteSurfaceApiIntentBaseInput {
   intent: 'note.leave';
   noteId: string;
   cause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
+  latestBlockUpdates?: readonly NoteLeaveLatestBlockUpdateInput[];
 }
 
 export interface NoteReadApiIntentInput extends NoteSurfaceApiIntentBaseInput {
@@ -269,6 +275,7 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
       });
     case 'note.leave':
       validatePathSegment('noteId', getStringField(input, 'noteId'), errors);
+      const latestBlockUpdates = readLatestBlockUpdates(input, errors);
       return requestResult(errors, {
         method: 'POST',
         path: `/notes/${getStringField(input, 'noteId')}/leave`,
@@ -278,6 +285,9 @@ export function mapNoteSurfaceIntentToWorkerRequest(input: unknown): NoteSurface
         },
         body: {
           cause: getStringField(input, 'cause') ?? 'app_leave',
+          ...(latestBlockUpdates === undefined || latestBlockUpdates.length === 0
+            ? {}
+            : { latestBlockUpdates }),
         },
       });
     case 'note.manual_structure':

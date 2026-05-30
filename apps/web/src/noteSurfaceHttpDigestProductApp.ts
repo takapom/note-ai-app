@@ -54,6 +54,7 @@ export function createNoteSurfaceHttpDigestProductApp(
           noteId: options.noteId,
           ...(options.userId === undefined ? {} : { userId: options.userId }),
           lifecycle: options.pageLifecycle!,
+          readPageLeaveSnapshot: () => result.runtime.readPageLeaveSnapshot(),
         });
       }
 

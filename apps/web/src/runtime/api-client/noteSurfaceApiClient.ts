@@ -15,6 +15,7 @@ export interface NoteSurfaceApiClientOptions {
   fetchLike: NoteSurfaceApiFetchLike;
   workspaceId: string;
   userId?: string;
+  keepalive?: boolean;
 }
 
 export interface NoteSurfaceApiClient {
@@ -60,6 +61,12 @@ export interface NoteSurfaceDeleteBlockInput {
 export interface NoteSurfaceLeaveNoteInput {
   noteId: string;
   cause?: 'note_close' | 'tab_switch' | 'app_leave' | 'note_closed' | 'tab_switched' | 'app_left';
+  latestBlockUpdates?: readonly NoteSurfaceLatestBlockUpdateInput[];
+}
+
+export interface NoteSurfaceLatestBlockUpdateInput {
+  blockId: string;
+  content: string;
 }
 
 export interface NoteSurfaceManualStructureInput {
@@ -97,6 +104,7 @@ export function createNoteSurfaceApiClient(options: NoteSurfaceApiClientOptions)
   const transport = createNoteSurfaceApiTransport({
     baseUrl: options.apiBaseUrl,
     fetchLike: options.fetchLike,
+    ...(options.keepalive === true ? { keepalive: true } : {}),
   });
 
   return {
@@ -141,6 +149,7 @@ export function createNoteSurfaceApiClient(options: NoteSurfaceApiClientOptions)
         intent: 'note.leave',
         noteId: input.noteId,
         ...(input.cause === undefined ? {} : { cause: input.cause }),
+        ...(input.latestBlockUpdates === undefined ? {} : { latestBlockUpdates: input.latestBlockUpdates }),
       });
     },
     manualStructure(input) {

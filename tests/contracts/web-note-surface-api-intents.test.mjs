@@ -331,6 +331,43 @@ test('note read lifecycle and digest intents map to Note Worker routes', () => {
 
   assert.deepEqual(
     createNoteSurfaceApiRequest({
+      intent: 'note.leave',
+      ...metadata,
+      noteId: 'note_001',
+      cause: 'app_leave',
+      latestBlockUpdates: [
+        {
+          blockId: 'block_paragraph_001',
+          content: '  Latest pagehide draft.  ',
+        },
+      ],
+    }),
+    {
+      ok: true,
+      request: {
+        method: 'POST',
+        path: '/notes/note_001/leave',
+        headers: {
+          'X-Workspace-Id': 'workspace_001',
+          'X-User-Id': 'user_001',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          cause: 'app_leave',
+          latestBlockUpdates: [
+            {
+              blockId: 'block_paragraph_001',
+              content: '  Latest pagehide draft.  ',
+            },
+          ],
+        },
+      },
+      errors: [],
+    },
+  );
+
+  assert.deepEqual(
+    createNoteSurfaceApiRequest({
       intent: 'note.manual_structure',
       ...metadata,
       noteId: 'note_001',
@@ -453,6 +490,34 @@ test('unsupported provider and external actions do not produce Worker request de
     assert.equal(result.request, undefined);
     assert.match(result.unavailableReason, /unsupported intent/);
   }
+});
+
+test('note leave latest block updates reject invalid and ambiguous drafts', () => {
+  const invalid = createNoteSurfaceApiRequest({
+    intent: 'note.leave',
+    ...metadata,
+    noteId: 'note_001',
+    latestBlockUpdates: [
+      {
+        blockId: 'block/paragraph/001',
+        content: 'Updated user-authored block text.',
+      },
+      {
+        blockId: 'block_paragraph_002',
+        content: '   ',
+      },
+      {
+        blockId: 'block_paragraph_002',
+        content: 'Duplicate user-authored block text.',
+      },
+    ],
+  });
+
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.request, undefined);
+  assert.match(invalid.errors.join('\n'), /latestBlockUpdates\[0\]\.blockId must be a single path segment/);
+  assert.match(invalid.errors.join('\n'), /content is required/);
+  assert.match(invalid.errors.join('\n'), /latestBlockUpdates\[2\]\.blockId must be unique/);
 });
 
 test('web API intent mapper is dependency-free and does not import Worker or generated projections', async () => {

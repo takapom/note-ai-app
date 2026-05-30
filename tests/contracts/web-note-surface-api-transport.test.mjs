@@ -155,6 +155,39 @@ test('transport does not send a body for GET descriptors', async () => {
   assert.equal(Object.hasOwn(calls[0].init, 'body'), false);
 });
 
+test('transport can mark lifecycle requests as keepalive through injected fetch-like binding', async () => {
+  const calls = [];
+  const transport = createNoteSurfaceApiTransport({
+    baseUrl: 'https://worker.example.test/api/',
+    keepalive: true,
+    async fetchLike(url, init) {
+      calls.push({ url, init });
+      return {
+        ok: true,
+        status: 202,
+        async json() {
+          return { ok: true };
+        },
+      };
+    },
+  });
+
+  const descriptor = createNoteSurfaceApiRequest({
+    intent: 'note.leave',
+    ...metadata,
+    noteId: 'note_001',
+    cause: 'app_leave',
+  }).request;
+  assert.ok(descriptor);
+
+  const result = await transport.send(descriptor);
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].init.keepalive, true);
+  assert.equal(calls[0].init.method, 'POST');
+});
+
 test('transport parses response JSON into a thin status body errors result', async () => {
   const result = await sendNoteSurfaceApiRequest(
     {

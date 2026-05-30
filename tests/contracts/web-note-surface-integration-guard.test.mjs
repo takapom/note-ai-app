@@ -14,6 +14,7 @@ const expectedHttpDigestProductProviderPath = 'apps/web/src/noteSurfaceHttpDiges
 const expectedHttpProductAppPath = 'apps/web/src/noteSurfaceHttpProductApp.ts';
 const expectedHttpDigestProductAppPath = 'apps/web/src/noteSurfaceHttpDigestProductApp.ts';
 const expectedSessionLifecyclePath = 'apps/web/src/noteSurfaceSessionLifecycle.ts';
+const expectedLatestBlockUpdatesPath = 'apps/web/src/noteSurfaceLatestBlockUpdates.ts';
 const expectedApiClientPath = 'apps/web/src/runtime/api-client/noteSurfaceApiClient.ts';
 
 const guardedSourcePaths = [
@@ -21,6 +22,7 @@ const guardedSourcePaths = [
   'apps/web/src/noteSurfaceActionInputResolver.ts',
   'apps/web/src/noteSurfaceApiIntents.ts',
   'apps/web/src/noteSurfaceApiTransport.ts',
+  expectedLatestBlockUpdatesPath,
   'apps/web/src/noteSurfaceBrowserRuntime.ts',
   'apps/web/src/noteSurfaceDomHost.ts',
   'apps/web/src/noteSurfaceEventController.ts',

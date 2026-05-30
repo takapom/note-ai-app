@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { registerNoteSurfacePageLeaveOnHide } from '../../apps/web/src/noteSurfaceSessionLifecycle.ts';
 
-test('session lifecycle sends note leave through the API client on first page hide only', async () => {
+test('session lifecycle sends keepalive note leave through the API client on first page hide only', async () => {
   const calls = [];
   const lifecycle = createLifecycle();
 
@@ -30,11 +30,115 @@ test('session lifecycle sends note leave through the API client on first page hi
       }),
     ],
   ]);
+  assert.equal(calls[0].init.keepalive, true);
 
   unregister();
   lifecycle.hide();
   await settle();
   assert.equal(calls.length, 1);
+});
+
+test('session lifecycle sends latest dirty block drafts in one app leave request', async () => {
+  const calls = [];
+  const lifecycle = createLifecycle();
+
+  registerNoteSurfacePageLeaveOnHide({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike(calls),
+    workspaceId: 'workspace_001',
+    userId: 'user_001',
+    noteId: 'note_initial',
+    lifecycle,
+    readPageLeaveSnapshot() {
+      return {
+        noteId: 'note_current',
+        dirtyBlockDrafts: [
+          {
+            blockId: 'block_paragraph_001',
+            content: '  Latest pagehide draft.  ',
+          },
+          {
+            blockId: 'block_paragraph_002',
+            content: 'Second dirty draft.',
+          },
+        ],
+      };
+    },
+  });
+
+  lifecycle.hide();
+  await settle();
+
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body, call.init.keepalive]), [
+    [
+      'POST',
+      'https://worker.example.test/api/notes/note_current/leave',
+      JSON.stringify({
+        cause: 'app_leave',
+        latestBlockUpdates: [
+          {
+            blockId: 'block_paragraph_001',
+            content: '  Latest pagehide draft.  ',
+          },
+          {
+            blockId: 'block_paragraph_002',
+            content: 'Second dirty draft.',
+          },
+        ],
+      }),
+      true,
+    ],
+  ]);
+});
+
+test('session lifecycle skips app leave when dirty draft composition is active or pending', async () => {
+  for (const inputCompositionState of ['active', 'pending']) {
+    const calls = [];
+    const lifecycle = createLifecycle();
+
+    registerNoteSurfacePageLeaveOnHide({
+      apiBaseUrl: 'https://worker.example.test/api/',
+      fetchLike: createFetchLike(calls),
+      workspaceId: 'workspace_001',
+      noteId: 'note_001',
+      lifecycle,
+      readPageLeaveSnapshot() {
+        return {
+          noteId: 'note_001',
+          dirtyBlockDrafts: [{
+            blockId: 'block_paragraph_001',
+            content: 'IME draft must not be sent on pagehide.',
+            inputCompositionState,
+          }],
+        };
+      },
+    });
+
+    lifecycle.hide();
+    await settle();
+    assert.equal(calls.length, 0);
+  }
+});
+
+test('session lifecycle skips app leave when snapshot reading fails', async () => {
+  const calls = [];
+  const lifecycle = createLifecycle();
+
+  registerNoteSurfacePageLeaveOnHide({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike(calls),
+    workspaceId: 'workspace_001',
+    noteId: 'note_001',
+    lifecycle,
+    readPageLeaveSnapshot() {
+      throw new Error('DOM snapshot unavailable');
+    },
+  });
+
+  lifecycle.hide();
+  await settle();
+
+  assert.equal(calls.length, 0);
 });
 
 test('session lifecycle source stays in the browser lifecycle and API client boundary', async () => {
