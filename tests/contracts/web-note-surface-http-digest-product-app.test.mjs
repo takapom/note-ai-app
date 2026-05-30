@@ -192,6 +192,89 @@ test('HTTP digest product app still mounts when digest projection is unavailable
   ]);
 });
 
+test('HTTP digest product app registers page leave against the current runtime note', async () => {
+  const root = createFakeRoot();
+  const calls = [];
+  const lifecycle = createLifecycle();
+  const app = createNoteSurfaceHttpDigestProductApp({
+    apiBaseUrl: 'https://worker.example.test/api/',
+    fetchLike: createFetchLike(calls, [
+      {
+        ok: true,
+        status: 200,
+        body: {
+          document: structuredClone(noteDocumentFixture),
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: { available: false },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          document: createReopenedDocument(),
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: { available: false },
+      },
+    ]),
+    root,
+    pageLifecycle: lifecycle,
+    viewState: {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Current note',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    },
+    ...metadata,
+  });
+
+  const mounted = await app.mount();
+  assert.equal(mounted.ok, true);
+
+  root.click(createActionElement({
+    action: 'open_recent_thought',
+    target: 'thin_rail',
+    noteId: 'note_002',
+  }));
+  await waitFor(() => calls.length === 6);
+
+  lifecycle.hide();
+  await waitFor(() => calls.length === 7);
+
+  const leaveCalls = calls.filter((call) => call.url.endsWith('/leave'));
+  assert.deepEqual(leaveCalls.map((call) => [call.init.method, call.url, call.init.body, call.init.keepalive]), [
+    [
+      'POST',
+      'https://worker.example.test/api/notes/note_001/leave',
+      JSON.stringify({ cause: 'tab_switch' }),
+      undefined,
+    ],
+    [
+      'POST',
+      'https://worker.example.test/api/notes/note_002/leave',
+      JSON.stringify({ cause: 'app_leave' }),
+      true,
+    ],
+  ]);
+});
+
 test('HTTP digest product app reports provider invalid id as provider_error before root binding or fetch', async () => {
   const root = createFakeRoot();
   let fetchCalls = 0;
@@ -304,6 +387,39 @@ function createActionElement(dataset) {
     },
   };
   return element;
+}
+
+function createLifecycle() {
+  const listeners = new Set();
+  return {
+    onPageHide(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    hide() {
+      for (const listener of listeners) {
+        listener();
+      }
+    },
+  };
+}
+
+function createReopenedDocument() {
+  const document = structuredClone(noteDocumentFixture);
+  document.note = {
+    ...document.note,
+    id: 'note_002',
+    title: 'Reopened note',
+  };
+  document.sections = document.sections.map((section) => ({
+    ...section,
+    noteId: 'note_002',
+  }));
+  document.blocks = document.blocks.map((block) => ({
+    ...block,
+    noteId: 'note_002',
+  }));
+  return document;
 }
 
 async function waitFor(predicate) {

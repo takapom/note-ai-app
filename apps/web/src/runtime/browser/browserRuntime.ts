@@ -463,6 +463,12 @@ export function createNoteSurfaceBrowserRuntime(
       });
     },
     handleAction,
+    readPageLeaveSnapshot() {
+      return {
+        noteId: currentModel.noteSurface.noteHeader.noteId,
+        dirtyBlockDrafts: options.host.readDirtyBlockDrafts?.() ?? [],
+      };
+    },
   };
 }
 

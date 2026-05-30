@@ -7,6 +7,7 @@ export interface NoteSurfaceApiFetchRequestInit {
   method: NoteSurfaceWorkerRequestMethod;
   headers: Record<string, string>;
   body?: string;
+  keepalive?: boolean;
 }
 
 export interface NoteSurfaceApiFetchLikeResponse {
@@ -24,6 +25,7 @@ export type NoteSurfaceApiFetchLike = (
 export interface NoteSurfaceApiTransportOptions {
   baseUrl: string | URL;
   fetchLike: NoteSurfaceApiFetchLike;
+  keepalive?: boolean;
 }
 
 export interface NoteSurfaceApiTransport {
@@ -60,7 +62,7 @@ export async function sendNoteSurfaceApiRequest(
     };
   }
 
-  const init = createFetchInit(request);
+  const init = createFetchInit(request, options);
 
   try {
     const response = await options.fetchLike(validation.url, init);
@@ -82,10 +84,14 @@ export async function sendNoteSurfaceApiRequest(
   }
 }
 
-function createFetchInit(request: NoteSurfaceWorkerRequestDescriptor): NoteSurfaceApiFetchRequestInit {
+function createFetchInit(
+  request: NoteSurfaceWorkerRequestDescriptor,
+  options: Pick<NoteSurfaceApiTransportOptions, 'keepalive'>,
+): NoteSurfaceApiFetchRequestInit {
   const init: NoteSurfaceApiFetchRequestInit = {
     method: request.method,
     headers: { ...request.headers },
+    ...(options.keepalive === true ? { keepalive: true } : {}),
   };
 
   if (request.method !== 'GET' && request.body !== undefined) {

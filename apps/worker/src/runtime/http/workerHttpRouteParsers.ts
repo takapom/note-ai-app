@@ -5,6 +5,11 @@ import type { NoteLeaveCause } from '../../scheduler/noteStructureRouteHandler.t
 import type { ProvenanceLookupInput } from '../../note-model/provenanceLookupPort.ts';
 import type { WorkerHttpRequest } from './workerHttpRouterTypes.ts';
 
+export interface LatestBlockUpdateRouteInput {
+  blockId: string;
+  content: string;
+}
+
 export function validateBaseRequest(request: WorkerHttpRequest): string[] {
   const errors: string[] = [];
   if (!isStableRuntimeId(request.workspaceId)) {
@@ -83,6 +88,48 @@ export function readNoteLeaveCause(body: unknown): { cause?: NoteLeaveCause } {
   }
 
   return { cause: body.cause as NoteLeaveCause };
+}
+
+export function parseLatestBlockUpdates(
+  body: unknown,
+): { ok: true; updates: LatestBlockUpdateRouteInput[] } | { ok: false; errors: string[] } {
+  if (!isRecord(body) || body.latestBlockUpdates === undefined) {
+    return { ok: true, updates: [] };
+  }
+  if (!Array.isArray(body.latestBlockUpdates)) {
+    return { ok: false, errors: ['latestBlockUpdates must be an array'] };
+  }
+
+  const errors: string[] = [];
+  const updates: LatestBlockUpdateRouteInput[] = [];
+  const seenBlockIds = new Set<string>();
+
+  body.latestBlockUpdates.forEach((entry, index) => {
+    if (!isRecord(entry)) {
+      errors.push(`latestBlockUpdates[${index}] must be an object`);
+      return;
+    }
+
+    const blockId = entry.blockId;
+    const content = entry.content;
+    if (!isStableRuntimeId(blockId)) {
+      errors.push(`latestBlockUpdates[${index}].blockId must be a stable non-sentinel runtime id`);
+    }
+    if (typeof content !== 'string' || content.trim() === '') {
+      errors.push(`latestBlockUpdates[${index}].content must be a non-empty string`);
+    }
+    if (typeof blockId === 'string' && seenBlockIds.has(blockId)) {
+      errors.push(`latestBlockUpdates[${index}].blockId must be unique`);
+    }
+    if (typeof blockId === 'string') {
+      seenBlockIds.add(blockId);
+    }
+    if (isStableRuntimeId(blockId) && typeof content === 'string') {
+      updates.push({ blockId, content });
+    }
+  });
+
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, updates };
 }
 
 export function isStableRuntimeId(value: unknown): value is string {
