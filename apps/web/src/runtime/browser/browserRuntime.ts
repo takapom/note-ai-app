@@ -27,6 +27,7 @@ import {
 } from './browserRuntimeProjection.ts';
 import { toBoundaryErrors } from './browserRuntimeErrors.ts';
 import type {
+  NoteSurfaceDirtyBlockDraft,
   NoteSurfaceBrowserRuntime,
   NoteSurfaceBrowserRuntimeActionResult,
   NoteSurfaceBrowserRuntimeOptions,
@@ -257,6 +258,11 @@ export function createNoteSurfaceBrowserRuntime(
       };
     }
 
+    const draftFlush = await flushDirtyDraftsBeforeLeave(action.fromNoteId);
+    if (!draftFlush.ok) {
+      return draftFlush.result;
+    }
+
     await sendBestEffortTabSwitchLeave(action.fromNoteId);
 
     let readResult: NoteSurfaceEventControllerResult;
@@ -309,6 +315,116 @@ export function createNoteSurfaceBrowserRuntime(
     currentModel = refreshResult.model;
 
     return refreshResult.refreshed ? renderCurrentModel(readResult) : openedRender;
+  }
+
+  async function flushDirtyDraftsBeforeLeave(noteId: string): Promise<
+    | { ok: true }
+    | { ok: false; result: NoteSurfaceBrowserRuntimeActionResult }
+  > {
+    let drafts: readonly NoteSurfaceDirtyBlockDraft[];
+    try {
+      drafts = options.host.readDirtyBlockDrafts?.() ?? [];
+    } catch (error) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          status: 'controller_error',
+          errors: toBoundaryErrors(error),
+        },
+      };
+    }
+
+    const composingDraft = drafts.find((draft) => (
+      draft.inputCompositionState === 'active'
+      || draft.inputCompositionState === 'pending'
+    ));
+    if (composingDraft !== undefined) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          status: 'controller_error',
+          errors: [
+            `block draft composition is ${composingDraft.inputCompositionState} for ${composingDraft.blockId}; finish composing before switching notes`,
+          ],
+        },
+      };
+    }
+
+    for (const draft of drafts) {
+      const saveDescriptor = {
+        action: 'save_block',
+        target: 'block_editor',
+        apiIntent: 'block.update',
+        noteId,
+        blockId: draft.blockId,
+        content: draft.content,
+      };
+      const pendingSaveAction = resolveBlockUpdateProjectionAction(saveDescriptor);
+      if (pendingSaveAction === undefined) {
+        continue;
+      }
+
+      currentModel = applyEditorSaveStarted(currentModel, pendingSaveAction);
+      const pendingRender = await renderCurrentModel();
+      if (!pendingRender.ok) {
+        return { ok: false, result: pendingRender };
+      }
+
+      let controllerResult: NoteSurfaceEventControllerResult;
+      try {
+        controllerResult = await options.eventController.handleRenderEvent(saveDescriptor);
+      } catch (error) {
+        currentModel = applyEditorSaveFailed(currentModel, pendingSaveAction, toBoundaryErrors(error));
+        const failureRender = await renderCurrentModel();
+        if (!failureRender.ok) {
+          return { ok: false, result: failureRender };
+        }
+        return {
+          ok: false,
+          result: {
+            ok: false,
+            status: 'controller_error',
+            errors: toBoundaryErrors(error),
+          },
+        };
+      }
+
+      if (!controllerResult.ok) {
+        const errors = controllerResult.errors.length > 0
+          ? controllerResult.errors
+          : [`event controller returned ${controllerResult.status}`];
+        currentModel = applyEditorSaveFailed(currentModel, pendingSaveAction, errors);
+        const failureRender = await renderCurrentModel(controllerResult);
+        if (!failureRender.ok) {
+          return { ok: false, result: failureRender };
+        }
+        return {
+          ok: false,
+          result: {
+            ok: false,
+            status: 'controller_error',
+            controllerResult,
+            errors,
+          },
+        };
+      }
+
+      const successfulProjectionAction = resolveSuccessfulApiProjectionAction(
+        saveDescriptor,
+        controllerResult,
+      );
+      if (successfulProjectionAction !== undefined) {
+        currentModel = applySuccessfulApiProjectionAction(currentModel, successfulProjectionAction);
+        const successRender = await renderCurrentModel(controllerResult);
+        if (!successRender.ok) {
+          return { ok: false, result: successRender };
+        }
+      }
+    }
+
+    return { ok: true };
   }
 
   async function sendBestEffortTabSwitchLeave(noteId: string): Promise<void> {

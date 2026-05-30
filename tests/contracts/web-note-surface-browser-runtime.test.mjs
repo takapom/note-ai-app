@@ -322,6 +322,208 @@ test('browser runtime reopens note snapshots from the note library rail', async 
   ]);
 });
 
+test('browser runtime flushes dirty user drafts before tab switch leave and note read', async () => {
+  const calls = [];
+  const host = {
+    ...createHost(),
+    readDirtyBlockDrafts() {
+      return [{
+        blockId: 'block_paragraph_001',
+        content: 'Unsaved draft before tab switch.',
+      }];
+    },
+  };
+  const reopenedDocument = createReopenedDocument();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Research direction',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    }),
+    eventController: createController(calls, undefined, (url) => {
+      if (url.endsWith('/notes/note_002')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            document: reopenedDocument,
+          },
+        };
+      }
+      if (url.endsWith('/notes/note_002/digest')) {
+        return {
+          ok: true,
+          status: 200,
+          body: { available: false },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        body: { handled: true },
+      };
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const reopenEvent = host.events.find((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.noteId === 'note_002'
+  ));
+  assert.ok(reopenEvent);
+
+  const result = await host.handler(reopenEvent);
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-surface="single-note" data-note-id="note_002"/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url, call.init.body]), [
+    [
+      'PATCH',
+      'https://worker.example.test/api/blocks/block_paragraph_001',
+      JSON.stringify({ noteId: 'note_001', content: 'Unsaved draft before tab switch.' }),
+    ],
+    [
+      'POST',
+      'https://worker.example.test/api/notes/note_001/leave',
+      JSON.stringify({ cause: 'tab_switch' }),
+    ],
+    ['GET', 'https://worker.example.test/api/notes/note_002', undefined],
+    ['GET', 'https://worker.example.test/api/notes/note_002/digest', undefined],
+  ]);
+});
+
+test('browser runtime blocks note switching when dirty draft flush fails', async () => {
+  const calls = [];
+  const host = {
+    ...createHost(),
+    readDirtyBlockDrafts() {
+      return [{
+        blockId: 'block_paragraph_001',
+        content: 'Draft that must stay on the current note.',
+      }];
+    },
+  };
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Research direction',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    }),
+    eventController: createController(calls, undefined, (url) => {
+      if (url.endsWith('/blocks/block_paragraph_001')) {
+        return {
+          ok: false,
+          status: 503,
+          body: { ok: false, errors: ['draft save unavailable'] },
+        };
+      }
+
+      throw new Error(`unexpected transport after failed flush: ${url}`);
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const reopenEvent = host.events.find((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.noteId === 'note_002'
+  ));
+  assert.ok(reopenEvent);
+
+  const result = await host.handler(reopenEvent);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'controller_error');
+  assert.match(result.errors.join('\n'), /draft save unavailable/);
+  assert.match(host.html, /data-surface="single-note" data-note-id="note_001"/);
+  assert.doesNotMatch(host.html, /data-surface="single-note" data-note-id="note_002"/);
+  assert.match(host.html, /data-block-id="block_paragraph_001"[^>]*data-editor-save-status="error"/);
+  assert.match(host.html, /Draft that must stay on the current note\./);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['PATCH', 'https://worker.example.test/api/blocks/block_paragraph_001'],
+  ]);
+});
+
+test('browser runtime blocks note switching while dirty draft composition is active or pending', async () => {
+  for (const inputCompositionState of ['active', 'pending']) {
+    const calls = [];
+    const host = {
+      ...createHost(),
+      readDirtyBlockDrafts() {
+        return [{
+          blockId: 'block_paragraph_001',
+          content: `Composing ${inputCompositionState} draft.`,
+          inputCompositionState,
+        }];
+      },
+    };
+    const runtime = createNoteSurfaceBrowserRuntime({
+      model: createNoteSurfaceViewModel(noteDocumentFixture, {
+        recentThoughts: [
+          {
+            id: 'note_001',
+            title: 'Research direction',
+            updatedLabel: '2025-11-24 更新',
+            active: true,
+          },
+          {
+            id: 'note_002',
+            title: 'Reopened note',
+            updatedLabel: '2025-11-25 更新',
+            active: false,
+          },
+        ],
+      }),
+      eventController: createController(calls),
+      host,
+    });
+    await runtime.mount();
+    const before = host.html;
+
+    const reopenEvent = host.events.find((event) => (
+      event.target === 'thin_rail'
+      && event.action === 'open_recent_thought'
+      && event.noteId === 'note_002'
+    ));
+    assert.ok(reopenEvent);
+
+    const result = await host.handler(reopenEvent);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 'controller_error');
+    assert.match(result.errors.join('\n'), new RegExp(inputCompositionState));
+    assert.equal(calls.length, 0);
+    assert.equal(host.html, before);
+    assert.match(host.html, /data-surface="single-note" data-note-id="note_001"/);
+  }
+});
+
 test('browser runtime does not block note switching when tab switch leave transport fails', async () => {
   const calls = [];
   const host = createHost();
@@ -383,6 +585,82 @@ test('browser runtime does not block note switching when tab switch leave transp
   assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
   assert.match(host.html, /data-surface="single-note" data-note-id="note_002"/);
   assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['POST', 'https://worker.example.test/api/notes/note_001/leave'],
+    ['GET', 'https://worker.example.test/api/notes/note_002'],
+    ['GET', 'https://worker.example.test/api/notes/note_002/digest'],
+  ]);
+});
+
+test('browser runtime keeps note switching non-blocking when leave fails after dirty draft flush succeeds', async () => {
+  const calls = [];
+  const host = {
+    ...createHost(),
+    readDirtyBlockDrafts() {
+      return [{
+        blockId: 'block_paragraph_001',
+        content: 'Saved before a recoverable leave failure.',
+      }];
+    },
+  };
+  const reopenedDocument = createReopenedDocument();
+  const runtime = createNoteSurfaceBrowserRuntime({
+    model: createNoteSurfaceViewModel(noteDocumentFixture, {
+      recentThoughts: [
+        {
+          id: 'note_001',
+          title: 'Research direction',
+          updatedLabel: '2025-11-24 更新',
+          active: true,
+        },
+        {
+          id: 'note_002',
+          title: 'Reopened note',
+          updatedLabel: '2025-11-25 更新',
+          active: false,
+        },
+      ],
+    }),
+    eventController: createController(calls, undefined, (url) => {
+      if (url.endsWith('/notes/note_001/leave')) {
+        return {
+          ok: false,
+          status: 503,
+          body: { ok: false, errors: ['leave unavailable'] },
+        };
+      }
+      if (url.endsWith('/notes/note_002')) {
+        return {
+          ok: true,
+          status: 200,
+          body: {
+            document: reopenedDocument,
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        body: { available: false },
+      };
+    }),
+    host,
+  });
+  await runtime.mount();
+
+  const reopenEvent = host.events.find((event) => (
+    event.target === 'thin_rail'
+    && event.action === 'open_recent_thought'
+    && event.noteId === 'note_002'
+  ));
+  assert.ok(reopenEvent);
+
+  const result = await host.handler(reopenEvent);
+
+  assert.deepEqual([result.ok, result.status, result.controllerResult?.status], [true, 'handled', 'sent']);
+  assert.match(host.html, /data-surface="single-note" data-note-id="note_002"/);
+  assert.deepEqual(calls.map((call) => [call.init.method, call.url]), [
+    ['PATCH', 'https://worker.example.test/api/blocks/block_paragraph_001'],
     ['POST', 'https://worker.example.test/api/notes/note_001/leave'],
     ['GET', 'https://worker.example.test/api/notes/note_002'],
     ['GET', 'https://worker.example.test/api/notes/note_002/digest'],
