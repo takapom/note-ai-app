@@ -8,6 +8,7 @@ const browserBuildConfigPath = 'apps/web/tsconfig.browser.json';
 const browserBuildScriptPath = 'scripts/build-web.mjs';
 const packageJsonPath = 'package.json';
 const publicHtmlPath = 'apps/web/public/index.html';
+const publicDevHtmlPath = 'apps/web/public/dev.html';
 const appEntryPath = 'apps/web/src/browserNoteSurfaceAppEntry.ts';
 const browserMountPath = 'apps/web/src/browserNoteSurfaceMount.ts';
 
@@ -98,6 +99,28 @@ test('public HTML is a deployment page that explicitly starts the compiled brows
   assert.doesNotMatch(html, /browserNoteSurfaceAppEntry\.ts/);
   assert.doesNotMatch(html, /\b(?:data-api-base-url|data-workspace-id|data-note-id)=["'][^"']+["']/);
   assertNoForbiddenPatterns(html, forbiddenExcludedSurfacePatterns);
+});
+
+test('local preview HTML owns the local agent trigger without changing product deployment HTML', async () => {
+  const html = await readText(publicHtmlPath);
+  const devHtml = await readText(publicDevHtmlPath);
+
+  assert.doesNotMatch(html, /__local\/agents\/workspace\/process/);
+  assert.doesNotMatch(html, /data-local-agent-preview/);
+
+  assert.match(devHtml, /data-local-agent-preview/);
+  assert.match(devHtml, /createLocalPreviewFetchLike/);
+  assert.match(devHtml, /\/__local\/agents\/workspace\/process/);
+  assert.match(devHtml, /\/__local\/smoke\/seed/);
+  assert.match(devHtml, /recoverLocalPreviewSeed/);
+  assert.match(devHtml, /runtime dependency unavailable/);
+  assert.match(devHtml, /isManualStructureRequest/);
+  assert.match(devHtml, /providerCalls/);
+  assert.match(devHtml, /operationRoutingCalls/);
+  assert.match(devHtml, /auditWritesSavedCount/);
+  assert.match(devHtml, /noteSotMutations/);
+  assert.match(devHtml, /fetchLike,/);
+  assertNoForbiddenPatterns(devHtml, forbiddenExcludedSurfacePatterns, publicDevHtmlPath);
 });
 
 test('browser app entry source remains import-time inert and does not auto-start from TypeScript source', async () => {

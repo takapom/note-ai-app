@@ -17,6 +17,7 @@ import {
 async function main() {
   const serveOnly = process.argv.includes('--serve-only');
   const baseConfig = readWranglerBaseConfig();
+  const wranglerVars = readLocalWranglerVars();
   const wrangler = baseConfig.externalUrl === undefined
     ? await requireWrangler()
     : undefined;
@@ -30,7 +31,7 @@ async function main() {
       config: baseConfig,
       stdio: 'inherit',
       authSecret: readServeOnlyAuthSecret(),
-      vars: readServeOnlyTursoVars(),
+      vars: wranglerVars,
     });
     await waitForChildExit(child);
     return;
@@ -45,6 +46,7 @@ async function main() {
       config,
       stdio: 'pipe',
       authSecret: config.authSecret,
+      vars: wranglerVars,
     });
     removeSignalHandlers = installChildCleanupHandlers(child);
     await waitForWorkerReadiness(config.baseUrl, child, fetchWithTimeout);
@@ -60,7 +62,22 @@ async function main() {
   }
 }
 
-function readServeOnlyTursoVars() {
+function readLocalWranglerVars() {
+  return {
+    ...readLocalTursoVars(),
+    ...readSmokeIdentityVars(),
+    ...readLocalModelVars(),
+  };
+}
+
+function readSmokeIdentityVars() {
+  return readOptionalEnvAliasMap({
+    WORKER_SMOKE_NOTE_ID: ['WORKER_SMOKE_NOTE_ID'],
+    WORKER_SMOKE_BLOCK_ID: ['WORKER_SMOKE_BLOCK_ID'],
+  });
+}
+
+function readLocalTursoVars() {
   const databaseUrl = readFirstOptionalStringEnv(
     'WORKER_LOCAL_TURSO_DATABASE_URL',
     'LOCAL_TURSO_DATABASE_URL',
@@ -79,9 +96,45 @@ function readServeOnlyTursoVars() {
   };
 }
 
+function readLocalModelVars() {
+  return readOptionalEnvAliasMap({
+    WORKER_LOCAL_MODEL_PROTOCOL: ['WORKER_LOCAL_MODEL_PROTOCOL', 'LOCAL_MODEL_PROTOCOL', 'LOCAL_MODEL_PROVIDER'],
+    WORKER_LOCAL_MODEL_BASE_URL: [
+      'WORKER_LOCAL_MODEL_BASE_URL',
+      'LOCAL_MODEL_BASE_URL',
+      'WORKER_LOCAL_MODEL_ENDPOINT',
+      'LOCAL_MODEL_ENDPOINT',
+      'OLLAMA_HOST',
+    ],
+    WORKER_LOCAL_MODEL_NAME: ['WORKER_LOCAL_MODEL_NAME', 'LOCAL_MODEL_NAME', 'OLLAMA_MODEL'],
+    WORKER_LOCAL_MODEL_API_KEY: ['WORKER_LOCAL_MODEL_API_KEY', 'LOCAL_MODEL_API_KEY'],
+    WORKER_LOCAL_MODEL_TIMEOUT_MS: ['WORKER_LOCAL_MODEL_TIMEOUT_MS', 'LOCAL_MODEL_TIMEOUT_MS'],
+    LOCAL_MODEL_PROVIDER: ['WORKER_LOCAL_MODEL_PROVIDER', 'LOCAL_MODEL_PROVIDER'],
+    LOCAL_MODEL_ENDPOINT: [
+      'WORKER_LOCAL_MODEL_ENDPOINT',
+      'LOCAL_MODEL_ENDPOINT',
+      'WORKER_LOCAL_MODEL_BASE_URL',
+      'LOCAL_MODEL_BASE_URL',
+    ],
+    LOCAL_MODEL_BASE_URL: ['WORKER_LOCAL_MODEL_BASE_URL', 'LOCAL_MODEL_BASE_URL'],
+    LOCAL_MODEL_NAME: ['WORKER_LOCAL_MODEL_NAME', 'LOCAL_MODEL_NAME'],
+    LOCAL_MODEL_API_KEY: ['WORKER_LOCAL_MODEL_API_KEY', 'LOCAL_MODEL_API_KEY'],
+    OLLAMA_HOST: ['WORKER_LOCAL_OLLAMA_HOST', 'OLLAMA_HOST'],
+    OLLAMA_MODEL: ['WORKER_LOCAL_OLLAMA_MODEL', 'OLLAMA_MODEL'],
+  });
+}
+
 function readServeOnlyAuthSecret() {
   return readOptionalStringEnv('WORKER_LOCAL_AUTH_SECRET')
     ?? readOptionalStringEnv('WORKER_SMOKE_AUTH_SECRET');
+}
+
+function readOptionalEnvAliasMap(aliasMap) {
+  return Object.fromEntries(
+    Object.entries(aliasMap)
+      .map(([targetName, sourceNames]) => [targetName, readFirstOptionalStringEnv(...sourceNames)])
+      .filter(([, value]) => value !== undefined),
+  );
 }
 
 function readFirstOptionalStringEnv(...names) {

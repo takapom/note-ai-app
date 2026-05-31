@@ -2,6 +2,8 @@ import process from 'node:process';
 
 import {
   assertArrayIncludes,
+  assertArrayEmpty,
+  assertArrayNotEmpty,
   assertEqual,
   assertLocalAgentSetup,
   BlockerFailure,
@@ -141,6 +143,14 @@ export async function runSmoke(config) {
     expectStatus: 202,
     validateBody(body, FailureClass) {
       assertEqual(body.ok, true, 'body.ok', FailureClass);
+      assertEqual(body.reason, 'completed', 'body.reason', FailureClass);
+      assertArrayNotEmpty(body.scheduledJobIds, 'body.scheduledJobIds', FailureClass);
+      assertArrayNotEmpty(body.providerCalls, 'body.providerCalls', FailureClass);
+      assertArrayNotEmpty(body.operationRoutingCalls, 'body.operationRoutingCalls', FailureClass);
+      assertArrayNotEmpty(body.auditWrites, 'body.auditWrites', FailureClass);
+      assertAuditWritesSavedOperations(body.auditWrites, FailureClass);
+      assertArrayEmpty(body.noteSotMutations, 'body.noteSotMutations', FailureClass);
+      assertArrayEmpty(body.errors, 'body.errors', FailureClass);
     },
   });
 
@@ -265,4 +275,18 @@ async function runBlockerCase(config, blockerCase) {
 
   const body = parseJsonResponse(text, blockerCase.label, BlockerFailure);
   blockerCase.validateBody(body, BlockerFailure);
+}
+
+function assertAuditWritesSavedOperations(auditWrites, FailureClass) {
+  if (
+    !Array.isArray(auditWrites) ||
+    !auditWrites.some((write) =>
+      write !== null &&
+      typeof write === 'object' &&
+      typeof write.savedCount === 'number' &&
+      write.savedCount > 0
+    )
+  ) {
+    throw new FailureClass('body.auditWrites must include at least one saved operation audit record');
+  }
 }

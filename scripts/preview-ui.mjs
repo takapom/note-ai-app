@@ -6,6 +6,7 @@ import process from 'node:process';
 
 import { blockFixtures } from '../contexts/note-model/src/contract/noteFixtures.ts';
 import { createLocalSmokeDocument } from './worker-local-smoke/fixtures.mjs';
+import { readPositiveIntegerEnv } from './worker-local-smoke/logging.mjs';
 import {
   createWranglerProcessEnv,
   defaultPort,
@@ -32,6 +33,7 @@ const previewConfig = {
   noteId: 'note_local_preview',
   blockId: 'block_local_preview',
 };
+const defaultPreviewSeedWatchIntervalMs = 2_000;
 
 async function main() {
   if (!process.argv.includes('--no-build')) {
@@ -53,6 +55,7 @@ async function main() {
       baseConfig.persistTo,
       '--var',
       `LOCAL_AGENT_SMOKE_ENABLED:${process.env.LOCAL_AGENT_SMOKE_ENABLED ?? '1'}`,
+      ...createWranglerVarArgs(readLocalPreviewWranglerVars()),
     ],
     {
       stdio: 'inherit',
@@ -64,12 +67,15 @@ async function main() {
   process.stdout.write('Waiting for local Worker...\n');
   await waitForWorkerReadiness(baseConfig.baseUrl, child, fetch);
   await seedPreviewRuntime(baseConfig.baseUrl);
+  const stopPreviewSeedWatcher = startPreviewSeedWatcher(baseConfig.baseUrl, child);
   process.stdout.write('\n');
   process.stdout.write(`Open: ${new URL('/dev.html', baseConfig.baseUrl).toString()}\n`);
+  process.stdout.write(`Local model: ${readPreviewLocalModelLabel()}\n`);
   process.stdout.write('Press Ctrl+C to stop Wrangler.\n\n');
 
   await new Promise((resolve, reject) => {
     child.on('exit', (code) => {
+      stopPreviewSeedWatcher();
       if (code === 0 || code === null) {
         resolve();
         return;
@@ -85,6 +91,132 @@ async function seedPreviewRuntime(baseUrl = `http://127.0.0.1:${defaultPort}`) {
 
   await postJson(new URL('/__local/smoke/reset', baseUrl), { noteId: previewConfig.noteId });
   await postJson(new URL('/__local/smoke/seed', baseUrl), { document, nextOpenDigest });
+}
+
+function startPreviewSeedWatcher(baseUrl, child) {
+  const intervalMs = readPositiveIntegerEnv(
+    'WORKER_PREVIEW_SEED_WATCH_INTERVAL_MS',
+    defaultPreviewSeedWatchIntervalMs,
+  );
+  let seedInFlight = false;
+  const timer = setInterval(() => {
+    if (child.exitCode !== null || child.signalCode !== null || seedInFlight) {
+      return;
+    }
+    seedInFlight = true;
+    restorePreviewSeedIfNeeded(baseUrl)
+      .catch(() => undefined)
+      .finally(() => {
+        seedInFlight = false;
+      });
+  }, intervalMs);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
+async function restorePreviewSeedIfNeeded(baseUrl) {
+  const available = await isPreviewSeedAvailable(baseUrl);
+  if (available) {
+    return;
+  }
+  await seedPreviewRuntime(baseUrl);
+  process.stdout.write('Local preview seed restored after Worker reload.\n');
+}
+
+async function isPreviewSeedAvailable(baseUrl) {
+  const response = await fetch(new URL(`/notes/${encodeURIComponent(previewConfig.noteId)}`, baseUrl), {
+    method: 'GET',
+    headers: createPreviewHeaders(),
+  });
+
+  if (response.status === 404 || response.status === 501) {
+    return false;
+  }
+  if (!response.ok) {
+    return true;
+  }
+
+  const body = await readJsonResponse(response);
+  return isRecord(body) && body.ok === true && isRecord(body.document);
+}
+
+function readLocalPreviewWranglerVars() {
+  return {
+    WORKER_SMOKE_NOTE_ID: readOptionalStringEnv('WORKER_SMOKE_NOTE_ID') ?? previewConfig.noteId,
+    WORKER_SMOKE_BLOCK_ID: readOptionalStringEnv('WORKER_SMOKE_BLOCK_ID') ?? previewConfig.blockId,
+    WORKER_LOCAL_MODEL_PROTOCOL: 'ollama',
+    WORKER_LOCAL_MODEL_BASE_URL: 'http://127.0.0.1:11434',
+    WORKER_LOCAL_MODEL_NAME: 'llama3.2:3b',
+    ...readLocalModelVars(),
+  };
+}
+
+function readLocalModelVars() {
+  return readOptionalEnvAliasMap({
+    WORKER_LOCAL_MODEL_PROTOCOL: ['WORKER_LOCAL_MODEL_PROTOCOL', 'LOCAL_MODEL_PROTOCOL', 'LOCAL_MODEL_PROVIDER'],
+    WORKER_LOCAL_MODEL_BASE_URL: [
+      'WORKER_LOCAL_MODEL_BASE_URL',
+      'LOCAL_MODEL_BASE_URL',
+      'WORKER_LOCAL_MODEL_ENDPOINT',
+      'LOCAL_MODEL_ENDPOINT',
+      'OLLAMA_HOST',
+    ],
+    WORKER_LOCAL_MODEL_NAME: ['WORKER_LOCAL_MODEL_NAME', 'LOCAL_MODEL_NAME', 'OLLAMA_MODEL'],
+    WORKER_LOCAL_MODEL_API_KEY: ['WORKER_LOCAL_MODEL_API_KEY', 'LOCAL_MODEL_API_KEY'],
+    WORKER_LOCAL_MODEL_TIMEOUT_MS: ['WORKER_LOCAL_MODEL_TIMEOUT_MS', 'LOCAL_MODEL_TIMEOUT_MS'],
+    LOCAL_MODEL_PROVIDER: ['WORKER_LOCAL_MODEL_PROVIDER', 'LOCAL_MODEL_PROVIDER'],
+    LOCAL_MODEL_ENDPOINT: [
+      'WORKER_LOCAL_MODEL_ENDPOINT',
+      'LOCAL_MODEL_ENDPOINT',
+      'WORKER_LOCAL_MODEL_BASE_URL',
+      'LOCAL_MODEL_BASE_URL',
+    ],
+    LOCAL_MODEL_BASE_URL: ['WORKER_LOCAL_MODEL_BASE_URL', 'LOCAL_MODEL_BASE_URL'],
+    LOCAL_MODEL_NAME: ['WORKER_LOCAL_MODEL_NAME', 'LOCAL_MODEL_NAME'],
+    LOCAL_MODEL_API_KEY: ['WORKER_LOCAL_MODEL_API_KEY', 'LOCAL_MODEL_API_KEY'],
+    OLLAMA_HOST: ['WORKER_LOCAL_OLLAMA_HOST', 'OLLAMA_HOST'],
+    OLLAMA_MODEL: ['WORKER_LOCAL_OLLAMA_MODEL', 'OLLAMA_MODEL'],
+  });
+}
+
+function readOptionalEnvAliasMap(aliasMap) {
+  return Object.fromEntries(
+    Object.entries(aliasMap)
+      .map(([targetName, sourceNames]) => [targetName, readFirstOptionalStringEnv(...sourceNames)])
+      .filter(([, value]) => value !== undefined),
+  );
+}
+
+function readFirstOptionalStringEnv(...names) {
+  for (const name of names) {
+    const value = readOptionalStringEnv(name);
+    if (value !== undefined) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function readOptionalStringEnv(name) {
+  const value = process.env[name];
+  return value === undefined || value.trim() === '' ? undefined : value;
+}
+
+function createWranglerVarArgs(vars) {
+  return Object.entries(vars).flatMap(([name, value]) => ['--var', `${name}:${value}`]);
+}
+
+function readPreviewLocalModelLabel() {
+  const model = readFirstOptionalStringEnv('WORKER_LOCAL_MODEL_NAME', 'LOCAL_MODEL_NAME', 'OLLAMA_MODEL')
+    ?? 'llama3.2:3b';
+  const baseUrl = readFirstOptionalStringEnv(
+    'WORKER_LOCAL_MODEL_BASE_URL',
+    'LOCAL_MODEL_BASE_URL',
+    'WORKER_LOCAL_MODEL_ENDPOINT',
+    'LOCAL_MODEL_ENDPOINT',
+    'OLLAMA_HOST',
+  ) ?? 'http://127.0.0.1:11434';
+  return `${model} via ${baseUrl}`;
 }
 
 function createPreviewDocument() {
@@ -187,16 +319,28 @@ function isRecord(value) {
 async function postJson(url, body) {
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-workspace-id': previewConfig.workspaceId,
-      'x-user-id': previewConfig.userId,
-    },
+    headers: createPreviewHeaders({ 'content-type': 'application/json' }),
     body: JSON.stringify(body),
   });
   const text = await response.text();
   if (!response.ok) {
     throw new Error(`seed request failed (${response.status}): ${text}`);
+  }
+}
+
+function createPreviewHeaders(extraHeaders = {}) {
+  return {
+    ...extraHeaders,
+    'x-workspace-id': previewConfig.workspaceId,
+    'x-user-id': previewConfig.userId,
+  };
+}
+
+async function readJsonResponse(response) {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
   }
 }
 

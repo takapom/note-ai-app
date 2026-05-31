@@ -487,6 +487,10 @@ test('worker entrypoint local WorkspaceBrain process trigger invokes Durable Obj
     ok: true,
     reason: 'no_queued_job',
     scheduledJobIds: [],
+    providerCalls: [],
+    operationRoutingCalls: [],
+    auditWrites: [],
+    noteSotMutations: [],
     errors: [],
   });
   assert.deepEqual(rpcCalls, [{

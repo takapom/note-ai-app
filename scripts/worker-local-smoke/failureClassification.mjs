@@ -14,6 +14,18 @@ export function assertArrayIncludes(actual, expected, path, FailureClass = Smoke
   }
 }
 
+export function assertArrayEmpty(actual, path, FailureClass = SmokeFailure) {
+  if (!Array.isArray(actual) || actual.length !== 0) {
+    throw new FailureClass(`${path} expected an empty array but received ${JSON.stringify(actual)}`);
+  }
+}
+
+export function assertArrayNotEmpty(actual, path, FailureClass = SmokeFailure) {
+  if (!Array.isArray(actual) || actual.length === 0) {
+    throw new FailureClass(`${path} expected a non-empty array but received ${JSON.stringify(actual)}`);
+  }
+}
+
 export function assertLocalAgentSetup(body, FailureClass = SmokeFailure) {
   assertEqual(body.localAgents?.noteAgentSchema?.ok, true, 'body.localAgents.noteAgentSchema.ok', FailureClass);
   assertEqual(

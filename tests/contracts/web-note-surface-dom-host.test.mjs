@@ -250,6 +250,27 @@ test('DOM host marks dirty draft snapshots while input composition is active or 
   }]);
 });
 
+test('DOM host marks edited user-authored blocks dirty on input for page leave flush', () => {
+  const article = createBlockArticle({
+    blockId: 'block_paragraph_001',
+    origin: 'user',
+    saveStatus: 'saved',
+    content: 'Draft typed before reload.',
+  });
+  const root = createFakeRoot({ articles: [article] });
+  const host = createNoteSurfaceDomHost(root);
+
+  root.fire('input', article.editorContent);
+
+  assert.equal(article.dataset.editorSaveStatus, 'dirty');
+  assert.equal(article.statusRegion.dataset.editorSaveStatus, 'dirty');
+  assert.equal(article.statusMessage.textContent, '未保存の変更');
+  assert.deepEqual(host.readDirtyBlockDrafts(), [{
+    blockId: 'block_paragraph_001',
+    content: 'Draft typed before reload.',
+  }]);
+});
+
 test('DOM host marks save descriptors while block input composition is active or pending', () => {
   const root = createFakeRoot();
   const host = createNoteSurfaceDomHost(root);
@@ -464,6 +485,14 @@ function createSaveActionElement(dataset, content) {
 }
 
 function createBlockArticle({ blockId, origin, saveStatus, content }) {
+  const statusRegion = {
+    dataset: {
+      editorSaveStatus: saveStatus,
+    },
+  };
+  const statusMessage = {
+    textContent: saveStatus === 'saved' ? '保存済み' : '未保存の変更',
+  };
   const article = {
     dataset: {
       blockId,
@@ -471,7 +500,16 @@ function createBlockArticle({ blockId, origin, saveStatus, content }) {
       editorSaveStatus: saveStatus,
     },
     querySelector(selector) {
-      assert.equal(selector, '[data-block-editor-content="true"]');
+      if (selector === '[data-block-editor-content="true"]') {
+        return contentElement;
+      }
+      if (selector === '[data-editor-status-region="fixed"]') {
+        return statusRegion;
+      }
+      if (selector === '[data-editor-status-message="true"]') {
+        return statusMessage;
+      }
+      assert.fail(`unexpected selector: ${selector}`);
       return contentElement;
     },
   };
@@ -483,6 +521,8 @@ function createBlockArticle({ blockId, origin, saveStatus, content }) {
     },
   };
   article.editorContent = contentElement;
+  article.statusRegion = statusRegion;
+  article.statusMessage = statusMessage;
   return article;
 }
 

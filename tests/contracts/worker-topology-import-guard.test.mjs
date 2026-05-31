@@ -129,6 +129,7 @@ function isForbiddenImport(fromFile, fromFolder, resolvedPath, toFolder) {
     return true;
   }
   if (fromFolder !== 'runtime/composition' && fromFolder !== 'runtime/cloudflare' &&
+    fromFolder !== 'runtime/local-verification' &&
     toFolder === 'runtime/local-verification') {
     return true;
   }
