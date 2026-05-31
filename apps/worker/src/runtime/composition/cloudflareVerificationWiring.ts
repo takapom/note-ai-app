@@ -81,6 +81,10 @@ export async function handleLocalWorkspaceBrainProcessRequest<Env extends Worker
       ok: result.result.ok,
       reason: readStringProperty(result.result, 'reason') ?? 'workspace_brain_processed',
       scheduledJobIds: readStringArrayProperty(result.result, 'scheduledJobIds'),
+      providerCalls: readArrayProperty(result.result, 'providerCalls'),
+      operationRoutingCalls: readArrayProperty(result.result, 'operationRoutingCalls'),
+      auditWrites: readArrayProperty(result.result, 'auditWrites'),
+      noteSotMutations: readArrayProperty(result.result, 'noteSotMutations'),
       errors: readStringArrayProperty(result.result, 'errors'),
     },
   };
@@ -269,6 +273,12 @@ function readStringArrayProperty(value: unknown, key: string): string[] {
     value[key].every((item) => typeof item === 'string')
     ? value[key]
     : [];
+}
+
+function readArrayProperty(value: unknown, key: string): unknown[] | undefined {
+  return isRecord(value) && Array.isArray(value[key])
+    ? value[key]
+    : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -48,6 +48,8 @@ import {
 import { type WorkerEntrypointEnv } from '../composition/workerEntrypointEnv.ts';
 import {
   LocalSmokeSchedulerSnapshotStore,
+  persistLocalSmokeSchedulerSnapshot,
+  readLocalSmokeSchedulerSnapshot,
   type LocalSmokeSchedulerSnapshotCommand,
 } from '../local-verification/localSmokeSchedulerPorts.ts';
 
@@ -102,9 +104,9 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
     }
     this.agentLocalSql = agentLocalSql.executor;
 
-    const ports = this.localSmokeSchedulerSnapshotStore.hasSnapshot(input.noteId)
-      ? this.localSmokeSchedulerSnapshotStore.createNoteStructurePorts(input.noteId, agentLocalSql.executor)
-      : createWorkerRuntimePorts({
+    const localSmokePorts = await this.createLocalSmokeNoteStructurePorts(input.noteId, agentLocalSql.executor);
+    const ports = localSmokePorts
+      ?? createWorkerRuntimePorts({
           env: this.workerEnv,
           agentLocalSql: agentLocalSql.executor,
         }).noteStructure;
@@ -148,7 +150,40 @@ export class NoteAgent extends DurableObject<WorkerEntrypointEnv> {
       return { ok: false, errors: ['local smoke scheduler snapshot is available only for local verification'] };
     }
 
-    return this.localSmokeSchedulerSnapshotStore.applySnapshot(input);
+    const applied = this.localSmokeSchedulerSnapshotStore.applySnapshot(input);
+    if (!applied.ok) {
+      return applied;
+    }
+
+    return persistLocalSmokeSchedulerSnapshot({
+      storage: this.storage,
+      snapshot: input,
+    });
+  }
+
+  private async createLocalSmokeNoteStructurePorts(
+    noteId: string,
+    agentLocalSql: CloudflareDurableObjectAgentLocalSqlExecutor,
+  ) {
+    if (!isLocalAgentSmokeEnabled(this.workerEnv)) {
+      return undefined;
+    }
+    if (this.localSmokeSchedulerSnapshotStore.hasSnapshot(noteId)) {
+      return this.localSmokeSchedulerSnapshotStore.createNoteStructurePorts(noteId, agentLocalSql);
+    }
+
+    const persisted = await readLocalSmokeSchedulerSnapshot({
+      storage: this.storage,
+      noteId,
+    });
+    if (!persisted.ok || persisted.snapshot === undefined) {
+      return undefined;
+    }
+
+    const applied = this.localSmokeSchedulerSnapshotStore.applySnapshot(persisted.snapshot);
+    return applied.ok
+      ? this.localSmokeSchedulerSnapshotStore.createNoteStructurePorts(noteId, agentLocalSql)
+      : undefined;
   }
 }
 
@@ -304,6 +339,7 @@ async function readWorkspaceBrainProcessorOptions(
     const fromRuntimeBindings = createWorkspaceBrainStructureJobProcessorOptions({
       env,
       agentLocalSql,
+      workspaceId: command.workspaceId,
       now: command.now,
     });
     if (!fromRuntimeBindings.ok) {

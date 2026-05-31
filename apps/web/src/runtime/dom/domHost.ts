@@ -40,6 +40,7 @@ export function createNoteSurfaceDomHost(root: NoteSurfaceDomHostRoot): NoteSurf
     const blockId = readClosestBlockId(event.target);
     if (blockId !== undefined) {
       pendingCompositionBlockIds.delete(blockId);
+      markUserBlockDraftDirty(event.target);
     }
   };
 
@@ -141,6 +142,27 @@ function readInputCompositionState(
     return 'pending';
   }
   return undefined;
+}
+
+function markUserBlockDraftDirty(target: unknown): void {
+  const block = asActionElement(asActionElement(target)?.closest?.('article[data-block-id]'));
+  const dataset = block?.dataset;
+  if (block === undefined || dataset === undefined || dataset.blockOrigin !== 'user') {
+    return;
+  }
+  if (dataset.editorSaveStatus === 'saving') {
+    return;
+  }
+
+  dataset.editorSaveStatus = 'dirty';
+  const statusRegion = asActionElement(block.querySelector?.('[data-editor-status-region="fixed"]'));
+  if (statusRegion?.dataset !== undefined) {
+    statusRegion.dataset.editorSaveStatus = 'dirty';
+  }
+  const statusMessage = asActionElement(block.querySelector?.('[data-editor-status-message="true"]'));
+  if (statusMessage !== undefined) {
+    statusMessage.textContent = '未保存の変更';
+  }
 }
 
 function readNodeList(value: unknown): unknown[] {
