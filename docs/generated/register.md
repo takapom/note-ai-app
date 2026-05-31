@@ -46,6 +46,7 @@
 - `docs/runbooks/agent-workspace-recovery.md`
 - `docs/runbooks/ai-operation-regression.md`
 - `docs/runbooks/contract-drift-recovery.md`
+- `docs/runbooks/local-model-worker-smoke.md`
 
 ## 記録
 

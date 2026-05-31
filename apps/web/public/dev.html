@@ -501,6 +501,46 @@
         z-index: 20;
       }
 
+      .ann-local-agent-preview {
+        position: fixed;
+        left: 1rem;
+        bottom: 1rem;
+        z-index: 30;
+        width: min(22rem, calc(100vw - 2rem));
+        border: 1px solid var(--ann-hairline-strong);
+        border-radius: 0.5rem;
+        background: rgba(255, 252, 247, 0.96);
+        box-shadow: 0 8px 24px rgba(33, 30, 26, 0.08);
+        padding: 0.75rem;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .ann-local-agent-preview__label {
+        margin: 0;
+        font-size: 0.6875rem;
+        color: var(--ann-ink-faint);
+      }
+
+      .ann-local-agent-preview__status {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--ann-ink-muted);
+      }
+
+      .ann-local-agent-preview__evidence {
+        margin: 0;
+        max-height: 11rem;
+        overflow: auto;
+        border-radius: 0.375rem;
+        background: #211e1a;
+        color: #fffcf7;
+        padding: 0.625rem;
+        font-size: 0.6875rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
       .ann-next-open-digest--hidden {
         display: none;
       }
@@ -540,8 +580,26 @@
       data-expanded-digest="true"
       data-projection-maps-json='{"operationIdByBlockId":{"block_ai_question_001":"operation_preview_001"},"memoryIdByBlockId":{"block_ai_memory_preview_001":"memory_preview_001"}}'
     ></main>
+    <aside class="ann-local-agent-preview" data-local-agent-preview aria-live="polite">
+      <p class="ann-local-agent-preview__label">local verification</p>
+      <p class="ann-local-agent-preview__status" data-local-agent-status>整理は未実行</p>
+      <pre class="ann-local-agent-preview__evidence" data-local-agent-evidence>{}</pre>
+    </aside>
     <script type="module">
       import { startBrowserNoteSurfaceApp } from '/assets/apps/web/src/browserNoteSurfaceAppEntry.js';
+
+      const apiBaseUrl = `${globalThis.location.origin}/`;
+      const noteSurfaceRoot = document.querySelector('[data-note-surface-root]');
+      const localAgentPreview = document.querySelector('[data-local-agent-preview]');
+      const localAgentStatus = localAgentPreview?.querySelector('[data-local-agent-status]');
+      const localAgentEvidence = localAgentPreview?.querySelector('[data-local-agent-evidence]');
+      const fetchLike = createLocalPreviewFetchLike({
+        apiBaseUrl,
+        root: noteSurfaceRoot,
+        statusElement: localAgentStatus,
+        evidenceElement: localAgentEvidence,
+        fetchLike: globalThis.fetch.bind(globalThis),
+      });
 
       await startBrowserNoteSurfaceApp(
         {
@@ -549,9 +607,233 @@
           addEventListener: globalThis.addEventListener.bind(globalThis),
         },
         {
-          apiBaseUrl: `${globalThis.location.origin}/`,
+          apiBaseUrl,
+          fetchLike,
         },
       );
+
+      function createLocalPreviewFetchLike(options) {
+        let processQueue = Promise.resolve();
+
+        return async (url, init) => {
+          let response = await options.fetchLike(url, init);
+          if (
+            !response.ok &&
+            isManualStructureRequest(url, init) &&
+            await shouldRecoverLocalPreviewSeed(response)
+          ) {
+            writeLocalAgentStatus(options, 'local runtime を復旧中');
+            if (await recoverLocalPreviewSeed(options, url, init)) {
+              response = await options.fetchLike(url, init);
+            }
+          }
+
+          if (response.ok && isManualStructureRequest(url, init)) {
+            writeLocalAgentStatus(options, 'WorkspaceBrain を実行中');
+            processQueue = processQueue
+              .catch(() => undefined)
+              .then(() => runLocalAgentProcess(options, init));
+            void processQueue;
+          }
+          return response;
+        };
+      }
+
+      async function shouldRecoverLocalPreviewSeed(response) {
+        if (response.status !== 400 && response.status !== 501) {
+          return false;
+        }
+        const body = await readJsonResponse(response.clone());
+        return Array.isArray(body?.errors) && body.errors.includes('runtime dependency unavailable');
+      }
+
+      async function recoverLocalPreviewSeed(options, sourceUrl, sourceInit) {
+        const noteId = readNoteIdFromManualStructureRequest(sourceUrl);
+        const workspaceId = readHeader(sourceInit.headers, 'x-workspace-id') ?? options.root?.dataset?.workspaceId;
+        const userId = readHeader(sourceInit.headers, 'x-user-id') ?? options.root?.dataset?.userId;
+        if (noteId === undefined || workspaceId === undefined || userId === undefined) {
+          return false;
+        }
+
+        const headers = {
+          'content-type': 'application/json',
+          'x-workspace-id': workspaceId,
+          'x-user-id': userId,
+        };
+
+        try {
+          const noteResponse = await options.fetchLike(new URL(`/notes/${encodeURIComponent(noteId)}`, options.apiBaseUrl).toString(), {
+            method: 'GET',
+            headers,
+          });
+          const noteBody = await readJsonResponse(noteResponse);
+          if (!noteResponse.ok || noteBody?.document === undefined) {
+            return false;
+          }
+
+          const digestResponse = await options.fetchLike(new URL(`/notes/${encodeURIComponent(noteId)}/digest`, options.apiBaseUrl).toString(), {
+            method: 'GET',
+            headers,
+          });
+          const digestBody = digestResponse.ok ? await readJsonResponse(digestResponse) : undefined;
+          const seedBody = {
+            document: noteBody.document,
+            ...(digestBody?.result === undefined ? {} : { nextOpenDigest: digestBody.result }),
+          };
+
+          const resetResponse = await options.fetchLike(new URL('/__local/smoke/reset', options.apiBaseUrl).toString(), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ noteId }),
+          });
+          if (!resetResponse.ok) {
+            return false;
+          }
+
+          const seedResponse = await options.fetchLike(new URL('/__local/smoke/seed', options.apiBaseUrl).toString(), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(seedBody),
+          });
+          return seedResponse.ok;
+        } catch {
+          return false;
+        }
+      }
+
+      async function runLocalAgentProcess(options, sourceInit) {
+        const workspaceId = readHeader(sourceInit.headers, 'x-workspace-id') ?? options.root?.dataset?.workspaceId;
+        const userId = readHeader(sourceInit.headers, 'x-user-id') ?? options.root?.dataset?.userId;
+        if (workspaceId === undefined || userId === undefined) {
+          writeLocalAgentResult(options, {
+            ok: false,
+            errors: ['workspaceId and userId are required for local agent process'],
+          }, 0);
+          return;
+        }
+
+        let response;
+        let body;
+        try {
+          response = await options.fetchLike(new URL('/__local/agents/workspace/process', options.apiBaseUrl).toString(), {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-workspace-id': workspaceId,
+              'x-user-id': userId,
+            },
+            body: JSON.stringify({
+              workspaceId,
+              userId,
+              now: Date.now(),
+            }),
+          });
+          body = await response.json();
+        } catch (error) {
+          writeLocalAgentResult(options, {
+            ok: false,
+            errors: [error instanceof Error ? error.message : String(error)],
+          }, response?.status ?? 0);
+          return;
+        }
+
+        writeLocalAgentResult(options, body, response.status);
+      }
+
+      function readNoteIdFromManualStructureRequest(url) {
+        try {
+          const match = new URL(url, globalThis.location.href).pathname.match(/^\/notes\/([^/]+)\/structure\/manual$/);
+          return match === null ? undefined : decodeURIComponent(match[1]);
+        } catch {
+          return undefined;
+        }
+      }
+
+      function isManualStructureRequest(url, init) {
+        if (init?.method !== 'POST') {
+          return false;
+        }
+        try {
+          return /^\/notes\/[^/]+\/structure\/manual$/.test(new URL(url, globalThis.location.href).pathname);
+        } catch {
+          return false;
+        }
+      }
+
+      function writeLocalAgentStatus(options, status) {
+        if (options.statusElement !== undefined && options.statusElement !== null) {
+          options.statusElement.textContent = status;
+        }
+      }
+
+      function writeLocalAgentResult(options, body, httpStatus) {
+        globalThis.__ANN_LOCAL_AGENT_LAST_RESULT = body;
+        const summary = summarizeLocalAgentResult(body, httpStatus);
+        writeLocalAgentStatus(options, summary.statusText);
+        if (options.evidenceElement !== undefined && options.evidenceElement !== null) {
+          options.evidenceElement.textContent = JSON.stringify(summary.evidence, null, 2);
+        }
+      }
+
+      function summarizeLocalAgentResult(body, httpStatus) {
+        const evidence = {
+          httpStatus,
+          ok: body?.ok === true,
+          reason: typeof body?.reason === 'string' ? body.reason : undefined,
+          scheduledJobIds: Array.isArray(body?.scheduledJobIds) ? body.scheduledJobIds.length : 0,
+          providerCalls: Array.isArray(body?.providerCalls) ? body.providerCalls.length : 0,
+          operationRoutingCalls: Array.isArray(body?.operationRoutingCalls) ? body.operationRoutingCalls.length : 0,
+          auditWritesSavedCount: sumAuditWrites(body?.auditWrites),
+          noteSotMutations: Array.isArray(body?.noteSotMutations) ? body.noteSotMutations.length : 0,
+          errors: Array.isArray(body?.errors) ? body.errors : [],
+        };
+        const completed = evidence.ok
+          && evidence.reason === 'completed'
+          && evidence.providerCalls > 0
+          && evidence.operationRoutingCalls > 0
+          && evidence.auditWritesSavedCount > 0
+          && evidence.noteSotMutations === 0;
+
+        return {
+          evidence,
+          statusText: completed
+            ? `完了: provider ${evidence.providerCalls} / audit ${evidence.auditWritesSavedCount} / SoT ${evidence.noteSotMutations}`
+            : `未完了: HTTP ${httpStatus}`,
+        };
+      }
+
+      function sumAuditWrites(value) {
+        if (!Array.isArray(value)) {
+          return 0;
+        }
+        return value.reduce((sum, item) => (
+          sum + (Number.isFinite(item?.savedCount) ? item.savedCount : 0)
+        ), 0);
+      }
+
+      async function readJsonResponse(response) {
+        try {
+          return await response.json();
+        } catch {
+          return undefined;
+        }
+      }
+
+      function readHeader(headers, name) {
+        if (headers === undefined || headers === null) {
+          return undefined;
+        }
+        if (typeof headers.get === 'function') {
+          return headers.get(name) ?? undefined;
+        }
+        const lowerName = name.toLowerCase();
+        for (const [key, value] of Object.entries(headers)) {
+          if (key.toLowerCase() === lowerName && typeof value === 'string' && value.trim() !== '') {
+            return value;
+          }
+        }
+        return undefined;
+      }
     </script>
   </body>
 </html>
